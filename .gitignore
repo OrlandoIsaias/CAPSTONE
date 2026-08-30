@@ -1,0 +1,87 @@
+# ============================================
+# HouseFound — .gitignore combinado
+# Backend: Python / FastAPI  |  Frontend: React / TypeScript / Vite
+# ============================================
+
+# ---------- Variables de entorno y secretos ----------
+# NUNCA se suben credenciales reales. Cada carpeta de servicio
+# debe tener su propio .env.example (SIN valores reales) versionado.
+# Nota: un patrón sin "/" inicial ya aplica en cualquier profundidad de
+# carpeta, por eso NO se repiten variantes con "*/" o "**/" delante.
+.env
+.env.local
+.env.*.local
+
+# ---------- Python (backend: api-gateway, auth-service, etc.) ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+
+# ---------- Node.js / React / TypeScript (frontend) ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.eslintcache
+
+# Salida de build (Vite y empaquetado Python comparten el mismo nombre
+# de carpeta de salida; un solo patrón cubre ambos casos)
+dist/
+dist-ssr/
+*.local
+
+# ---------- Docker ----------
+# Los Dockerfile y docker-compose.yml SÍ se versionan (son parte de la
+# evidencia obligatoria del instructivo). Solo se ignoran archivos de
+# override locales y artefactos de ejecución.
+docker-compose.override.yml
+*.pid
+
+# ---------- Bases de datos locales / dumps ----------
+*.sqlite3
+*.db
+*.dump
+*.sql.gz
+
+# ---------- Editor / Sistema operativo ----------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Logs ----------
+*.log
+logs/
+
+# ---------- Archivos temporales ----------
+*.tmp
+*.temp
+.cache/
+
+# ---------- Testing frontend (si agregan Vitest/Jest más adelante) ----------
+coverage/
+
+# ---------- Volúmenes de datos locales de Docker (si alguna vez levantan Postgres local) ----------
+pgdata/
+.docker/volumes/
