@@ -140,5 +140,18 @@ Variables de entorno necesarias por servicio se documentarán en un `.env.exampl
 
 ## 👥 Equipo
 
-Por definir
+| Integrante | Rol principal | Responsabilidades |
+|---|---|---|
+| Orlando Espinoza | Backend — Auth + API Gateway | Registro, login, JWT, roles, formulario de perfil adoptante/refugio, configuración del Gateway |
+| Martin Guzman | Backend — Mascotas + Postulaciones | CRUD de mascotas y refugios, integración con Cloudinary, gestión de postulaciones |
+| Benjamin Ormazabal | Backend — Matching + Seguimiento | Motor de compatibilidad (reglas ponderadas y evaluación de ML), encuestas de seguimiento post-adopción |
+| Patricio Carcamo | Frontend | Todas las pantallas en React + TypeScript, conexión con los microservicios del backend |
+
+**Nota importante:** esta tabla define un rol principal por integrante para efectos de organización y foco, pero **el trabajo no es exclusivo ni aislado de una sola persona**. Todos los integrantes:
+
+- Pueden y deben apoyar en cualquier área cuando se necesite, sin importar el rol principal asignado.
+- Participan de forma transversal en tareas que no son de un solo dueño: configuración de Docker de cada servicio, pruebas (pytest), documentación de evidencias, y revisión de Pull Requests entre compañeros.
+- Comparten la responsabilidad de que el proyecto avance como equipo, no como 4 proyectos individuales unidos al final.
+
+Equipo autorizado por el docente a cursar la asignatura con 4 integrantes (excepción al máximo de 3 establecido en el Instructivo CAPSTONE).
 ---
