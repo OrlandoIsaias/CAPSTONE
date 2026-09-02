@@ -7,7 +7,7 @@ import type { Mascota } from "../types/mascotas";
 const ESTADO_ESTILOS: Record<string, string> = {
   disponible: "bg-[var(--color-primario)]/10 text-[var(--color-primario)]",
   en_proceso: "bg-[var(--color-acento)]/20 text-[var(--color-acento)]",
-  adoptada: "bg-black/10 text-black/60",
+  adoptada: "bg-black/10 text-black/60 dark:text-white/60",
 };
 
 const ESTADO_ETIQUETAS: Record<string, string> = {
@@ -39,7 +39,7 @@ export default function MisMascotas() {
             </p>
             <h1 className="font-[family-name:var(--font-display)] text-3xl">Tus mascotas</h1>
           </div>
-          <button onClick={cerrarSesion} className="text-sm text-black/50 hover:text-black">
+          <button onClick={cerrarSesion} className="text-sm text-black/50 dark:text-white/50 hover:text-black">
             Cerrar sesión
           </button>
         </div>
@@ -51,18 +51,18 @@ export default function MisMascotas() {
           + Publicar una mascota
         </Link>
 
-        {cargando && <p className="text-black/50">Cargando…</p>}
-        {error && <p className="text-red-700 text-sm">{error}</p>}
+        {cargando && <p className="text-black/50 dark:text-white/50">Cargando…</p>}
+        {error && <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>}
 
         {!cargando && !error && mascotas.length === 0 && (
-          <p className="text-black/60">Todavía no has publicado ninguna mascota.</p>
+          <p className="text-black/60 dark:text-white/60">Todavía no has publicado ninguna mascota.</p>
         )}
 
         <div className="space-y-3">
           {mascotas.map((m) => (
             <div
               key={m.id}
-              className="flex gap-4 items-center bg-white rounded-lg border border-[var(--color-borde)] p-3"
+              className="flex gap-4 items-center bg-[var(--color-superficie)] rounded-lg border border-[var(--color-borde)] p-3"
             >
               <div className="w-16 h-16 rounded-md bg-[var(--color-primario)]/10 flex-shrink-0 overflow-hidden flex items-center justify-center">
                 {m.fotos[0] ? (
@@ -75,7 +75,7 @@ export default function MisMascotas() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-[family-name:var(--font-display)] text-lg truncate">{m.nombre}</p>
-                <p className="text-sm text-black/60 truncate">
+                <p className="text-sm text-black/60 dark:text-white/60 truncate">
                   {[m.especie, m.raza].filter(Boolean).join(" · ") || "Sin datos adicionales"}
                 </p>
               </div>

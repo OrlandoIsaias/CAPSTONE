@@ -41,17 +41,17 @@ export default function Recomendaciones() {
               Tus recomendaciones
             </h1>
           </div>
-          <button onClick={cerrarSesion} className="text-sm text-black/50 hover:text-black">
+          <button onClick={cerrarSesion} className="text-sm text-black/50 dark:text-white/50 hover:text-black">
             Cerrar sesión
           </button>
         </div>
 
-        {cargando && <p className="text-black/50">Calculando compatibilidad…</p>}
+        {cargando && <p className="text-black/50 dark:text-white/50">Calculando compatibilidad…</p>}
 
-        {error && <p className="text-red-700 text-sm">{error}</p>}
+        {error && <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>}
 
         {!cargando && !error && recomendaciones.length === 0 && (
-          <p className="text-black/60">
+          <p className="text-black/60 dark:text-white/60">
             Todavía no hay mascotas disponibles. Vuelve a revisar más tarde.
           </p>
         )}
