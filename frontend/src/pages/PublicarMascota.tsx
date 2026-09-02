@@ -58,7 +58,7 @@ export default function PublicarMascota() {
       <div className="max-w-lg mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm text-black/50 hover:text-black mb-6"
+          className="text-sm text-black/50 dark:text-white/50 hover:text-black mb-6"
         >
           ← Volver
         </button>
@@ -66,7 +66,7 @@ export default function PublicarMascota() {
         <h1 className="font-[family-name:var(--font-display)] text-3xl mb-2">
           Publicar una mascota
         </h1>
-        <p className="text-black/60 mb-8">
+        <p className="text-black/60 dark:text-white/60 mb-8">
           Completa su ficha para que el sistema pueda calcular su compatibilidad con adoptantes.
         </p>
 
@@ -77,7 +77,7 @@ export default function PublicarMascota() {
               required
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
             />
           </div>
 
@@ -88,7 +88,7 @@ export default function PublicarMascota() {
                 value={especie}
                 onChange={(e) => setEspecie(e.target.value)}
                 placeholder="Perro, gato…"
-                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
               />
             </div>
             <div>
@@ -96,7 +96,7 @@ export default function PublicarMascota() {
               <input
                 value={raza}
                 onChange={(e) => setRaza(e.target.value)}
-                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
               />
             </div>
           </div>
@@ -108,7 +108,7 @@ export default function PublicarMascota() {
               min={0}
               value={edad}
               onChange={(e) => setEdad(e.target.value === "" ? "" : Number(e.target.value))}
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
             />
           </div>
 
@@ -118,7 +118,7 @@ export default function PublicarMascota() {
               <select
                 value={nivelEnergia}
                 onChange={(e) => setNivelEnergia(e.target.value as NivelEnergiaSocializacion)}
-                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
               >
                 <option value="bajo">Bajo</option>
                 <option value="medio">Medio</option>
@@ -130,7 +130,7 @@ export default function PublicarMascota() {
               <select
                 value={nivelSocializacion}
                 onChange={(e) => setNivelSocializacion(e.target.value as NivelEnergiaSocializacion)}
-                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
               >
                 <option value="bajo">Bajo</option>
                 <option value="medio">Medio</option>
@@ -145,7 +145,7 @@ export default function PublicarMascota() {
               <select
                 value={experienciaRequerida}
                 onChange={(e) => setExperienciaRequerida(e.target.value as NivelEnergiaSocializacion)}
-                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
               >
                 <option value="bajo">Bajo</option>
                 <option value="medio">Medio</option>
@@ -157,7 +157,7 @@ export default function PublicarMascota() {
               <select
                 value={espacioMinimo}
                 onChange={(e) => setEspacioMinimo(e.target.value as EspacioMinimo)}
-                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+                className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
               >
                 <option value="departamento">Departamento</option>
                 <option value="casa_patio">Casa con patio</option>
@@ -189,17 +189,17 @@ export default function PublicarMascota() {
 
           <div>
             <label className="block text-sm font-medium mb-1.5">
-              URL de una foto <span className="text-black/40 font-normal">(opcional por ahora)</span>
+              URL de una foto <span className="text-black/40 dark:text-white/40 font-normal">(opcional por ahora)</span>
             </label>
             <input
               value={urlFoto}
               onChange={(e) => setUrlFoto(e.target.value)}
               placeholder="https://…"
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
             />
           </div>
 
-          {error && <p className="text-sm text-red-700">{error}</p>}
+          {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}
 
           <button
             type="submit"

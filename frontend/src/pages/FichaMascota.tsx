@@ -74,7 +74,7 @@ export default function FichaMascota() {
   if (!mascota) {
     return (
       <div className="min-h-screen bg-[var(--color-fondo)] px-6 py-10">
-        <p className="text-red-700">No encontramos esta mascota.</p>
+        <p className="text-red-700 dark:text-red-400">No encontramos esta mascota.</p>
       </div>
     );
   }
@@ -86,7 +86,7 @@ export default function FichaMascota() {
       <div className="max-w-xl mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm text-black/50 hover:text-black mb-6"
+          className="text-sm text-black/50 dark:text-white/50 hover:text-black mb-6"
         >
           ← Volver
         </button>
@@ -105,39 +105,39 @@ export default function FichaMascota() {
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{mascota.nombre}</h1>
           {score !== null && <InsigniaScore score={score} />}
         </div>
-        <p className="text-black/60 mb-6">
+        <p className="text-black/60 dark:text-white/60 mb-6">
           {[mascota.especie, mascota.raza].filter(Boolean).join(" · ") || "Sin datos adicionales"}
         </p>
 
-        <div className="grid grid-cols-2 gap-4 mb-8 bg-white rounded-lg border border-[var(--color-borde)] p-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 mb-8 bg-[var(--color-superficie)] rounded-lg border border-[var(--color-borde)] p-4 text-sm">
           <div>
-            <p className="text-black/50">Nivel de energía</p>
+            <p className="text-black/50 dark:text-white/50">Nivel de energía</p>
             <p className="font-medium">{etiqueta(mascota.nivel_energia)}</p>
           </div>
           <div>
-            <p className="text-black/50">Socialización</p>
+            <p className="text-black/50 dark:text-white/50">Socialización</p>
             <p className="font-medium">{etiqueta(mascota.nivel_socializacion)}</p>
           </div>
           <div>
-            <p className="text-black/50">Experiencia requerida</p>
+            <p className="text-black/50 dark:text-white/50">Experiencia requerida</p>
             <p className="font-medium">{etiqueta(mascota.nivel_experiencia_requerida)}</p>
           </div>
           <div>
-            <p className="text-black/50">Espacio mínimo</p>
+            <p className="text-black/50 dark:text-white/50">Espacio mínimo</p>
             <p className="font-medium">{etiqueta(mascota.espacio_minimo_requerido)}</p>
           </div>
           <div>
-            <p className="text-black/50">Compatible con niños</p>
+            <p className="text-black/50 dark:text-white/50">Compatible con niños</p>
             <p className="font-medium">{mascota.compatible_ninos ? "Sí" : "No"}</p>
           </div>
           <div>
-            <p className="text-black/50">Compatible con otras mascotas</p>
+            <p className="text-black/50 dark:text-white/50">Compatible con otras mascotas</p>
             <p className="font-medium">{mascota.compatible_otras_mascotas ? "Sí" : "No"}</p>
           </div>
         </div>
 
         {mensaje && (
-          <p className={`text-sm mb-4 ${mensaje.tipo === "exito" ? "text-[var(--color-primario)]" : "text-red-700"}`}>
+          <p className={`text-sm mb-4 ${mensaje.tipo === "exito" ? "text-[var(--color-primario)]" : "text-red-700 dark:text-red-400"}`}>
             {mensaje.texto}
           </p>
         )}
@@ -151,7 +151,7 @@ export default function FichaMascota() {
             {postulando ? "Enviando…" : mensaje?.tipo === "exito" ? "Postulación enviada" : "Postular a esta mascota"}
           </button>
         ) : (
-          <p className="text-center text-black/50 text-sm py-3">
+          <p className="text-center text-black/50 dark:text-white/50 text-sm py-3">
             Esta mascota ya no está disponible para postular.
           </p>
         )}
