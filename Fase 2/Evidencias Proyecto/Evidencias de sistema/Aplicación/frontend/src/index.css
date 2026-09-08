@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --color-fondo: #faf8f4;
@@ -7,8 +8,19 @@
   --color-primario-oscuro: #2c4e3c;
   --color-acento: #e8a33d;
   --color-borde: #ddd6c9;
+  --color-superficie: #ffffff;
   --font-display: "Fraunces", serif;
   --font-body: "Inter", sans-serif;
+}
+
+.dark {
+  --color-fondo: #1c1a17;
+  --color-texto: #f2ede4;
+  --color-primario: #4f8567;
+  --color-primario-oscuro: #3d6b52;
+  --color-acento: #f0b45c;
+  --color-borde: #3a352e;
+  --color-superficie: #262320;
 }
 
 body {

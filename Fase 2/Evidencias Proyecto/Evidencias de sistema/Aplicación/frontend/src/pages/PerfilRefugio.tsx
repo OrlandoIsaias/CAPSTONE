@@ -36,7 +36,7 @@ export default function PerfilRefugio() {
         <h1 className="font-[family-name:var(--font-display)] text-3xl mb-2">
           Cuéntanos sobre tu refugio
         </h1>
-        <p className="text-black/60 mb-8">
+        <p className="text-black/60 dark:text-white/60 mb-8">
           Esta información aparece en cada mascota que publiques.
         </p>
 
@@ -47,7 +47,7 @@ export default function PerfilRefugio() {
               required
               value={nombreRefugio}
               onChange={(e) => setNombreRefugio(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
             />
           </div>
 
@@ -56,7 +56,7 @@ export default function PerfilRefugio() {
             <input
               value={direccion}
               onChange={(e) => setDireccion(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
             />
           </div>
 
@@ -65,11 +65,11 @@ export default function PerfilRefugio() {
             <input
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
             />
           </div>
 
-          {error && <p className="text-sm text-red-700">{error}</p>}
+          {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}
 
           <button
             type="submit"

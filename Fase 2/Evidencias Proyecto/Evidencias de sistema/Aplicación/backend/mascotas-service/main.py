@@ -48,6 +48,31 @@ def listar_mascotas(
     return query.order_by(models.Mascota.fecha_publicacion.desc()).all()
 
 
+@app.get("/mascotas/mias", response_model=List[schemas.MascotaOut])
+def listar_mis_mascotas(
+    credentials: HTTPAuthorizationCredentials = Depends(security.security_scheme),
+    usuario_actual: security.UsuarioToken = Depends(security.requerir_rol("refugio")),
+    db: Session = Depends(get_db),
+):
+    """A diferencia de GET /mascotas (público, solo 'disponible', de todos
+    los refugios), este endpoint devuelve TODAS las mascotas del refugio
+    autenticado, sin importar su estado — es lo que necesita su dashboard.
+
+    IMPORTANTE: esta ruta está declarada ANTES de /mascotas/{mascota_id} a
+    propósito. FastAPI compara rutas en el orden en que se declaran; si
+    /mascotas/{mascota_id} fuera primero, una petición a /mascotas/mias
+    intentaría interpretar "mias" como un mascota_id numérico y fallaría
+    con 422 antes de llegar aquí."""
+    refugio_id = clients.obtener_refugio_id(credentials.credentials)
+    return (
+        db.query(models.Mascota)
+        .options(joinedload(models.Mascota.fotos))
+        .filter(models.Mascota.refugio_id == refugio_id)
+        .order_by(models.Mascota.fecha_publicacion.desc())
+        .all()
+    )
+
+
 @app.get("/mascotas/{mascota_id}", response_model=schemas.MascotaOut)
 def obtener_mascota(mascota_id: int, db: Session = Depends(get_db)):
     mascota = (

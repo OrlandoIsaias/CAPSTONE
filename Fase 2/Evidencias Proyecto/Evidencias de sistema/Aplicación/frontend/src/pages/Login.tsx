@@ -39,7 +39,7 @@ export default function Login() {
       subtitulo="Sigue viendo las mascotas que más se ajustan a tu estilo de vida."
     >
       <h2 className="font-[family-name:var(--font-display)] text-2xl mb-1">Inicia sesión</h2>
-      <p className="text-sm text-black/60 mb-6">
+      <p className="text-sm text-black/60 dark:text-white/60 mb-6">
         ¿Aún no tienes cuenta?{" "}
         <Link to="/registro" className="text-[var(--color-primario)] font-medium">
           Regístrate
@@ -75,7 +75,7 @@ export default function Login() {
           />
         </div>
 
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}
 
         <button
           type="submit"
