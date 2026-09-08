@@ -42,7 +42,7 @@ export default function Registro() {
       subtitulo="Un cuestionario breve, y te mostramos las mascotas que de verdad calzan con tu día a día."
     >
       <h2 className="font-[family-name:var(--font-display)] text-2xl mb-1">Crea tu cuenta</h2>
-      <p className="text-sm text-black/60 mb-6">
+      <p className="text-sm text-black/60 dark:text-white/60 mb-6">
         ¿Ya tienes una?{" "}
         <Link to="/login" className="text-[var(--color-primario)] font-medium">
           Inicia sesión
@@ -117,7 +117,7 @@ export default function Registro() {
           />
         </div>
 
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}
 
         <button
           type="submit"
