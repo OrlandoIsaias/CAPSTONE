@@ -5,7 +5,11 @@ para publicar, editar y gestionar fotos y estado de sus propias mascotas.
 """
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, status
+import os
+
+import cloudinary
+import cloudinary.uploader
+from fastapi import Depends,UploadFile, File, Form, FastAPI, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session, joinedload
 
@@ -15,6 +19,11 @@ import schemas
 import security
 from database import get_db
 
+cloudinary.config(
+    cloud_name=os.getenv("Root"),
+    api_key=os.getenv("393913915589355"),
+    api_secret=os.getenv("GciSZ8o1RwZmAnCQvK2dZi_-Sok")
+)
 app = FastAPI(title="HouseFound - Mascotas Service")
 
 
@@ -150,35 +159,60 @@ def cambiar_estado_mascota(
     return mascota
 
 
+import cloudinary.uploader
+from fastapi import File, Form, UploadFile  # Asegúrate de importar File, Form y UploadFile
+
 @app.post("/mascotas/{mascota_id}/fotos", response_model=schemas.FotoMascotaOut, status_code=status.HTTP_201_CREATED)
-def agregar_foto(
+async def agregar_foto(
     mascota_id: int,
-    datos: schemas.FotoMascotaIn,
+    foto: UploadFile = File(...),              # <-- Cambia JSON por la imagen binaria
+    es_principal: bool = Form(False),          # <-- Cambia JSON por campos Form
+    orden: int = Form(1),
     credentials: HTTPAuthorizationCredentials = Depends(security.security_scheme),
     usuario_actual: security.UsuarioToken = Depends(security.requerir_rol("refugio")),
     db: Session = Depends(get_db),
 ):
+    # 1. Validar existencia de la mascota (Tu lógica original)
     mascota = db.query(models.Mascota).filter(models.Mascota.id == mascota_id).first()
     if not mascota:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mascota no encontrada")
 
+    # 2. Validar propiedad del refugio (Tu lógica original)
     refugio_id = clients.obtener_refugio_id(credentials.credentials)
     _verificar_dueno(mascota, refugio_id)
 
-    if datos.es_principal:
-        # En vez de dejar que el índice único parcial de la BD rechace con
-        # error, resolvemos la intención real del usuario: la foto nueva
-        # pasa a ser la principal y la anterior deja de serlo, en la misma
-        # transacción (evita el IntegrityError de uq_foto_principal_por_mascota).
+    # 3. Validar tipo de archivo
+    if not foto.content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El archivo enviado debe ser una imagen.")
+
+    # 4. SUBIR A CLOUDINARY
+    try:
+        resultado = cloudinary.uploader.upload(foto.file, folder="hogarmatch/mascotas")
+        url_cloudinary = resultado.get("secure_url")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Error al subir imagen a Cloudinary: {str(e)}"
+        )
+
+    # 5. Gestionar foto principal (Tu lógica original intacta)
+    if es_principal:
         db.query(models.FotoMascota).filter(
             models.FotoMascota.mascota_id == mascota_id,
             models.FotoMascota.es_principal.is_(True),
         ).update({"es_principal": False})
 
-    nueva_foto = models.FotoMascota(mascota_id=mascota_id, **datos.model_dump())
+    # 6. Guardar registro en Neon DB usando la URL devuelta por Cloudinary
+    nueva_foto = models.FotoMascota(
+        mascota_id=mascota_id,
+        url=url_cloudinary,
+        es_principal=es_principal,
+        orden=orden
+    )
     db.add(nueva_foto)
     db.commit()
     db.refresh(nueva_foto)
+    
     return nueva_foto
 
 
