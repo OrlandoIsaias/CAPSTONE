@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 import { RutaProtegida } from "./components/RutaProtegida";
+import SplashScreen from "./components/SplashScreen";
 import { ToastProvider } from "./components/Toast";
 import Cuestionarios from "./pages/Cuestionarios";
 import DetalleSolicitud from "./pages/DetalleSolicitud";
@@ -20,133 +22,138 @@ import Registro from "./pages/Registro";
 import Solicitudes from "./pages/Solicitudes";
 
 function App() {
+  const [mostrarSplash, setMostrarSplash] = useState(true);
+
   return (
     <ToastProvider>
-    <ConfirmProvider>
-    <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/registro" element={<Registro />} />
-      <Route path="/login" element={<Login />} />
+      <ConfirmProvider>
+        {mostrarSplash && (
+          <SplashScreen onFinish={() => setMostrarSplash(false)} />
+        )}
 
-      {/* Flujo adoptante */}
-      <Route
-        path="/explorar"
-        element={
-          <RutaProtegida rolRequerido="adoptante">
-            <ExplorarMascotas />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/perfil-adoptante"
-        element={
-          <RutaProtegida rolRequerido="adoptante">
-            <PerfilAdoptante />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/recomendaciones"
-        element={
-          <RutaProtegida rolRequerido="adoptante">
-            <Recomendaciones />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/guardados"
-        element={
-          <RutaProtegida rolRequerido="adoptante">
-            <Guardados />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/mis-solicitudes"
-        element={
-          <RutaProtegida rolRequerido="adoptante">
-            <MisSolicitudes />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/mascota/:id"
-        element={
-          <RutaProtegida rolRequerido="adoptante">
-            <FichaMascota />
-          </RutaProtegida>
-        }
-      />
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/registro" element={<Registro />} />
+          <Route path="/login" element={<Login />} />
 
-      {/* Flujo refugio */}
-      <Route
-        path="/inicio"
-        element={
-          <RutaProtegida rolRequerido="refugio">
-            <InicioRefugio />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/perfil-refugio"
-        element={
-          <RutaProtegida rolRequerido="refugio">
-            <PerfilRefugio />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/mis-mascotas"
-        element={
-          <RutaProtegida rolRequerido="refugio">
-            <MisMascotas />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/mascota/nueva"
-        element={
-          <RutaProtegida rolRequerido="refugio">
-            <PublicarMascota />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/mis-mascotas/:id"
-        element={
-          <RutaProtegida rolRequerido="refugio">
-            <MascotaRefugio />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/solicitudes"
-        element={
-          <RutaProtegida rolRequerido="refugio">
-            <Solicitudes />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/solicitudes/:id"
-        element={
-          <RutaProtegida rolRequerido="refugio">
-            <DetalleSolicitud />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/cuestionarios"
-        element={
-          <RutaProtegida rolRequerido="refugio">
-            <Cuestionarios />
-          </RutaProtegida>
-        }
-      />
-      {/* La pantalla de postulaciones se reemplazó por /solicitudes */}
-      <Route path="/postulaciones" element={<Navigate to="/solicitudes" replace />} />
-    </Routes>
-    </ConfirmProvider>
+          {/* Flujo adoptante */}
+          <Route
+            path="/explorar"
+            element={
+              <RutaProtegida rolRequerido="adoptante">
+                <ExplorarMascotas />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/perfil-adoptante"
+            element={
+              <RutaProtegida rolRequerido="adoptante">
+                <PerfilAdoptante />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/recomendaciones"
+            element={
+              <RutaProtegida rolRequerido="adoptante">
+                <Recomendaciones />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/guardados"
+            element={
+              <RutaProtegida rolRequerido="adoptante">
+                <Guardados />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mis-solicitudes"
+            element={
+              <RutaProtegida rolRequerido="adoptante">
+                <MisSolicitudes />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mascota/:id"
+            element={
+              <RutaProtegida rolRequerido="adoptante">
+                <FichaMascota />
+              </RutaProtegida>
+            }
+          />
+
+          {/* Flujo refugio */}
+          <Route
+            path="/inicio"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <InicioRefugio />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/perfil-refugio"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <PerfilRefugio />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mis-mascotas"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <MisMascotas />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mascota/nueva"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <PublicarMascota />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mis-mascotas/:id"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <MascotaRefugio />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/solicitudes"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <Solicitudes />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/solicitudes/:id"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <DetalleSolicitud />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/cuestionarios"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <Cuestionarios />
+              </RutaProtegida>
+            }
+          />
+          <Route path="/postulaciones" element={<Navigate to="/solicitudes" replace />} />
+        </Routes>
+      </ConfirmProvider>
     </ToastProvider>
   );
 }

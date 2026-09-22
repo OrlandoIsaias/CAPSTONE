@@ -41,9 +41,6 @@ body {
   font-family: var(--font-body);
 }
 
-/* Animaciones compartidas por los componentes de feedback (Toast,
-   ConfirmDialog) — se referencian desde clases Tailwind arbitrarias como
-   animate-[toast-in_0.25s_ease-out]. */
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(10px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -57,4 +54,23 @@ body {
 @keyframes sheet-in {
   from { opacity: 0; transform: translateY(20px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Animaciones de la cortina vertical del SplashScreen (Nuevas) */
+@keyframes abrirArriba {
+  0% { transform: translateY(0%); }
+  100% { transform: translateY(-100%); }
+}
+
+@keyframes abrirAbajo {
+  0% { transform: translateY(0%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-abrir-arriba {
+  animation: abrirArriba 1s ease-in-out forwards;
+}
+
+.animate-abrir-abajo {
+  animation: abrirAbajo 1s ease-in-out forwards;
 }
