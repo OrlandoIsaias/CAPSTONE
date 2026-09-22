@@ -23,7 +23,20 @@ export async function crearMascota(datos: MascotaInput): Promise<Mascota> {
   return data;
 }
 
-export async function agregarFoto(mascotaId: number, url: string): Promise<void> {
-  await apiClient.post(`/mascotas/${mascotaId}/fotos`, { url, es_principal: true, orden: 1 });
-}
+export async function agregarFoto(
+  mascotaId: number, 
+  archivoImagen: File, 
+  esPrincipal: boolean = true, 
+  orden: number = 1
+): Promise<void> {
+  const formData = new FormData();
+  formData.append("foto", archivoImagen);
+  formData.append("es_principal", String(esPrincipal));
+  formData.append("orden", String(orden));
 
+  await apiClient.post(`/mascotas/${mascotaId}/fotos`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+}
