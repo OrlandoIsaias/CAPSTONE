@@ -142,10 +142,10 @@ export default function PublicarMascota() {
 
     try {
       const mascota = await crearMascota(datos);
-      if (fotoPreview) {
+      if (agregarFoto && fotoArchivo) {
         // Si algo falla al agregar la foto, no bloqueamos la publicación
         // de la mascota — ya quedó creada, la foto se puede agregar después.
-        await agregarFoto(mascota.id, fotoPreview).catch(() => {});
+        await agregarFoto(mascota.id, fotoArchivo).catch(() => {});
       }
       mostrarToast(`¡${mascota.nombre} fue publicado! 🐾`);
       navigate("/mis-mascotas");

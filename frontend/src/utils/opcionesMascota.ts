@@ -64,10 +64,7 @@ export const RAZAS_POR_ESPECIE: Record<EspecieMascota, string[]> = {
   ],
 };
 
-/** Opciones de edad: años exactos del 1 al 15, más los dos casos borde que
-    pide el formulario. Se guarda como número (la API espera `edad: int`),
-    por eso cada extremo mapea a un valor numérico razonable: 0 para
-    "menos de 1 año" (cachorro/gatito) y 16 para "más de 15 años". */
+
 export const EDAD_OPCIONES: { valor: number; etiqueta: string }[] = [
   { valor: 0, etiqueta: "Menos de 1 año" },
   ...Array.from({ length: 15 }, (_, i) => ({
@@ -81,5 +78,5 @@ export const EDAD_OPCIONES: { valor: number; etiqueta: string }[] = [
 // perfiles). Se re-exporta acá para no romper los imports existentes.
 export { REGEX_SOLO_LETRAS } from "./validacion";
 
-export const TIPOS_FOTO_ACEPTADOS = ["image/png", "image/jpeg"] as const;
-export const TAMANO_MAXIMO_FOTO_BYTES = 4 * 1024 * 1024; // 4 MB
+export const TAMANO_MAXIMO_FOTO_BYTES = 4 * 1024 * 1024;
+export const TIPOS_FOTO_ACEPTADOS = ['image/jpeg', 'image/png', 'image/webp'];
