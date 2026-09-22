@@ -42,6 +42,9 @@ export interface PerfilAdoptante {
   tiene_ninos: boolean;
   otras_mascotas: boolean;
   nivel_actividad_fisica: NivelActividad;
+  // Optional acá: perfiles guardados antes de que este campo existiera
+  // pueden no tenerlo todavía (ver auth-service/schemas.py).
+  telefono?: string;
 }
 
 export interface PerfilAdoptanteInput {
@@ -51,6 +54,7 @@ export interface PerfilAdoptanteInput {
   tiene_ninos: boolean;
   otras_mascotas: boolean;
   nivel_actividad_fisica: NivelActividad;
+  telefono: string;
 }
 
 export interface PerfilRefugio {
@@ -58,11 +62,13 @@ export interface PerfilRefugio {
   usuario_id: number;
   nombre_refugio: string;
   direccion?: string;
+  // Optional acá por la misma razón que PerfilAdoptante.telefono: refugios
+  // registrados cuando este campo era opcional pueden no tenerlo aún.
   telefono_contacto?: string;
 }
 
 export interface PerfilRefugioInput {
   nombre_refugio: string;
   direccion?: string;
-  telefono_contacto?: string;
+  telefono_contacto: string;
 }

@@ -4,6 +4,7 @@ import { misMascotas } from "../api/mascotas";
 import { postulacionesRecibidas } from "../api/postulaciones";
 import { PantallaRefugio } from "../components/BarraRefugio";
 import { EstadoMascotaBadge } from "../components/Badges";
+import { SkeletonFila } from "../components/Skeleton";
 import type { Mascota } from "../types/mascotas";
 
 type Filtro = "todos" | "perros" | "gatos";
@@ -68,7 +69,7 @@ export default function MisMascotas() {
         <h1 className="text-2xl font-bold">Mis Mascotas</h1>
         <Link
           to="/mascota/nueva"
-          className="shrink-0 bg-[var(--color-primario)] text-white text-sm font-semibold px-4 py-2.5 rounded-full hover:bg-[var(--color-primario-oscuro)] transition-colors"
+          className="shrink-0 bg-[var(--color-primario)] text-white text-sm font-semibold px-4 py-2.5 rounded-full hover:bg-[var(--color-primario-oscuro)] active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
         >
           + Agregar
         </Link>
@@ -94,7 +95,7 @@ export default function MisMascotas() {
           <button
             key={f.id}
             onClick={() => setFiltro(f.id)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2 ${
               filtro === f.id
                 ? "bg-[var(--color-primario)] text-white"
                 : "bg-[var(--color-superficie-apagada)] text-[var(--color-texto)]"
@@ -105,7 +106,13 @@ export default function MisMascotas() {
         ))}
       </div>
 
-      {cargando && <p className="text-[var(--color-texto-suave)] text-sm">Cargando…</p>}
+      {cargando && (
+        <div className="space-y-3">
+          <SkeletonFila />
+          <SkeletonFila />
+          <SkeletonFila />
+        </div>
+      )}
       {error && <p className="text-[var(--color-rojo)] text-sm">{error}</p>}
 
       {!cargando && !error && visibles.length === 0 && (
@@ -129,7 +136,7 @@ export default function MisMascotas() {
             <button
               key={m.id}
               onClick={() => navigate(`/mis-mascotas/${m.id}`)}
-              className="w-full text-left flex gap-3.5 items-center bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] p-3"
+              className="w-full text-left flex gap-3.5 items-center bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] p-3 active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
             >
               <span className="w-16 h-16 rounded-xl bg-[var(--color-primario-suave)] shrink-0 overflow-hidden flex items-center justify-center">
                 {foto ? (

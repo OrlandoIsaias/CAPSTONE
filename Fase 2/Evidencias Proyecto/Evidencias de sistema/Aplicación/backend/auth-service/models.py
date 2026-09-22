@@ -42,5 +42,6 @@ class PerfilAdoptante(Base):
     tiene_ninos = Column(Boolean, default=False)
     otras_mascotas = Column(Boolean, default=False)
     nivel_actividad_fisica = Column(String)
+    telefono = Column(String)
 
     usuario = relationship("Usuario", back_populates="perfil_adoptante")

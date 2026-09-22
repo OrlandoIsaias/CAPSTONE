@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerRecomendaciones } from "../api/matching";
+import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { TarjetaMascota } from "../components/TarjetaMascota";
 import { useAuth } from "../context/AuthContext";
 import type { Recomendacion } from "../types/matching";
@@ -30,45 +31,46 @@ export default function Recomendaciones() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-fondo)] px-6 py-10">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <p className="text-sm text-[var(--color-primario)] font-medium mb-1">
-              Hola, {usuario?.nombre}
-            </p>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl">
-              Tus recomendaciones
-            </h1>
-          </div>
-          <button onClick={cerrarSesion} className="text-sm text-black/50 hover:text-black">
-            Cerrar sesión
-          </button>
-        </div>
-
-        {cargando && <p className="text-black/50">Calculando compatibilidad…</p>}
-
-        {error && <p className="text-red-700 text-sm">{error}</p>}
-
-        {!cargando && !error && recomendaciones.length === 0 && (
-          <p className="text-black/60">
-            Todavía no hay mascotas disponibles. Vuelve a revisar más tarde.
+    <PantallaAdoptante>
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <p className="text-sm text-[var(--color-primario)] font-medium mb-1">
+            Hola, {usuario?.nombre}
           </p>
-        )}
-
-        <div className="space-y-3">
-          {recomendaciones.map((rec) => (
-            <TarjetaMascota
-              key={rec.mascota_id}
-              mascotaId={rec.mascota_id}
-              nombre={rec.nombre}
-              especie={rec.especie}
-              raza={rec.raza}
-              score={rec.score_compatibilidad}
-            />
-          ))}
+          <h1 className="font-[family-name:var(--font-display)] text-3xl">
+            Tus recomendaciones
+          </h1>
         </div>
+        <button
+          onClick={cerrarSesion}
+          className="text-sm text-[var(--color-texto-suave)] hover:text-[var(--color-texto)]"
+        >
+          Cerrar sesión
+        </button>
       </div>
-    </div>
+
+      {cargando && <p className="text-[var(--color-texto-suave)]">Calculando compatibilidad…</p>}
+
+      {error && <p className="text-[var(--color-rojo)] text-sm">{error}</p>}
+
+      {!cargando && !error && recomendaciones.length === 0 && (
+        <p className="text-[var(--color-texto-suave)]">
+          Todavía no hay mascotas disponibles. Vuelve a revisar más tarde.
+        </p>
+      )}
+
+      <div className="space-y-3">
+        {recomendaciones.map((rec) => (
+          <TarjetaMascota
+            key={rec.mascota_id}
+            mascotaId={rec.mascota_id}
+            nombre={rec.nombre}
+            especie={rec.especie}
+            raza={rec.raza}
+            score={rec.score_compatibilidad}
+          />
+        ))}
+      </div>
+    </PantallaAdoptante>
   );
 }

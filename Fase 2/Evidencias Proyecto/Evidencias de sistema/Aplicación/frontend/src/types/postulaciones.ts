@@ -15,6 +15,11 @@ export interface Postulacion {
   /** null si el adoptante nunca abrió la ficha y no hay match calculado. */
   score_compatibilidad?: number | null;
   fecha_postulacion: string;
+  /** Datos de contacto para coordinar la entrega (botón de WhatsApp) — solo
+      tienen sentido de mostrar una vez que la postulación está aprobada. */
+  adoptante_telefono?: string | null;
+  refugio_nombre?: string | null;
+  refugio_telefono?: string | null;
 }
 
 /** Respuestas del cuestionario de estilo de vida del postulante, que el

@@ -22,6 +22,9 @@ CREATE TABLE "refugios" (
   "usuario_id" integer UNIQUE NOT NULL,
   "nombre_refugio" varchar NOT NULL,
   "direccion" varchar,
+  -- Opcional a nivel de BD (perfiles antiguos pueden no tenerlo), pero la
+  -- API exige completarlo al guardar el perfil: se usa para el botón de
+  -- WhatsApp que coordina la entrega una vez aprobada una postulación.
   "telefono_contacto" varchar
 );
 
@@ -34,6 +37,9 @@ CREATE TABLE "perfiles_adoptante" (
   "tiene_ninos" boolean NOT NULL DEFAULT false,
   "otras_mascotas" boolean NOT NULL DEFAULT false,
   "nivel_actividad_fisica" varchar,
+  -- Mismo criterio que telefono_contacto en refugios: opcional en la BD,
+  -- obligatorio en la API para perfiles nuevos.
+  "telefono" varchar,
   CONSTRAINT chk_perfil_espacio CHECK ("espacio_disponible" IN ('departamento', 'casa_patio', 'casa_grande')),
   CONSTRAINT chk_perfil_experiencia CHECK ("experiencia_previa" IN ('ninguna', 'basica', 'alta')),
   CONSTRAINT chk_perfil_actividad CHECK ("nivel_actividad_fisica" IN ('bajo', 'medio', 'alto')),
@@ -53,6 +59,7 @@ CREATE TABLE "mascotas" (
   "compatible_otras_mascotas" boolean,
   "nivel_experiencia_requerida" varchar,
   "espacio_minimo_requerido" varchar,
+  "cuidados_especiales" text,
   "estado" varchar NOT NULL DEFAULT 'disponible',
   "fecha_publicacion" timestamp NOT NULL DEFAULT (now()),
   CONSTRAINT chk_mascota_edad CHECK ("edad" IS NULL OR "edad" >= 0),

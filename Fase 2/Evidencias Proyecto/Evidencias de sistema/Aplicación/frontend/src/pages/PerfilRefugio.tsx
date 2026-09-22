@@ -1,11 +1,17 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { guardarPerfilRefugio, obtenerPerfilRefugio } from "../api/auth";
+import { Spinner } from "../components/Spinner";
+import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
+import { normalizarTelefonoCL, validarTelefonoCL } from "../utils/telefono";
+
+type Errores = Partial<Record<"nombreRefugio" | "telefono", string>>;
 
 export default function PerfilRefugio() {
   const navigate = useNavigate();
   const { cerrarSesion } = useAuth();
+  const mostrarToast = useToast();
 
   const [nombreRefugio, setNombreRefugio] = useState("");
   const [direccion, setDireccion] = useState("");
@@ -13,8 +19,7 @@ export default function PerfilRefugio() {
   // null mientras no sabemos si el perfil existe: cambia el texto de la
   // pantalla entre "alta inicial" y "edición".
   const [yaExiste, setYaExiste] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [guardado, setGuardado] = useState(false);
+  const [errores, setErrores] = useState<Errores>({});
   const [cargando, setCargando] = useState(false);
 
   useEffect(() => {
@@ -29,25 +34,37 @@ export default function PerfilRefugio() {
       .catch(() => setYaExiste(false));
   }, []);
 
+  function validar(): boolean {
+    const nuevosErrores: Errores = {};
+    if (nombreRefugio.trim().length < 2) {
+      nuevosErrores.nombreRefugio = "Ingresa el nombre del refugio.";
+    }
+    if (!validarTelefonoCL(telefono)) {
+      nuevosErrores.telefono = "Ingresa un celular chileno válido, ej: +56 9 1234 5678.";
+    }
+    setErrores(nuevosErrores);
+    return Object.values(nuevosErrores).every((v) => !v);
+  }
+
   async function manejarEnvio(evento: FormEvent) {
     evento.preventDefault();
-    setError(null);
-    setGuardado(false);
+
+    if (!validar()) return;
+
     setCargando(true);
     try {
       await guardarPerfilRefugio({
-        nombre_refugio: nombreRefugio,
+        nombre_refugio: nombreRefugio.trim(),
         direccion: direccion || undefined,
-        telefono_contacto: telefono || undefined,
+        telefono_contacto: normalizarTelefonoCL(telefono),
       });
       if (yaExiste) {
-        setGuardado(true);
-        setTimeout(() => setGuardado(false), 2500);
+        mostrarToast("Cambios guardados");
       } else {
         navigate("/inicio");
       }
     } catch {
-      setError("No pudimos guardar el perfil. Intenta de nuevo.");
+      mostrarToast("No pudimos guardar el perfil. Intenta de nuevo.", "error");
     } finally {
       setCargando(false);
     }
@@ -73,17 +90,15 @@ export default function PerfilRefugio() {
               Esta información acompaña a cada mascota que publiques.
             </p>
           </div>
-          {yaExiste && (
-            <button
-              onClick={() => navigate("/inicio")}
-              aria-label="Volver"
-              className="w-10 h-10 rounded-full bg-[var(--color-superficie-apagada)] flex items-center justify-center shrink-0"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m15 5-7 7 7 7" />
-              </svg>
-            </button>
-          )}
+          <button
+            onClick={() => navigate(-1)}
+            aria-label="Volver"
+            className="w-10 h-10 rounded-full bg-[var(--color-superficie-apagada)] flex items-center justify-center shrink-0 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 5-7 7 7 7" />
+            </svg>
+          </button>
         </header>
 
         <form onSubmit={manejarEnvio} className="space-y-4">
@@ -96,6 +111,9 @@ export default function PerfilRefugio() {
               placeholder="Huellitas Felices"
               className={claseCampo}
             />
+            {errores.nombreRefugio && (
+              <p className="text-sm text-[var(--color-rojo)] mt-1">{errores.nombreRefugio}</p>
+            )}
           </div>
 
           <div>
@@ -113,33 +131,34 @@ export default function PerfilRefugio() {
             <input
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
-              placeholder="Opcional"
+              placeholder="+56 9 1234 5678"
               className={claseCampo}
             />
+            <p className="text-xs text-[var(--color-texto-suave)] mt-1">
+              Se comparte con el adoptante cuando apruebas su solicitud, para coordinar la
+              entrega.
+            </p>
+            {errores.telefono && (
+              <p className="text-sm text-[var(--color-rojo)] mt-1">{errores.telefono}</p>
+            )}
           </div>
-
-          {error && <p className="text-sm text-[var(--color-rojo)]">{error}</p>}
-          {guardado && (
-            <p className="text-sm font-medium text-[var(--color-verde)]">Cambios guardados.</p>
-          )}
 
           <button
             type="submit"
             disabled={cargando}
-            className="w-full bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] transition-colors disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
           >
+            {cargando && <Spinner />}
             {cargando ? "Guardando…" : yaExiste ? "Guardar cambios" : "Continuar"}
           </button>
         </form>
 
-        {yaExiste && (
-          <button
-            onClick={cerrarSesion}
-            className="w-full mt-3 py-3.5 rounded-xl font-semibold text-[var(--color-texto-suave)]"
-          >
-            Cerrar sesión
-          </button>
-        )}
+        <button
+          onClick={cerrarSesion}
+          className="w-full mt-3 py-3.5 rounded-xl font-semibold text-[var(--color-texto-suave)] active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
+        >
+          Cerrar sesión
+        </button>
       </div>
     </div>
   );

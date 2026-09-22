@@ -56,6 +56,21 @@ def _nombre_adoptante(adoptante_id: int, db: Session) -> Optional[str]:
     return fila[0] if fila else None
 
 
+def _telefono_adoptante(adoptante_id: int, db: Session) -> Optional[str]:
+    fila = (
+        db.query(models.PerfilAdoptante.telefono)
+        .filter(models.PerfilAdoptante.id == adoptante_id)
+        .first()
+    )
+    return fila[0] if fila else None
+
+
+def _contacto_refugio(refugio_id: int, db: Session) -> Optional[models.Refugio]:
+    """Datos del refugio dueño de la mascota — para que el adoptante pueda
+    coordinar la entrega por su cuenta una vez que su postulación es aprobada."""
+    return db.query(models.Refugio).filter(models.Refugio.id == refugio_id).first()
+
+
 def _score_de(adoptante_id: int, mascota_id: int, db: Session) -> Optional[float]:
     """El score vive en la tabla matches, que escribe Matching Service. Si el
     adoptante nunca abrió la ficha de esa mascota no hay match calculado y
@@ -74,6 +89,7 @@ def _score_de(adoptante_id: int, mascota_id: int, db: Session) -> Optional[float
 def _a_postulacion_out(
     p: models.Postulacion, mascota: models.Mascota, db: Session
 ) -> schemas.PostulacionOut:
+    refugio = _contacto_refugio(mascota.refugio_id, db)
     return schemas.PostulacionOut(
         id=p.id,
         adoptante_id=p.adoptante_id,
@@ -85,6 +101,9 @@ def _a_postulacion_out(
         estado=p.estado,
         score_compatibilidad=_score_de(p.adoptante_id, p.mascota_id, db),
         fecha_postulacion=p.fecha_postulacion,
+        adoptante_telefono=_telefono_adoptante(p.adoptante_id, db),
+        refugio_nombre=refugio.nombre_refugio if refugio else None,
+        refugio_telefono=refugio.telefono_contacto if refugio else None,
     )
 
 

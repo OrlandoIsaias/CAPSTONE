@@ -5,7 +5,7 @@ aunque técnicamente esté en la misma base de datos física. Cuando necesita
 saber el refugio_id del usuario autenticado, se lo pregunta a Auth Service
 por HTTP (ver clients.py).
 """
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -27,6 +27,7 @@ class Mascota(Base):
     compatible_otras_mascotas = Column(Boolean)
     nivel_experiencia_requerida = Column(String)
     espacio_minimo_requerido = Column(String)
+    cuidados_especiales = Column(Text)
     estado = Column(String, nullable=False, default="disponible")
     fecha_publicacion = Column(DateTime, server_default=func.now())
 

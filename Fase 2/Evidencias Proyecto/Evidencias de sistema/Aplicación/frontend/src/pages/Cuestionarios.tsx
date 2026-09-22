@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { detallePostulacion, postulacionesRecibidas } from "../api/postulaciones";
 import { AvatarIniciales } from "../components/Badges";
 import { PantallaRefugio } from "../components/BarraRefugio";
+import { SkeletonFila } from "../components/Skeleton";
 import type { PostulacionDetalle } from "../types/postulaciones";
 
 const ESPACIO: Record<string, string> = {
@@ -48,7 +49,13 @@ export default function Cuestionarios() {
         El estilo de vida que declaró cada persona que postuló a tus mascotas.
       </p>
 
-      {cargando && <p className="text-[var(--color-texto-suave)] text-sm">Cargando…</p>}
+      {cargando && (
+        <div className="space-y-3">
+          <SkeletonFila />
+          <SkeletonFila />
+          <SkeletonFila />
+        </div>
+      )}
       {error && <p className="text-[var(--color-rojo)] text-sm">{error}</p>}
 
       {!cargando && !error && fichas.length === 0 && (
@@ -75,7 +82,7 @@ export default function Cuestionarios() {
             <button
               key={f.id}
               onClick={() => navigate(`/solicitudes/${f.id}`)}
-              className="w-full text-left bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] p-4"
+              className="w-full text-left bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] p-4 active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
             >
               <div className="flex items-center gap-3 mb-3">
                 <AvatarIniciales nombre={nombre} />

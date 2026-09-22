@@ -4,6 +4,7 @@ import { obtenerPerfilRefugio } from "../api/auth";
 import { misMascotas } from "../api/mascotas";
 import { postulacionesRecibidas } from "../api/postulaciones";
 import { PantallaRefugio } from "../components/BarraRefugio";
+import { SkeletonMetrica, Skeleton } from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
 import { tiempoRelativo } from "../utils/tiempo";
 import type { Mascota } from "../types/mascotas";
@@ -20,13 +21,14 @@ type Actividad = {
 };
 
 export default function InicioRefugio() {
-  const { usuario, cerrarSesion } = useAuth();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
 
   const [nombreRefugio, setNombreRefugio] = useState<string | null>(null);
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
   const [postulaciones, setPostulaciones] = useState<Postulacion[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
   const [leidas, setLeidas] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(CLAVE_LEIDAS) ?? "[]");
@@ -99,40 +101,118 @@ export default function InicioRefugio() {
     localStorage.setItem(CLAVE_LEIDAS, JSON.stringify(todas));
   }
 
+  function irASolicitud() {
+    setMostrarNotificaciones(false);
+    navigate("/solicitudes");
+  }
+
   return (
     <PantallaRefugio>
       <header className="flex items-start justify-between mb-6">
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-[var(--color-texto-suave)] uppercase">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-[var(--color-primario)] uppercase">
             Refugio
           </p>
           <h1 className="text-2xl font-bold leading-tight">
-            {nombreRefugio ?? usuario?.nombre ?? "Tu refugio"}
+            {nombreRefugio ?? usuario?.nombre ?? "Tu refugio"}{" "}
+            <span aria-hidden="true">🐾</span>
           </h1>
         </div>
-        <div className="relative shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={cerrarSesion}
-            aria-label="Cerrar sesión"
-            className="w-10 h-10 rounded-full bg-[var(--color-superficie)] border border-[var(--color-borde)] flex items-center justify-center text-[var(--color-texto)]"
+            onClick={() => navigate("/perfil-refugio")}
+            aria-label="Datos del refugio"
+            className="w-10 h-10 rounded-full bg-[var(--color-superficie)] border border-[var(--color-borde)] flex items-center justify-center text-[var(--color-texto)] active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5Z" />
-              <path d="M10.5 19a1.8 1.8 0 0 0 3 0" />
+              <circle cx="12" cy="8" r="3.4" />
+              <path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" />
             </svg>
           </button>
-          {sinLeer > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-[var(--color-primario)] text-white text-[11px] font-semibold flex items-center justify-center">
-              {sinLeer}
-            </span>
-          )}
+
+          <div className="relative">
+            <button
+              onClick={() => setMostrarNotificaciones((v) => !v)}
+              aria-label="Notificaciones"
+              aria-expanded={mostrarNotificaciones}
+              className="w-10 h-10 rounded-full bg-[var(--color-superficie)] border border-[var(--color-borde)] flex items-center justify-center text-[var(--color-texto)] active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5Z" />
+                <path d="M10.5 19a1.8 1.8 0 0 0 3 0" />
+              </svg>
+            </button>
+            {sinLeer > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-[var(--color-primario)] text-white text-[11px] font-semibold flex items-center justify-center pointer-events-none">
+                {sinLeer}
+              </span>
+            )}
+
+            {mostrarNotificaciones && (
+              <>
+                {/* Fondo invisible: cierra el panel al tocar afuera, sin librería aparte. */}
+                <button
+                  aria-label="Cerrar notificaciones"
+                  onClick={() => setMostrarNotificaciones(false)}
+                  className="fixed inset-0 z-40 cursor-default"
+                />
+                <div className="absolute right-0 top-12 z-50 w-72 max-w-[80vw] rounded-2xl bg-[var(--color-superficie)] border border-[var(--color-borde)] shadow-lg overflow-hidden animate-[toast-in_0.15s_ease-out]">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-borde)]">
+                    <p className="font-bold text-sm">Notificaciones</p>
+                    {sinLeer > 0 && (
+                      <button
+                        onClick={marcarTodoLeido}
+                        className="text-xs font-medium text-[var(--color-primario)]"
+                      >
+                        Marcar todo leído
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {actividad.length === 0 && (
+                      <p className="text-sm text-[var(--color-texto-suave)] text-center py-6 px-4">
+                        Todo tranquilo por ahora.
+                      </p>
+                    )}
+                    {actividad.slice(0, 6).map((a) => {
+                      const leida = leidas.includes(a.id);
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={irASolicitud}
+                          className={`w-full text-left flex gap-2.5 px-4 py-3 border-b border-[var(--color-borde)] last:border-b-0 ${
+                            leida ? "" : "bg-[var(--color-primario-suave)]/40"
+                          }`}
+                        >
+                          <span className="flex-1 min-w-0">
+                            <span className={`block text-sm font-semibold truncate ${leida ? "text-[var(--color-texto-suave)]" : ""}`}>
+                              {a.titulo}
+                            </span>
+                            <span className="block text-xs text-[var(--color-texto-suave)] truncate">
+                              {a.detalle}
+                            </span>
+                            <span className="block text-[11px] text-[var(--color-texto-suave)]/70 mt-0.5">
+                              {tiempoRelativo(a.fecha)}
+                            </span>
+                          </span>
+                          {!leida && (
+                            <span className="w-2 h-2 rounded-full bg-[var(--color-primario)] shrink-0 mt-1.5" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
       {!nombreRefugio && !cargando && (
         <button
           onClick={() => navigate("/perfil-refugio")}
-          className="w-full text-left mb-5 rounded-2xl bg-[var(--color-primario-suave)] p-4"
+          className="w-full text-left mb-5 rounded-2xl bg-[var(--color-primario-suave)] p-4 active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
         >
           <p className="font-semibold text-[var(--color-primario)]">Completa tu perfil</p>
           <p className="text-sm text-[var(--color-texto-suave)]">
@@ -141,36 +221,45 @@ export default function InicioRefugio() {
         </button>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mb-8">
-        <Metrica
-          valor={activos}
-          etiqueta="Animales activos"
-          fondo="var(--color-primario-suave)"
-          tinta="var(--color-primario)"
-          icono={<IconoHuellaRelleno />}
-        />
-        <Metrica
-          valor={pendientes}
-          etiqueta="Solicitudes"
-          fondo="var(--color-teal-suave)"
-          tinta="var(--color-teal)"
-          icono={<IconoDocRelleno />}
-        />
-        <Metrica
-          valor={cuestionarios}
-          etiqueta="Cuestionarios"
-          fondo="var(--color-morado-suave)"
-          tinta="var(--color-morado)"
-          icono={<IconoGloboRelleno />}
-        />
-        <Metrica
-          valor={adoptados}
-          etiqueta="Adoptados"
-          fondo="var(--color-verde-suave)"
-          tinta="var(--color-verde)"
-          icono={<IconoCasaRelleno />}
-        />
-      </div>
+      {cargando ? (
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <SkeletonMetrica />
+          <SkeletonMetrica />
+          <SkeletonMetrica />
+          <SkeletonMetrica />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <Metrica
+            valor={activos}
+            etiqueta="Animales activos"
+            fondo="var(--color-primario-suave)"
+            tinta="var(--color-primario)"
+            icono={<IconoHuellaRelleno />}
+          />
+          <Metrica
+            valor={pendientes}
+            etiqueta="Solicitudes"
+            fondo="var(--color-teal-suave)"
+            tinta="var(--color-teal)"
+            icono={<IconoDocRelleno />}
+          />
+          <Metrica
+            valor={cuestionarios}
+            etiqueta="Cuestionarios"
+            fondo="var(--color-morado-suave)"
+            tinta="var(--color-morado)"
+            icono={<IconoGloboRelleno />}
+          />
+          <Metrica
+            valor={adoptados}
+            etiqueta="Adoptados"
+            fondo="var(--color-verde-suave)"
+            tinta="var(--color-verde)"
+            icono={<IconoCasaRelleno />}
+          />
+        </div>
+      )}
 
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-lg font-bold">Notificaciones</h2>
@@ -184,7 +273,13 @@ export default function InicioRefugio() {
         )}
       </div>
 
-      {cargando && <p className="text-[var(--color-texto-suave)] text-sm">Cargando…</p>}
+      {cargando && (
+        <div className="space-y-2.5">
+          <Skeleton className="h-[72px] rounded-2xl" />
+          <Skeleton className="h-[72px] rounded-2xl" />
+          <Skeleton className="h-[72px] rounded-2xl" />
+        </div>
+      )}
 
       {!cargando && actividad.length === 0 && (
         <div className="rounded-2xl bg-[var(--color-superficie)] border border-[var(--color-borde)] p-6 text-center">
@@ -202,7 +297,7 @@ export default function InicioRefugio() {
             <button
               key={a.id}
               onClick={() => navigate("/solicitudes")}
-              className={`w-full text-left flex gap-3 p-3.5 rounded-2xl border transition-colors ${
+              className={`w-full text-left flex gap-3 p-3.5 rounded-2xl border transition-colors active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2 ${
                 leida
                   ? "bg-[var(--color-superficie-apagada)]/60 border-transparent"
                   : "bg-[var(--color-superficie)] border-[var(--color-borde)]"

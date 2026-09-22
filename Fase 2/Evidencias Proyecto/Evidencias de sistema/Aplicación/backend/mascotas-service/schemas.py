@@ -45,6 +45,7 @@ class MascotaIn(BaseModel):
     compatible_otras_mascotas: Optional[bool] = None
     nivel_experiencia_requerida: Nivel
     espacio_minimo_requerido: Espacio
+    cuidados_especiales: Optional[str] = None
 
     @field_validator("edad")
     @classmethod

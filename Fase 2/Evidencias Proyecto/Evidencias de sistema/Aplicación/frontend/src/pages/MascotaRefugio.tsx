@@ -4,6 +4,7 @@ import { obtenerMascota } from "../api/mascotas";
 import { postulacionesRecibidas } from "../api/postulaciones";
 import { EstadoMascotaBadge } from "../components/Badges";
 import { PantallaRefugio } from "../components/BarraRefugio";
+import { Skeleton } from "../components/Skeleton";
 import type { Mascota } from "../types/mascotas";
 
 const NIVEL: Record<string, string> = { bajo: "Baja", medio: "Media", alto: "Alta" };
@@ -58,9 +59,9 @@ export default function MascotaRefugio() {
     <PantallaRefugio>
       <header className="flex items-center gap-3 mb-5">
         <button
-          onClick={() => navigate("/mis-mascotas")}
+          onClick={() => navigate(-1)}
           aria-label="Volver"
-          className="w-10 h-10 rounded-full bg-[var(--color-superficie-apagada)] flex items-center justify-center shrink-0"
+          className="w-10 h-10 rounded-full bg-[var(--color-superficie-apagada)] flex items-center justify-center shrink-0 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m15 5-7 7 7 7" />
@@ -69,7 +70,14 @@ export default function MascotaRefugio() {
         <h1 className="text-xl font-bold">Perfil de mascota</h1>
       </header>
 
-      {cargando && <p className="text-[var(--color-texto-suave)] text-sm">Cargando…</p>}
+      {cargando && (
+        <>
+          <Skeleton className="w-full h-48 rounded-2xl mb-4" />
+          <Skeleton className="h-7 w-2/5 mb-2" />
+          <Skeleton className="h-4 w-1/3 mb-5" />
+          <Skeleton className="h-24 w-full rounded-2xl" />
+        </>
+      )}
       {error && <p className="text-[var(--color-rojo)] text-sm">{error}</p>}
 
       {mascota && (
@@ -115,6 +123,15 @@ export default function MascotaRefugio() {
             )}
           </div>
 
+          {mascota.cuidados_especiales && (
+            <div className="rounded-2xl bg-[var(--color-rojo-suave)] p-4 mb-5">
+              <p className="text-xs font-semibold text-[var(--color-rojo)] uppercase tracking-wide mb-1">
+                Cuidados especiales
+              </p>
+              <p className="text-sm text-[var(--color-texto)]">{mascota.cuidados_especiales}</p>
+            </div>
+          )}
+
           <div className="rounded-2xl bg-[var(--color-primario-suave)] p-4 flex items-center justify-between mb-5">
             <div>
               <p className="text-sm text-[var(--color-texto-suave)]">Solicitudes activas</p>
@@ -125,7 +142,7 @@ export default function MascotaRefugio() {
             <button
               onClick={() => navigate("/solicitudes")}
               aria-label="Ver solicitudes"
-              className="w-12 h-12 rounded-xl bg-[var(--color-primario)] text-white flex items-center justify-center"
+              className="w-12 h-12 rounded-xl bg-[var(--color-primario)] text-white flex items-center justify-center active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5V7.5Z" />
@@ -136,7 +153,7 @@ export default function MascotaRefugio() {
 
           <button
             onClick={() => navigate("/solicitudes")}
-            className="w-full py-3.5 rounded-xl font-semibold bg-[var(--color-primario)] text-white hover:bg-[var(--color-primario-oscuro)] transition-colors"
+            className="w-full py-3.5 rounded-xl font-semibold bg-[var(--color-primario)] text-white hover:bg-[var(--color-primario-oscuro)] active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
           >
             Ver solicitudes
           </button>
