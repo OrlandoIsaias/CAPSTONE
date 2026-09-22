@@ -37,3 +37,8 @@ export async function guardarPerfilRefugio(
   const { data } = await apiClient.post<PerfilRefugio>("/auth/perfil-refugio", datos);
   return data;
 }
+
+export async function obtenerPerfilRefugio(): Promise<PerfilRefugio> {
+  const { data } = await apiClient.get<PerfilRefugio>("/auth/perfil-refugio");
+  return data;
+}

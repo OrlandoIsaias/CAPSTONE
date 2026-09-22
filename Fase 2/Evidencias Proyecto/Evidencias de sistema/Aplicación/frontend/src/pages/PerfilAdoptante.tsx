@@ -43,7 +43,7 @@ export default function PerfilAdoptante() {
         <h1 className="font-[family-name:var(--font-display)] text-3xl mb-2">
           Cuéntanos cómo vives
         </h1>
-        <p className="text-black/60 dark:text-white/60 mb-8">
+        <p className="text-black/60 mb-8">
           Con esto calculamos qué mascotas realmente calzan contigo — no solo por especie, sino
           por rutina real.
         </p>
@@ -123,7 +123,7 @@ export default function PerfilAdoptante() {
             </label>
           </div>
 
-          {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-700">{error}</p>}
 
           <button
             type="submit"

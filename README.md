@@ -120,15 +120,34 @@ CAPSTONE/
 
 ## ⚙️ Instalación y ejecución
 
-> ⏳ **Pendiente** — se documentará apenas los microservicios y el frontend tengan su esqueleto funcional. La meta es que el sistema completo se levante con un solo comando:
+El sistema completo (5 microservicios + api-gateway + frontend) se levanta con un solo comando usando Docker Compose:
 
 ```bash
 git clone https://github.com/OrlandoIsaias/CAPSTONE.git
-cd CAPSTONE
-docker-compose up
+cd "CAPSTONE/Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación"
+docker-compose up --build
 ```
 
-Variables de entorno necesarias por servicio se documentarán en un `.env.example` dentro de cada carpeta correspondiente.
+Requisitos previos:
+
+- Tener [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y corriendo.
+- Crear un archivo `.env` en cada carpeta de servicio (`backend/*/`  y `frontend/`) a partir del `.env.example` correspondiente, con las credenciales reales (cadena de conexión a la base de datos Neon y el `JWT_SECRET`, que debe ser **el mismo valor en los 6 servicios backend**).
+
+Una vez levantado:
+
+| Servicio | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| API Gateway (health check agregado) | http://localhost:8080 |
+| Auth Service | http://localhost:8000 |
+| Mascotas Service | http://localhost:8001 |
+| Matching Service | http://localhost:8002 |
+| Postulaciones Service | http://localhost:8003 |
+| Seguimiento Service | http://localhost:8004 |
+
+`http://localhost:8080` responde con el estado de los 5 microservicios en un solo JSON, útil para diagnosticar rápido cuál servicio no levantó.
+
+También es posible levantar cada servicio manualmente sin Docker (activando el `venv` de cada microservicio con Python y usando `npm run dev` para el frontend), pero Docker Compose es la forma recomendada para evaluar el progreso del sistema completo con un solo comando.
 
 ---
 

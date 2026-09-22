@@ -1,9 +1,12 @@
 """
 Seguimiento Service — HouseFound
-Encuestas de seguimiento post-adopción a 30 y 90 días. El resultado
-retroalimenta el estado real de la mascota: una devolución la vuelve a
-poner disponible (el objetivo central del proyecto), y un resultado
-exitoso la marca como adoptada definitivamente.
+Encuestas de seguimiento post-adopción a 30 y 90 días. Una devolución
+detectada aquí retroalimenta el estado real de la mascota, volviéndola a
+poner disponible (el objetivo central del proyecto). El paso a "adoptada"
+NO ocurre aquí: por RN02, esa transición requiere confirmación explícita
+del refugio (ver POST /postulaciones/{id}/confirmar-adopcion en
+Postulaciones Service). Este servicio solo registra el resultado como dato
+histórico cuando la adopción fue exitosa.
 """
 from datetime import datetime
 from typing import List, Optional
@@ -120,12 +123,13 @@ def crear_seguimiento(
     )
     db.add(nuevo)
 
-    # Efecto en cascada sobre la mascota: el corazón del proyecto.
+    # Efecto en cascada sobre la mascota: el corazón del proyecto. Una
+    # devolución reabre la ficha automáticamente. Un resultado "exitosa" NO
+    # cambia el estado aquí — la mascota ya debería estar "adoptada" desde
+    # que el refugio la confirmó explícitamente (RN02); este resultado solo
+    # queda registrado como dato histórico de seguimiento.
     if datos.resultado == "devuelta":
         mascota.estado = "disponible"
-    elif datos.resultado == "exitosa":
-        mascota.estado = "adoptada"
-    # "en_proceso": sin cambios, es solo un chequeo intermedio.
 
     try:
         db.commit()

@@ -32,7 +32,7 @@ export function TarjetaMascota({
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-[family-name:var(--font-display)] text-lg truncate">{nombre}</p>
-        <p className="text-sm text-black/60 dark:text-white/60 truncate">
+        <p className="text-sm text-black/60 truncate">
           {[especie, raza].filter(Boolean).join(" · ") || "Sin datos adicionales"}
         </p>
         {score !== undefined && (

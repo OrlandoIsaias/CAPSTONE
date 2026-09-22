@@ -1,26 +1,38 @@
 @import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
 
+/* Paleta extraída de los mockups del equipo (carpeta Mockups/).
+   Los valores no son aproximaciones: se muestrearon pixel a pixel de
+   los PNG para que la app y el diseño entregado coincidan exactamente. */
 :root {
-  --color-fondo: #faf8f4;
-  --color-texto: #2b2621;
-  --color-primario: #3d6b52;
-  --color-primario-oscuro: #2c4e3c;
-  --color-acento: #e8a33d;
-  --color-borde: #ddd6c9;
+  --color-fondo: #faf8f5;
   --color-superficie: #ffffff;
+  --color-superficie-apagada: #f0e9e1;
+  --color-borde: #e8ddd4;
+
+  --color-texto: #1c1410;
+  --color-texto-suave: #6f6965;
+
+  --color-primario: #d9622b;
+  --color-primario-oscuro: #bf5423;
+  --color-primario-suave: #fceee5;
+
+  /* Familia de acentos pastel: cada uno es un par fondo + tinta,
+     tal como aparecen en las tarjetas de métricas y los badges. */
+  --color-verde: #5c9a6b;
+  --color-verde-suave: #e5f2e9;
+  --color-teal: #6baa9f;
+  --color-teal-suave: #e8f4f3;
+  --color-morado: #8b72c8;
+  --color-morado-suave: #ede8f7;
+  --color-rojo: #c2563c;
+  --color-rojo-suave: #fbe8e3;
+
+  /* Alias heredado: lo usan pantallas del flujo adoptante que todavía
+     no se migran al diseño de los mockups. */
+  --color-acento: #d9622b;
+
   --font-display: "Fraunces", serif;
   --font-body: "Inter", sans-serif;
-}
-
-.dark {
-  --color-fondo: #1c1a17;
-  --color-texto: #f2ede4;
-  --color-primario: #4f8567;
-  --color-primario-oscuro: #3d6b52;
-  --color-acento: #f0b45c;
-  --color-borde: #3a352e;
-  --color-superficie: #262320;
 }
 
 body {
@@ -28,4 +40,3 @@ body {
   color: var(--color-texto);
   font-family: var(--font-body);
 }
-
