@@ -33,7 +33,7 @@ export default function Login() {
       }
 
       iniciarSesion(resultado.access_token, resultado.usuario);
-      navigate(resultado.usuario.rol === "adoptante" ? "/recomendaciones" : "/inicio");
+      navigate(resultado.usuario.rol === "adoptante" ? "/explorar" : "/inicio");
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         setError("Email o contraseña incorrectos.");

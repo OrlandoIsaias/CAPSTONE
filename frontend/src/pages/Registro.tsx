@@ -3,8 +3,11 @@ import { useNavigate, Link } from "react-router-dom";
 import { AuthLayout } from "../components/AuthLayout";
 import { registrar } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
+import { REGEX_SOLO_LETRAS } from "../utils/validacion";
 import type { Rol } from "../types/auth";
 import axios from "axios";
+
+type Errores = Partial<Record<"nombre" | "password", string>>;
 
 export default function Registro() {
   const navigate = useNavigate();
@@ -14,12 +17,26 @@ export default function Registro() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rol, setRol] = useState<Rol>("adoptante");
+  const [errores, setErrores] = useState<Errores>({});
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+
+  function validar(): boolean {
+    const nuevosErrores: Errores = {};
+    if (!REGEX_SOLO_LETRAS.test(nombre.trim())) {
+      nuevosErrores.nombre = "Ingresa solo letras (mínimo 2 caracteres), sin números ni símbolos.";
+    }
+    if (password.length < 6) {
+      nuevosErrores.password = "La contraseña debe tener al menos 6 caracteres.";
+    }
+    setErrores(nuevosErrores);
+    return Object.values(nuevosErrores).every((v) => !v);
+  }
 
   async function manejarEnvio(evento: FormEvent) {
     evento.preventDefault();
     setError(null);
+    if (!validar()) return;
     setCargando(true);
     try {
       const resultado = await registrar({ nombre, email, password, rol });
@@ -86,6 +103,7 @@ export default function Registro() {
             onChange={(e) => setNombre(e.target.value)}
             className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
           />
+          {errores.nombre && <p className="text-xs text-[var(--color-rojo)] mt-1">{errores.nombre}</p>}
         </div>
 
         <div>
@@ -115,9 +133,10 @@ export default function Registro() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
           />
+          {errores.password && <p className="text-xs text-[var(--color-rojo)] mt-1">{errores.password}</p>}
         </div>
 
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-[var(--color-rojo)]">{error}</p>}
 
         <button
           type="submit"

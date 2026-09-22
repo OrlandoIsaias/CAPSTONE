@@ -1,10 +1,16 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import { guardarPerfilAdoptante } from "../api/auth";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { guardarPerfilAdoptante, obtenerPerfilAdoptante } from "../api/auth";
+import { PantallaAdoptante } from "../components/BarraAdoptante";
+import { useAuth } from "../context/AuthContext";
+import { normalizarTelefonoCL, validarTelefonoCL } from "../utils/telefono";
 import type { EspacioDisponible, ExperienciaPrevia, NivelActividad } from "../types/auth";
+
+type Errores = Partial<Record<"telefono", string>>;
 
 export default function PerfilAdoptante() {
   const navigate = useNavigate();
+  const { cerrarSesion } = useAuth();
 
   const [espacioDisponible, setEspacioDisponible] = useState<EspacioDisponible>("departamento");
   const [tiempoDisponible, setTiempoDisponible] = useState(4);
@@ -12,12 +18,48 @@ export default function PerfilAdoptante() {
   const [tieneNinos, setTieneNinos] = useState(false);
   const [otrasMascotas, setOtrasMascotas] = useState(false);
   const [nivelActividad, setNivelActividad] = useState<NivelActividad>("medio");
+  const [telefono, setTelefono] = useState("");
+
+  // null mientras no sabemos si el perfil existe: cambia el texto de la
+  // pantalla entre "alta inicial" y "edición" (mismo criterio que PerfilRefugio).
+  const [yaExiste, setYaExiste] = useState<boolean | null>(null);
+  const [errores, setErrores] = useState<Errores>({});
   const [error, setError] = useState<string | null>(null);
+  const [guardado, setGuardado] = useState(false);
   const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    obtenerPerfilAdoptante()
+      .then((p) => {
+        setEspacioDisponible(p.espacio_disponible);
+        setTiempoDisponible(p.tiempo_disponible_horas_dia);
+        setExperienciaPrevia(p.experiencia_previa);
+        setTieneNinos(p.tiene_ninos);
+        setOtrasMascotas(p.otras_mascotas);
+        setNivelActividad(p.nivel_actividad_fisica);
+        setTelefono(p.telefono ?? "");
+        setYaExiste(true);
+      })
+      // 404 = todavía no lo completa; es el flujo normal tras registrarse
+      .catch(() => setYaExiste(false));
+  }, []);
+
+  function validar(): boolean {
+    const nuevosErrores: Errores = {};
+    if (!validarTelefonoCL(telefono)) {
+      nuevosErrores.telefono = "Ingresa un celular chileno válido, ej: +56 9 1234 5678.";
+    }
+    setErrores(nuevosErrores);
+    return Object.values(nuevosErrores).every((v) => !v);
+  }
 
   async function manejarEnvio(evento: FormEvent) {
     evento.preventDefault();
     setError(null);
+    setGuardado(false);
+
+    if (!validar()) return;
+
     setCargando(true);
     try {
       await guardarPerfilAdoptante({
@@ -27,8 +69,14 @@ export default function PerfilAdoptante() {
         tiene_ninos: tieneNinos,
         otras_mascotas: otrasMascotas,
         nivel_actividad_fisica: nivelActividad,
+        telefono: normalizarTelefonoCL(telefono),
       });
-      navigate("/recomendaciones");
+      if (yaExiste) {
+        setGuardado(true);
+        setTimeout(() => setGuardado(false), 2500);
+      } else {
+        navigate("/explorar");
+      }
     } catch {
       setError("No pudimos guardar tu perfil. Revisa los datos e intenta de nuevo.");
     } finally {
@@ -36,17 +84,39 @@ export default function PerfilAdoptante() {
     }
   }
 
+  const claseCampo =
+    "w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]";
+  const claseErrorCampo = "text-xs text-[var(--color-rojo)] mt-1";
+
   return (
-    <div className="min-h-screen bg-[var(--color-fondo)] px-6 py-12 flex justify-center">
-      <div className="w-full max-w-lg">
-        <p className="text-sm text-[var(--color-primario)] font-medium mb-2">Un último paso</p>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl mb-2">
-          Cuéntanos cómo vives
-        </h1>
-        <p className="text-black/60 mb-8">
-          Con esto calculamos qué mascotas realmente calzan contigo — no solo por especie, sino
-          por rutina real.
-        </p>
+    <PantallaAdoptante>
+      <p className="text-sm text-[var(--color-primario)] font-medium mb-2">
+        {yaExiste ? "Tu perfil" : "Un último paso"}
+      </p>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl mb-2">
+        {yaExiste ? "Cómo vives" : "Cuéntanos cómo vives"}
+      </h1>
+      <p className="text-[var(--color-texto-suave)] mb-8">
+        Con esto calculamos qué mascotas realmente calzan contigo — no solo por especie, sino
+        por rutina real.
+      </p>
+
+        {yaExiste && (
+          <Link
+            to="/mis-solicitudes"
+            className="flex items-center justify-between mb-6 rounded-2xl bg-[var(--color-superficie)] border border-[var(--color-borde)] p-4 hover:shadow-sm transition-shadow"
+          >
+            <div>
+              <p className="font-semibold">Tus solicitudes</p>
+              <p className="text-sm text-[var(--color-texto-suave)]">
+                Revisa el estado de tus postulaciones y coordina la entrega.
+              </p>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-texto-suave)] shrink-0">
+              <path d="m9 5 7 7-7 7" />
+            </svg>
+          </Link>
+        )}
 
         <form onSubmit={manejarEnvio} className="space-y-6">
           <div>
@@ -54,7 +124,7 @@ export default function PerfilAdoptante() {
             <select
               value={espacioDisponible}
               onChange={(e) => setEspacioDisponible(e.target.value as EspacioDisponible)}
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className={claseCampo}
             >
               <option value="departamento">Departamento</option>
               <option value="casa_patio">Casa con patio</option>
@@ -81,7 +151,7 @@ export default function PerfilAdoptante() {
             <select
               value={experienciaPrevia}
               onChange={(e) => setExperienciaPrevia(e.target.value as ExperienciaPrevia)}
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className={claseCampo}
             >
               <option value="ninguna">Ninguna</option>
               <option value="basica">Básica</option>
@@ -94,7 +164,7 @@ export default function PerfilAdoptante() {
             <select
               value={nivelActividad}
               onChange={(e) => setNivelActividad(e.target.value as NivelActividad)}
-              className="w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]"
+              className={claseCampo}
             >
               <option value="bajo">Bajo</option>
               <option value="medio">Medio</option>
@@ -123,17 +193,43 @@ export default function PerfilAdoptante() {
             </label>
           </div>
 
-          {error && <p className="text-sm text-red-700">{error}</p>}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Tu celular</label>
+            <input
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              placeholder="+56 9 1234 5678"
+              className={claseCampo}
+            />
+            <p className="text-xs text-[var(--color-texto-suave)] mt-1">
+              Solo se comparte con el refugio si tu solicitud es aprobada, para coordinar la
+              entrega.
+            </p>
+            {errores.telefono && <p className={claseErrorCampo}>{errores.telefono}</p>}
+          </div>
+
+          {error && <p className="text-sm text-[var(--color-rojo)]">{error}</p>}
+          {guardado && (
+            <p className="text-sm font-medium text-[var(--color-verde)]">Cambios guardados.</p>
+          )}
 
           <button
             type="submit"
             disabled={cargando}
             className="w-full bg-[var(--color-primario)] text-white font-semibold py-2.5 rounded-md hover:bg-[var(--color-primario-oscuro)] transition disabled:opacity-60"
           >
-            {cargando ? "Guardando…" : "Ver mis recomendaciones"}
+            {cargando ? "Guardando…" : yaExiste ? "Guardar cambios" : "Ver mis recomendaciones"}
           </button>
         </form>
-      </div>
-    </div>
+
+      {yaExiste && (
+        <button
+          onClick={cerrarSesion}
+          className="w-full mt-3 py-2.5 rounded-md font-semibold text-[var(--color-texto-suave)]"
+        >
+          Cerrar sesión
+        </button>
+      )}
+    </PantallaAdoptante>
   );
 }

@@ -24,6 +24,7 @@ export interface Mascota {
   compatible_otras_mascotas?: boolean;
   nivel_experiencia_requerida?: NivelEnergiaSocializacion;
   espacio_minimo_requerido?: EspacioMinimo;
+  cuidados_especiales?: string;
   estado: EstadoMascota;
   fecha_publicacion: string;
   fotos: FotoMascota[];
@@ -40,4 +41,5 @@ export interface MascotaInput {
   compatible_otras_mascotas?: boolean;
   nivel_experiencia_requerida: NivelEnergiaSocializacion;
   espacio_minimo_requerido: EspacioMinimo;
+  cuidados_especiales?: string;
 }

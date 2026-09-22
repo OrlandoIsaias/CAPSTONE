@@ -34,6 +34,7 @@ class PerfilAdoptante(Base):
     tiene_ninos = Column(Boolean, default=False)
     otras_mascotas = Column(Boolean, default=False)
     nivel_actividad_fisica = Column(String)
+    telefono = Column(String)
 
 
 class Match(Base):
@@ -50,6 +51,8 @@ class Refugio(Base):
 
     id = Column(Integer, primary_key=True)
     usuario_id = Column(Integer, unique=True, nullable=False)
+    nombre_refugio = Column(String)
+    telefono_contacto = Column(String)
 
 
 class Mascota(Base):

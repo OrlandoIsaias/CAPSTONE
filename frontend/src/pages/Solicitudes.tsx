@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { postulacionesRecibidas } from "../api/postulaciones";
 import { AvatarIniciales, EstadoPostulacionBadge } from "../components/Badges";
 import { PantallaRefugio } from "../components/BarraRefugio";
+import { SkeletonFila } from "../components/Skeleton";
 import type { EstadoPostulacion, Postulacion } from "../types/postulaciones";
 
 type Filtro = "todas" | EstadoPostulacion;
@@ -42,7 +43,7 @@ export default function Solicitudes() {
           <button
             key={f.id}
             onClick={() => setFiltro(f.id)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
+            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2 ${
               filtro === f.id
                 ? "bg-[var(--color-primario)] text-white"
                 : "bg-[var(--color-superficie-apagada)] text-[var(--color-texto)]"
@@ -53,7 +54,13 @@ export default function Solicitudes() {
         ))}
       </div>
 
-      {cargando && <p className="text-[var(--color-texto-suave)] text-sm">Cargando…</p>}
+      {cargando && (
+        <div className="space-y-3">
+          <SkeletonFila />
+          <SkeletonFila />
+          <SkeletonFila />
+        </div>
+      )}
       {error && <p className="text-[var(--color-rojo)] text-sm">{error}</p>}
 
       {!cargando && !error && visibles.length === 0 && (
@@ -76,7 +83,7 @@ export default function Solicitudes() {
             <button
               key={p.id}
               onClick={() => navigate(`/solicitudes/${p.id}`)}
-              className="w-full text-left flex gap-3.5 items-center bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] p-3.5"
+              className="w-full text-left flex gap-3.5 items-center bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] p-3.5 active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
             >
               <AvatarIniciales nombre={nombre} />
 

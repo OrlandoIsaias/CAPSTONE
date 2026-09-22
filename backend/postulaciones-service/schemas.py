@@ -22,6 +22,12 @@ class PostulacionOut(BaseModel):
     # abrió la ficha de esa mascota y por lo tanto no hay match calculado.
     score_compatibilidad: Optional[float] = None
     fecha_postulacion: datetime
+    # Datos de contacto para coordinar la entrega una vez aprobada la
+    # postulación (botón de WhatsApp en el frontend). Pueden venir None si
+    # la otra parte todavía no completa/actualiza su perfil con teléfono.
+    adoptante_telefono: Optional[str] = None
+    refugio_nombre: Optional[str] = None
+    refugio_telefono: Optional[str] = None
 
     class Config:
         from_attributes = True
