@@ -1,0 +1,62 @@
+services:
+  auth-service:
+    build: ./backend/auth-service
+    env_file: ./backend/auth-service/.env
+    ports:
+      - "8000:8000"
+
+  mascotas-service:
+    build: ./backend/mascotas-service
+    env_file: ./backend/mascotas-service/.env
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8000
+    ports:
+      - "8001:8001"
+    depends_on:
+      - auth-service
+
+  matching-service:
+    build: ./backend/matching-service
+    env_file: ./backend/matching-service/.env
+    ports:
+      - "8002:8002"
+
+  postulaciones-service:
+    build: ./backend/postulaciones-service
+    env_file: ./backend/postulaciones-service/.env
+    ports:
+      - "8003:8003"
+
+  seguimiento-service:
+    build: ./backend/seguimiento-service
+    env_file: ./backend/seguimiento-service/.env
+    ports:
+      - "8004:8004"
+
+  api-gateway:
+    build: ./backend/api-gateway
+    env_file: ./backend/api-gateway/.env
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8000
+      MASCOTAS_SERVICE_URL: http://mascotas-service:8001
+      MATCHING_SERVICE_URL: http://matching-service:8002
+      POSTULACIONES_SERVICE_URL: http://postulaciones-service:8003
+      SEGUIMIENTO_SERVICE_URL: http://seguimiento-service:8004
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - mascotas-service
+      - matching-service
+      - postulaciones-service
+      - seguimiento-service
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:8080
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api-gateway

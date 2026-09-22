@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { agregarFoto, crearMascota } from "../api/mascotas";
+import { BotonVolver } from "../components/BotonVolver";
 import type { EspacioMinimo, MascotaInput, NivelEnergiaSocializacion } from "../types/mascotas";
 
 export default function PublicarMascota() {
@@ -54,19 +55,13 @@ export default function PublicarMascota() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-fondo)] px-6 py-10">
+    <div className="min-h-screen bg-[var(--color-fondo)] px-6 pt-20 pb-10">
+      <BotonVolver />
       <div className="max-w-lg mx-auto">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-sm text-black/50 dark:text-white/50 hover:text-black mb-6"
-        >
-          ← Volver
-        </button>
-
         <h1 className="font-[family-name:var(--font-display)] text-3xl mb-2">
           Publicar una mascota
         </h1>
-        <p className="text-black/60 dark:text-white/60 mb-8">
+        <p className="text-black/60 mb-8">
           Completa su ficha para que el sistema pueda calcular su compatibilidad con adoptantes.
         </p>
 
@@ -189,7 +184,7 @@ export default function PublicarMascota() {
 
           <div>
             <label className="block text-sm font-medium mb-1.5">
-              URL de una foto <span className="text-black/40 dark:text-white/40 font-normal">(opcional por ahora)</span>
+              URL de una foto <span className="text-black/40 font-normal">(opcional por ahora)</span>
             </label>
             <input
               value={urlFoto}
@@ -199,7 +194,7 @@ export default function PublicarMascota() {
             />
           </div>
 
-          {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-700">{error}</p>}
 
           <button
             type="submit"
