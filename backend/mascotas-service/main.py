@@ -26,15 +26,6 @@ from fastapi import (
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session, joinedload
 
-# Configuración de Cloudinary (Corregida)
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", "wuyzze6t"),
-    api_key=os.getenv("CLOUDINARY_API_KEY", "393913915589355"),
-    api_secret=os.getenv(
-        "CLOUDINARY_API_SECRET", "GciSZ8o1RwZmAnCQvK2dZi_-Sok"
-    ),
-    secure=True,
-)
 
 app = FastAPI(title="HouseFound - Mascotas Service")
 
