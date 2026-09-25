@@ -110,9 +110,10 @@ export default function InicioRefugio() {
     <PantallaRefugio>
       <header className="flex items-start justify-between mb-6">
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-[var(--color-primario)] uppercase">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-orange-100 text-orange-700 mb-1.5 border border-orange-200/80 shadow-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
             Refugio
-          </p>
+          </span>
           <h1 className="text-2xl font-bold leading-tight">
             {nombreRefugio ?? usuario?.nombre ?? "Tu refugio"}{" "}
             <span aria-hidden="true">🐾</span>
@@ -212,12 +213,22 @@ export default function InicioRefugio() {
       {!nombreRefugio && !cargando && (
         <button
           onClick={() => navigate("/perfil-refugio")}
-          className="w-full text-left mb-5 rounded-2xl bg-[var(--color-primario-suave)] p-4 active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
+          className="w-full text-left mb-6 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-rose-500/10 border border-amber-300/70 p-4 flex items-center justify-between gap-3 shadow-xs hover:border-amber-400 active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
         >
-          <p className="font-semibold text-[var(--color-primario)]">Completa tu perfil</p>
-          <p className="text-sm text-[var(--color-texto-suave)]">
-            Los adoptantes ven estos datos en cada mascota que publicas.
-          </p>
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0 text-base">
+              ✨
+            </span>
+            <div className="min-w-0">
+              <p className="font-bold text-amber-950 text-sm truncate">Completa el perfil de tu refugio</p>
+              <p className="text-xs text-amber-900/80 truncate mt-0.5">
+                Los adoptantes verán tu contacto y datos en cada publicación.
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-amber-500 text-white shadow-xs shrink-0 hover:bg-amber-600 transition-colors">
+            Editar →
+          </span>
         </button>
       )}
 
@@ -233,29 +244,25 @@ export default function InicioRefugio() {
           <Metrica
             valor={activos}
             etiqueta="Animales activos"
-            fondo="var(--color-primario-suave)"
-            tinta="var(--color-primario)"
+            color="orange"
             icono={<IconoHuellaRelleno />}
           />
           <Metrica
             valor={pendientes}
             etiqueta="Solicitudes"
-            fondo="var(--color-teal-suave)"
-            tinta="var(--color-teal)"
+            color="blue"
             icono={<IconoDocRelleno />}
           />
           <Metrica
             valor={cuestionarios}
             etiqueta="Cuestionarios"
-            fondo="var(--color-morado-suave)"
-            tinta="var(--color-morado)"
+            color="purple"
             icono={<IconoGloboRelleno />}
           />
           <Metrica
             valor={adoptados}
             etiqueta="Adoptados"
-            fondo="var(--color-verde-suave)"
-            tinta="var(--color-verde)"
+            color="emerald"
             icono={<IconoCasaRelleno />}
           />
         </div>
@@ -293,37 +300,44 @@ export default function InicioRefugio() {
       <div className="space-y-2.5">
         {actividad.map((a) => {
           const leida = leidas.includes(a.id);
+          const esAdoptada = a.tipo === "adoptada";
+          const esAprobada = a.tipo === "aprobada";
+
+          const estiloBadge = esAdoptada
+            ? "bg-emerald-100 text-emerald-700 border border-emerald-200/80 shadow-xs"
+            : esAprobada
+              ? "bg-blue-100 text-blue-700 border border-blue-200/80 shadow-xs"
+              : "bg-orange-100 text-orange-700 border border-orange-200/80 shadow-xs";
+
+          const bordeNoLeida = esAdoptada
+            ? "border-l-4 border-l-emerald-500 bg-emerald-50/15"
+            : esAprobada
+              ? "border-l-4 border-l-blue-500 bg-blue-50/15"
+              : "border-l-4 border-l-orange-500 bg-orange-50/15";
+
+          const puntoNoLeida = esAdoptada
+            ? "bg-emerald-500"
+            : esAprobada
+              ? "bg-blue-500"
+              : "bg-orange-500";
+
           return (
             <button
               key={a.id}
               onClick={() => navigate("/solicitudes")}
-              className={`w-full text-left flex gap-3 p-3.5 rounded-2xl border transition-colors active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2 ${
+              className={`w-full text-left flex gap-3 p-3.5 rounded-2xl border transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2 ${
                 leida
-                  ? "bg-[var(--color-superficie-apagada)]/60 border-transparent"
-                  : "bg-[var(--color-superficie)] border-[var(--color-borde)]"
+                  ? "bg-[var(--color-superficie-apagada)]/50 border-transparent hover:bg-[var(--color-superficie-apagada)]/80"
+                  : `bg-[var(--color-superficie)] border-[var(--color-borde)] shadow-xs hover:shadow-sm ${bordeNoLeida}`
               }`}
             >
               <span
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{
-                  backgroundColor:
-                    a.tipo === "solicitud"
-                      ? "var(--color-primario-suave)"
-                      : a.tipo === "aprobada"
-                        ? "var(--color-teal-suave)"
-                        : "var(--color-verde-suave)",
-                  color:
-                    a.tipo === "solicitud"
-                      ? "var(--color-primario)"
-                      : a.tipo === "aprobada"
-                        ? "var(--color-teal)"
-                        : "var(--color-verde)",
-                }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${estiloBadge}`}
               >
-                {a.tipo === "adoptada" ? <IconoCheck /> : <IconoDocRelleno />}
+                {esAdoptada ? <IconoCheck /> : <IconoDocRelleno />}
               </span>
               <span className="flex-1 min-w-0">
-                <span className={`block font-semibold text-[15px] ${leida ? "text-[var(--color-texto-suave)]" : ""}`}>
+                <span className={`block font-semibold text-[15px] ${leida ? "text-[var(--color-texto-suave)]" : "text-[var(--color-texto)]"}`}>
                   {a.titulo}
                 </span>
                 <span className="block text-sm text-[var(--color-texto-suave)] leading-snug">
@@ -334,7 +348,7 @@ export default function InicioRefugio() {
                 </span>
               </span>
               {!leida && (
-                <span className="w-2 h-2 rounded-full bg-[var(--color-primario)] shrink-0 mt-1.5" />
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 shadow-xs ${puntoNoLeida}`} />
               )}
             </button>
           );
@@ -344,29 +358,65 @@ export default function InicioRefugio() {
   );
 }
 
+type MetricaColor = "orange" | "blue" | "purple" | "emerald";
+
+const ESTILOS_METRICA: Record<
+  MetricaColor,
+  {
+    tarjeta: string;
+    iconoBox: string;
+    numero: string;
+    etiqueta: string;
+  }
+> = {
+  orange: {
+    tarjeta: "bg-gradient-to-br from-orange-50 via-amber-50/60 to-orange-100/30 border border-orange-200/80 shadow-xs hover:border-orange-300",
+    iconoBox: "bg-orange-500 text-white shadow-xs",
+    numero: "text-orange-950",
+    etiqueta: "text-orange-900/75",
+  },
+  blue: {
+    tarjeta: "bg-gradient-to-br from-sky-50 via-blue-50/60 to-indigo-100/30 border border-blue-200/80 shadow-xs hover:border-blue-300",
+    iconoBox: "bg-blue-600 text-white shadow-xs",
+    numero: "text-blue-950",
+    etiqueta: "text-blue-900/75",
+  },
+  purple: {
+    tarjeta: "bg-gradient-to-br from-purple-50 via-fuchsia-50/60 to-purple-100/30 border border-purple-200/80 shadow-xs hover:border-purple-300",
+    iconoBox: "bg-purple-600 text-white shadow-xs",
+    numero: "text-purple-950",
+    etiqueta: "text-purple-900/75",
+  },
+  emerald: {
+    tarjeta: "bg-gradient-to-br from-emerald-50 via-teal-50/60 to-emerald-100/30 border border-emerald-200/80 shadow-xs hover:border-emerald-300",
+    iconoBox: "bg-emerald-600 text-white shadow-xs",
+    numero: "text-emerald-950",
+    etiqueta: "text-emerald-900/75",
+  },
+};
+
 function Metrica({
   valor,
   etiqueta,
-  fondo,
-  tinta,
+  color,
   icono,
 }: {
   valor: number;
   etiqueta: string;
-  fondo: string;
-  tinta: string;
+  color: MetricaColor;
   icono: React.ReactNode;
 }) {
+  const estilo = ESTILOS_METRICA[color];
   return (
-    <div className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: fondo }}>
-      <span className="shrink-0" style={{ color: tinta }}>
+    <div className={`rounded-2xl p-4 flex items-center gap-3.5 transition-all ${estilo.tarjeta}`}>
+      <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${estilo.iconoBox}`}>
         {icono}
       </span>
       <span className="min-w-0">
-        <span className="block text-[26px] font-bold leading-none" style={{ color: tinta }}>
+        <span className={`block text-[28px] font-extrabold leading-none tracking-tight ${estilo.numero}`}>
           {valor}
         </span>
-        <span className="block text-xs text-[var(--color-texto-suave)] mt-1 truncate">
+        <span className={`block text-xs font-semibold mt-1 truncate ${estilo.etiqueta}`}>
           {etiqueta}
         </span>
       </span>
