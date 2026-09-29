@@ -1,8 +1,8 @@
 import { apiClient } from "./client";
 import type { Recomendacion } from "../types/matching";
 
-export async function obtenerRecomendaciones(): Promise<Recomendacion[]> {
-  const { data } = await apiClient.get<Recomendacion[]>("/matching/recomendaciones");
+export async function obtenerRecomendaciones(signal?: AbortSignal): Promise<Recomendacion[]> {
+  const { data } = await apiClient.get<Recomendacion[]>("/matching/recomendaciones", { signal });
   return data;
 }
 

@@ -107,6 +107,53 @@ def _a_postulacion_out(
     )
 
 
+# ---------- Helpers "en lote" para las listas (mis_postulaciones,
+# postulaciones_recibidas): una consulta por TIPO de dato para toda la
+# lista, en vez de las ~5 consultas por fila que usa _a_postulacion_out.
+# Con 10 postulaciones, eso es la diferencia entre ~6 round-trips y ~51.
+
+
+def _mapa_mascotas(mascota_ids: set, db: Session) -> dict:
+    if not mascota_ids:
+        return {}
+    filas = db.query(models.Mascota).filter(models.Mascota.id.in_(mascota_ids)).all()
+    return {m.id: m for m in filas}
+
+
+def _mapa_refugios(refugio_ids: set, db: Session) -> dict:
+    if not refugio_ids:
+        return {}
+    filas = db.query(models.Refugio).filter(models.Refugio.id.in_(refugio_ids)).all()
+    return {r.id: r for r in filas}
+
+
+def _mapa_datos_adoptante(adoptante_ids: set, db: Session) -> dict:
+    """adoptante_id -> (nombre, telefono), en una sola consulta con JOIN."""
+    if not adoptante_ids:
+        return {}
+    filas = (
+        db.query(models.PerfilAdoptante.id, models.Usuario.nombre, models.PerfilAdoptante.telefono)
+        .join(models.Usuario, models.Usuario.id == models.PerfilAdoptante.usuario_id)
+        .filter(models.PerfilAdoptante.id.in_(adoptante_ids))
+        .all()
+    )
+    return {pid: (nombre, telefono) for pid, nombre, telefono in filas}
+
+
+def _mapa_scores(pares: set, db: Session) -> dict:
+    """{(adoptante_id, mascota_id): score}, en una sola consulta."""
+    if not pares:
+        return {}
+    adoptante_ids = {a for a, _ in pares}
+    mascota_ids = {m for _, m in pares}
+    filas = (
+        db.query(models.Match.adoptante_id, models.Match.mascota_id, models.Match.score_compatibilidad)
+        .filter(models.Match.adoptante_id.in_(adoptante_ids), models.Match.mascota_id.in_(mascota_ids))
+        .all()
+    )
+    return {(a, m): (float(s) if s is not None else None) for a, m, s in filas}
+
+
 @app.post("/postulaciones", response_model=schemas.PostulacionOut, status_code=status.HTTP_201_CREATED)
 def crear_postulacion(
     datos: schemas.PostulacionCrear,
@@ -170,11 +217,40 @@ def mis_postulaciones(
         query = query.filter(models.Postulacion.estado == estado)
 
     postulaciones = query.order_by(models.Postulacion.fecha_postulacion.desc()).all()
+    if not postulaciones:
+        return []
+
+    # Todas las filas son del MISMO adoptante — nombre y teléfono son
+    # iguales en todas, así que se consultan una sola vez (el teléfono ya
+    # está en `perfil`, ni eso hace falta pedirlo de nuevo).
+    mascotas = _mapa_mascotas({p.mascota_id for p in postulaciones}, db)
+    refugios = _mapa_refugios({m.refugio_id for m in mascotas.values()}, db)
+    scores = _mapa_scores({(perfil.id, p.mascota_id) for p in postulaciones}, db)
+    nombre_propio = _nombre_adoptante(perfil.id, db)
 
     resultado = []
     for p in postulaciones:
-        mascota = db.query(models.Mascota).filter(models.Mascota.id == p.mascota_id).first()
-        resultado.append(_a_postulacion_out(p, mascota, db))
+        # Igual que en el código original: la mascota siempre existe (FK),
+        # no se contempla el caso contrario.
+        mascota = mascotas[p.mascota_id]
+        refugio = refugios.get(mascota.refugio_id)
+        resultado.append(
+            schemas.PostulacionOut(
+                id=p.id,
+                adoptante_id=p.adoptante_id,
+                adoptante_nombre=nombre_propio,
+                mascota_id=p.mascota_id,
+                mascota_nombre=mascota.nombre,
+                mascota_especie=mascota.especie,
+                mascota_estado=mascota.estado,
+                estado=p.estado,
+                score_compatibilidad=scores.get((perfil.id, p.mascota_id)),
+                fecha_postulacion=p.fecha_postulacion,
+                adoptante_telefono=perfil.telefono,
+                refugio_nombre=refugio.nombre_refugio if refugio else None,
+                refugio_telefono=refugio.telefono_contacto if refugio else None,
+            )
+        )
     return resultado
 
 
@@ -195,11 +271,37 @@ def postulaciones_recibidas(
         query = query.filter(models.Postulacion.estado == estado)
 
     postulaciones = query.order_by(models.Postulacion.fecha_postulacion.desc()).all()
+    if not postulaciones:
+        return []
+
+    # Acá sí hay múltiples adoptantes distintos (uno por postulación), así
+    # que nombre/teléfono se traen en lote por IN(...). El refugio en
+    # cambio es siempre el mismo (el autenticado) — sin consulta extra.
+    mascotas = _mapa_mascotas({p.mascota_id for p in postulaciones}, db)
+    datos_adoptante = _mapa_datos_adoptante({p.adoptante_id for p in postulaciones}, db)
+    scores = _mapa_scores({(p.adoptante_id, p.mascota_id) for p in postulaciones}, db)
 
     resultado = []
     for p in postulaciones:
-        mascota = db.query(models.Mascota).filter(models.Mascota.id == p.mascota_id).first()
-        resultado.append(_a_postulacion_out(p, mascota, db))
+        mascota = mascotas[p.mascota_id]
+        nombre, telefono = datos_adoptante.get(p.adoptante_id, (None, None))
+        resultado.append(
+            schemas.PostulacionOut(
+                id=p.id,
+                adoptante_id=p.adoptante_id,
+                adoptante_nombre=nombre,
+                mascota_id=p.mascota_id,
+                mascota_nombre=mascota.nombre,
+                mascota_especie=mascota.especie,
+                mascota_estado=mascota.estado,
+                estado=p.estado,
+                score_compatibilidad=scores.get((p.adoptante_id, p.mascota_id)),
+                fecha_postulacion=p.fecha_postulacion,
+                adoptante_telefono=telefono,
+                refugio_nombre=refugio.nombre_refugio,
+                refugio_telefono=refugio.telefono_contacto,
+            )
+        )
     return resultado
 
 

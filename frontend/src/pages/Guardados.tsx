@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { Link, useSearchParams } from "react-router-dom";
 import { listarMascotas } from "../api/mascotas";
 import { misPostulaciones } from "../api/postulaciones";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { TarjetaMascota } from "../components/TarjetaMascota";
 import { AvatarIniciales, EstadoPostulacionBadge } from "../components/Badges";
-import { SkeletonFila } from "../components/Skeleton";
+import { CargandoVista } from "../components/Spinner";
 import { descripcionCorta } from "../utils/descripcion";
 import { useGuardados } from "../utils/guardados";
 import { fechaCorta } from "../utils/tiempo";
@@ -30,15 +31,35 @@ export default function Guardados() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listarMascotas()
-      .then(setMascotas)
-      .catch(() => setError("No pudimos cargar tus mascotas guardadas."))
-      .finally(() => setCargandoMascotas(false));
+    // Ver el mismo comentario en Recomendaciones.tsx: sin abortar, StrictMode
+    // (solo en desarrollo) dispara ambas peticiones dos veces.
+    const controladorMascotas = new AbortController();
+    const controladorSolicitudes = new AbortController();
 
-    misPostulaciones()
+    listarMascotas(undefined, controladorMascotas.signal)
+      .then(setMascotas)
+      .catch((err) => {
+        if (axios.isCancel(err)) return;
+        setError("No pudimos cargar tus mascotas guardadas.");
+      })
+      .finally(() => {
+        if (!controladorMascotas.signal.aborted) setCargandoMascotas(false);
+      });
+
+    misPostulaciones(controladorSolicitudes.signal)
       .then(setSolicitudes)
-      .catch(() => setError("No pudimos cargar tus solicitudes."))
-      .finally(() => setCargandoSolicitudes(false));
+      .catch((err) => {
+        if (axios.isCancel(err)) return;
+        setError("No pudimos cargar tus solicitudes.");
+      })
+      .finally(() => {
+        if (!controladorSolicitudes.signal.aborted) setCargandoSolicitudes(false);
+      });
+
+    return () => {
+      controladorMascotas.abort();
+      controladorSolicitudes.abort();
+    };
   }, []);
 
   function cambiarPestaña(nueva: Pestaña) {
@@ -87,10 +108,9 @@ export default function Guardados() {
       </div>
 
       {cargando && (
-        <div className="space-y-3">
-          <SkeletonFila />
-          <SkeletonFila />
-        </div>
+        <CargandoVista
+          mensaje={pestaña === "favoritos" ? "Cargando tus favoritos…" : "Cargando tus solicitudes…"}
+        />
       )}
 
       {error && (

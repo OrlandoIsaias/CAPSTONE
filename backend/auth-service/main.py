@@ -7,11 +7,21 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import models
+import rate_limit
 import schemas
 import security
 from database import get_db
 
 app = FastAPI(title="HouseFound - Auth Service")
+
+# Hash señuelo, calculado una sola vez al iniciar el servicio: se compara
+# contra él cuando el email no existe, para que verificar_password() tome
+# aproximadamente el mismo tiempo que cuando sí existe. Sin esto, un login
+# con email inexistente respondería más rápido (nunca llega a llamar bcrypt)
+# que uno con email real y contraseña incorrecta — una diferencia de tiempo
+# medible que delata si un correo está registrado, aunque el mensaje de
+# error sea idéntico en ambos casos.
+_HASH_SENUELO = security.hashear_password("valor-fijo-solo-para-tiempo-constante")
 
 
 @app.get("/")
@@ -47,13 +57,29 @@ def registrar_usuario(datos: schemas.UsuarioRegistro, db: Session = Depends(get_
 
 @app.post("/auth/login", response_model=schemas.TokenOut)
 def iniciar_sesion(datos: schemas.UsuarioLogin, db: Session = Depends(get_db)):
-    usuario = db.query(models.Usuario).filter(models.Usuario.email == datos.email).first()
-    credenciales_invalidas = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Email o contraseña incorrectos"
-    )
-    if not usuario or not security.verificar_password(datos.password, usuario.password_hash):
-        raise credenciales_invalidas
+    restante = rate_limit.tiempo_bloqueo_restante(datos.email)
+    if restante is not None:
+        minutos = max(1, int(restante.total_seconds() // 60) + 1)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Demasiados intentos fallidos. Intenta de nuevo en {minutos} "
+            f"minuto{'s' if minutos != 1 else ''}.",
+        )
 
+    usuario = db.query(models.Usuario).filter(models.Usuario.email == datos.email).first()
+
+    # Tiempo constante (ver _HASH_SENUELO arriba): siempre se llama a
+    # verificar_password, exista o no el usuario.
+    hash_a_verificar = usuario.password_hash if usuario else _HASH_SENUELO
+    password_valida = security.verificar_password(datos.password, hash_a_verificar)
+
+    if not usuario or not password_valida:
+        rate_limit.registrar_intento_fallido(datos.email)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Email o contraseña incorrectos"
+        )
+
+    rate_limit.limpiar_intentos(datos.email)
     token = security.crear_access_token({"sub": str(usuario.id), "rol": usuario.rol})
     return schemas.TokenOut(access_token=token, usuario=usuario)
 

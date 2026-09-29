@@ -1,6 +1,6 @@
 """
 Conexión a la base de datos. Igual patrón que auth-service: DATABASE_URL
-desde .env, pool_pre_ping para Neon, get_db() como dependencia.
+desde .env, pool_recycle para Neon, get_db() como dependencia.
 """
 import os
 from sqlalchemy import create_engine
@@ -17,7 +17,7 @@ if not DATABASE_URL:
         "Crea un archivo .env en esta carpeta con: DATABASE_URL=postgresql://..."
     )
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, pool_recycle=270)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

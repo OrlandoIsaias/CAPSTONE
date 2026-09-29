@@ -1,10 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { obtenerPerfilAdoptante } from "../api/auth";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
-import { Skeleton } from "../components/Skeleton";
+import { CargandoVista } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import type { PerfilAdoptante as IPerfilAdoptante } from "../types/auth";
+
+// El correo/nombre aparecen al instante porque ya están en localStorage
+// desde el login (AuthContext). El perfil (teléfono incluido) vive en otra
+// tabla y se pide aparte — cachearlo acá logra el mismo efecto: se muestra
+// de inmediato desde la segunda visita en adelante, mientras se refresca
+// en silencio por si cambió en otro dispositivo.
+function claveCache(usuarioId: number) {
+  return `housefound_perfil_adoptante_cache_${usuarioId}`;
+}
+
+function leerCache(usuarioId: number): IPerfilAdoptante | null {
+  try {
+    const crudo = localStorage.getItem(claveCache(usuarioId));
+    return crudo ? JSON.parse(crudo) : null;
+  } catch {
+    return null;
+  }
+}
 
 const ETIQUETAS_ESPACIO: Record<string, string> = {
   departamento: "Departamento",
@@ -28,15 +47,36 @@ export default function PerfilAdoptante() {
   const { usuario, cerrarSesion } = useAuth();
   const navigate = useNavigate();
 
-  const [perfil, setPerfil] = useState<IPerfilAdoptante | null>(null);
-  const [cargando, setCargando] = useState(true);
+  const [perfil, setPerfil] = useState<IPerfilAdoptante | null>(() =>
+    usuario ? leerCache(usuario.id) : null
+  );
+  // Si ya había algo en caché, se muestra de inmediato — no hace falta
+  // tapar la pantalla con el spinner mientras se refresca por detrás.
+  const [cargando, setCargando] = useState(() => (usuario ? leerCache(usuario.id) === null : true));
 
   useEffect(() => {
     obtenerPerfilAdoptante()
-      .then((p) => setPerfil(p))
-      .catch(() => setPerfil(null))
+      .then((p) => {
+        setPerfil(p);
+        if (usuario) {
+          try {
+            localStorage.setItem(claveCache(usuario.id), JSON.stringify(p));
+          } catch {
+            // localStorage lleno/deshabilitado — no es crítico, simplemente
+            // no se cachea y la próxima visita vuelve a pedirlo.
+          }
+        }
+      })
+      .catch((err) => {
+        // 404 = el usuario genuinamente no tiene perfil todavía. Cualquier
+        // otro error (red, servidor caído) no debería borrar un dato en
+        // caché que sabemos que es válido.
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
+          setPerfil(null);
+        }
+      })
       .finally(() => setCargando(false));
-  }, []);
+  }, [usuario]);
 
   return (
     <PantallaAdoptante>
@@ -67,7 +107,12 @@ export default function PerfilAdoptante() {
             <p className="text-xs font-semibold text-slate-500 truncate">
               {usuario?.email}
             </p>
-            {perfil?.telefono ? (
+            {cargando ? (
+              // Mientras se espera la respuesta, `perfil` todavía es null —
+              // sin este caso se alcanza a mostrar "Sin teléfono" un
+              // instante antes de que llegue el dato real.
+              <p className="h-3.5 w-24 mt-1 rounded bg-slate-100 animate-pulse" />
+            ) : perfil?.telefono ? (
               <p className="text-xs font-bold text-indigo-600 mt-0.5">
                 Tel: {perfil.telefono}
               </p>
@@ -122,14 +167,7 @@ export default function PerfilAdoptante() {
           </Link>
         </div>
 
-        {cargando && (
-          <div className="grid grid-cols-2 gap-2.5">
-            <Skeleton className="h-16 rounded-2xl" />
-            <Skeleton className="h-16 rounded-2xl" />
-            <Skeleton className="h-16 rounded-2xl" />
-            <Skeleton className="h-16 rounded-2xl" />
-          </div>
-        )}
+        {cargando && <CargandoVista mensaje="Cargando tu perfil…" className="text-slate-400 py-8" />}
 
         {!cargando && perfil && (
           <div className="grid grid-cols-2 gap-2.5">
