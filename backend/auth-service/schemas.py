@@ -30,6 +30,17 @@ def _validar_y_normalizar_telefono(v: str) -> str:
     return f"+56 {digitos[0]} {digitos[1:5]} {digitos[5:]}"
 
 
+def _validar_y_normalizar_telefono_opcional(v: Optional[str]) -> Optional[str]:
+    # El teléfono del adoptante es opcional (EditarPerfilAdoptante.tsx deja
+    # guardar el resto del cuestionario sin exigirlo — el botón de WhatsApp
+    # ya sabe mostrar "no registró un celular" cuando falta). None o string
+    # vacío se normalizan a None; solo se valida el formato cuando sí viene
+    # un valor, igual que en el frontend.
+    if v is None or not v.strip():
+        return None
+    return _validar_y_normalizar_telefono(v)
+
+
 class UsuarioRegistro(BaseModel):
     nombre: str
     email: EmailStr
@@ -76,7 +87,7 @@ class PerfilAdoptanteIn(BaseModel):
     tiene_ninos: bool = False
     otras_mascotas: bool = False
     nivel_actividad_fisica: Literal["bajo", "medio", "alto"]
-    telefono: str
+    telefono: Optional[str] = None
 
     @field_validator("tiempo_disponible_horas_dia")
     @classmethod
@@ -87,8 +98,8 @@ class PerfilAdoptanteIn(BaseModel):
 
     @field_validator("telefono")
     @classmethod
-    def validar_telefono(cls, v: str) -> str:
-        return _validar_y_normalizar_telefono(v)
+    def validar_telefono(cls, v: Optional[str]) -> Optional[str]:
+        return _validar_y_normalizar_telefono_opcional(v)
 
 
 class PerfilAdoptanteOut(BaseModel):

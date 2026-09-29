@@ -1,7 +1,7 @@
 export function InsigniaScore({ score }: { score: number }) {
   const porcentaje = Math.round(score * 100);
 
-  let estilo = "bg-slate-100 text-slate-700 border border-slate-200";
+  let estilo: string;
   if (porcentaje >= 80) {
     estilo = "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-500/20";
   } else if (porcentaje >= 50) {
