@@ -54,7 +54,9 @@ export interface PerfilAdoptanteInput {
   tiene_ninos: boolean;
   otras_mascotas: boolean;
   nivel_actividad_fisica: NivelActividad;
-  telefono: string;
+  // Opcional: EditarPerfilAdoptante.tsx permite guardar sin teléfono (el
+  // botón de WhatsApp ya sabe mostrar el estado "sin celular registrado").
+  telefono?: string;
 }
 
 export interface PerfilRefugio {
