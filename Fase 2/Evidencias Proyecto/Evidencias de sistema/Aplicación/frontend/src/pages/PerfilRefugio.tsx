@@ -80,9 +80,6 @@ export default function PerfilRefugio() {
       <div className="mx-auto w-full max-w-[480px] px-5 py-8">
         <header className="flex items-start justify-between gap-3 mb-7">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.12em] text-[var(--color-primario)] uppercase mb-1">
-              {yaExiste ? "Tu refugio" : "Un último paso"}
-            </p>
             <h1 className="text-2xl font-bold leading-tight">
               {yaExiste ? "Datos del refugio" : "Cuéntanos sobre tu refugio"}
             </h1>

@@ -9,6 +9,8 @@ class RecomendacionOut(BaseModel):
     nombre: str
     especie: Optional[str] = None
     raza: Optional[str] = None
+    edad: Optional[int] = None
+    url_foto: Optional[str] = None
     estado: str
     score_compatibilidad: float
     fecha_calculo: datetime

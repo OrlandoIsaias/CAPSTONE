@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { guardarPerfilAdoptante, obtenerPerfilAdoptante } from "../api/auth";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
+import { Spinner } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import { normalizarTelefonoCL, validarTelefonoCL } from "../utils/telefono";
 import type { EspacioDisponible, ExperienciaPrevia, NivelActividad } from "../types/auth";
@@ -20,8 +21,6 @@ export default function PerfilAdoptante() {
   const [nivelActividad, setNivelActividad] = useState<NivelActividad>("medio");
   const [telefono, setTelefono] = useState("");
 
-  // null mientras no sabemos si el perfil existe: cambia el texto de la
-  // pantalla entre "alta inicial" y "edición" (mismo criterio que PerfilRefugio).
   const [yaExiste, setYaExiste] = useState<boolean | null>(null);
   const [errores, setErrores] = useState<Errores>({});
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +39,6 @@ export default function PerfilAdoptante() {
         setTelefono(p.telefono ?? "");
         setYaExiste(true);
       })
-      // 404 = todavía no lo completa; es el flujo normal tras registrarse
       .catch(() => setYaExiste(false));
   }, []);
 
@@ -85,42 +83,56 @@ export default function PerfilAdoptante() {
   }
 
   const claseCampo =
-    "w-full rounded-md border border-[var(--color-borde)] px-3 py-2.5 text-sm bg-[var(--color-superficie)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]";
-  const claseErrorCampo = "text-xs text-[var(--color-rojo)] mt-1";
+    "w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all";
+  const claseEtiqueta = "block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5";
+  const claseErrorCampo = "text-xs font-semibold text-rose-600 mt-1";
 
   return (
     <PantallaAdoptante>
-      <p className="text-sm text-[var(--color-primario)] font-medium mb-2">
-        {yaExiste ? "Tu perfil" : "Un último paso"}
-      </p>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl mb-2">
-        {yaExiste ? "Cómo vives" : "Cuéntanos cómo vives"}
-      </h1>
-      <p className="text-[var(--color-texto-suave)] mb-8">
-        Con esto calculamos qué mascotas realmente calzan contigo — no solo por especie, sino
-        por rutina real.
-      </p>
+      {/* Encabezado */}
+      <header className="mb-5">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-slate-900 leading-tight">
+          {yaExiste ? "Tu perfil de adoptante" : "Cuéntanos cómo vives"}
+        </h1>
+        <p className="text-xs font-medium text-slate-500 mt-1">
+          Usamos esta información para conectar contigo mascotas compatibles con tu ritmo diario.
+        </p>
+      </header>
 
-        {yaExiste && (
-          <Link
-            to="/mis-solicitudes"
-            className="flex items-center justify-between mb-6 rounded-2xl bg-[var(--color-superficie)] border border-[var(--color-borde)] p-4 hover:shadow-sm transition-shadow"
-          >
+      {/* Banner de acceso a solicitudes */}
+      {yaExiste && (
+        <Link
+          to="/mis-solicitudes"
+          className="flex items-center justify-between mb-5 rounded-3xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/5 border border-blue-200 p-4 shadow-xs hover:border-blue-300 active:scale-[0.99] transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-lg shadow-2xs">
+              📋
+            </span>
             <div>
-              <p className="font-semibold">Tus solicitudes</p>
-              <p className="text-sm text-[var(--color-texto-suave)]">
-                Revisa el estado de tus postulaciones y coordina la entrega.
+              <p className="font-extrabold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">
+                Historial de Solicitudes
+              </p>
+              <p className="text-xs font-medium text-slate-500">
+                Revisa el estado de tus postulaciones y chats.
               </p>
             </div>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-texto-suave)] shrink-0">
-              <path d="m9 5 7 7-7 7" />
-            </svg>
-          </Link>
-        )}
+          </div>
+          <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 group-hover:text-slate-700 shadow-2xs">
+            →
+          </span>
+        </Link>
+      )}
 
-        <form onSubmit={manejarEnvio} className="space-y-6">
+      <form onSubmit={manejarEnvio} className="space-y-4">
+        {/* Sección 1: Vivienda y Horarios */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-4">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span>🏡</span> Hogar y Disponibilidad
+          </h2>
+
           <div>
-            <label className="block text-sm font-medium mb-1.5">Espacio disponible en casa</label>
+            <label className={claseEtiqueta}>Espacio disponible en casa</label>
             <select
               value={espacioDisponible}
               onChange={(e) => setEspacioDisponible(e.target.value as EspacioDisponible)}
@@ -128,106 +140,141 @@ export default function PerfilAdoptante() {
             >
               <option value="departamento">Departamento</option>
               <option value="casa_patio">Casa con patio</option>
-              <option value="casa_grande">Casa grande</option>
+              <option value="casa_grande">Casa grande / Parcela</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">
-              Horas al día que puedes dedicarle: {tiempoDisponible}h
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={claseEtiqueta}>Tiempo diario disponible</label>
+              <span className="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200/70">
+                {tiempoDisponible} {tiempoDisponible === 1 ? "hora" : "horas"} al día
+              </span>
+            </div>
             <input
               type="range"
               min={0}
               max={12}
               value={tiempoDisponible}
               onChange={(e) => setTiempoDisponible(Number(e.target.value))}
-              className="w-full accent-[var(--color-primario)]"
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
             />
+            <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-1">
+              <span>0h (Poco tiempo)</span>
+              <span>6h</span>
+              <span>12h (Dedicación alta)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sección 2: Rutina y Convivencia */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-4">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span>⚡</span> Experiencia y Convivencia
+          </h2>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={claseEtiqueta}>Experiencia previa</label>
+              <select
+                value={experienciaPrevia}
+                onChange={(e) => setExperienciaPrevia(e.target.value as ExperienciaPrevia)}
+                className={claseCampo}
+              >
+                <option value="ninguna">Ninguna (Primera vez)</option>
+                <option value="basica">Básica</option>
+                <option value="alta">Alta / Experto</option>
+              </select>
+            </div>
+            <div>
+              <label className={claseEtiqueta}>Nivel de actividad</label>
+              <select
+                value={nivelActividad}
+                onChange={(e) => setNivelActividad(e.target.value as NivelActividad)}
+                className={claseCampo}
+              >
+                <option value="bajo">Bajo (Sedentario/Tranquilo)</option>
+                <option value="medio">Medio (Paseos diarios)</option>
+                <option value="alto">Alto (Deportista/Muy activo)</option>
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Experiencia previa con mascotas</label>
-            <select
-              value={experienciaPrevia}
-              onChange={(e) => setExperienciaPrevia(e.target.value as ExperienciaPrevia)}
-              className={claseCampo}
-            >
-              <option value="ninguna">Ninguna</option>
-              <option value="basica">Básica</option>
-              <option value="alta">Alta</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Tu nivel de actividad física</label>
-            <select
-              value={nivelActividad}
-              onChange={(e) => setNivelActividad(e.target.value as NivelActividad)}
-              className={claseCampo}
-            >
-              <option value="bajo">Bajo</option>
-              <option value="medio">Medio</option>
-              <option value="alto">Alto</option>
-            </select>
-          </div>
-
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
               <input
                 type="checkbox"
                 checked={tieneNinos}
                 onChange={(e) => setTieneNinos(e.target.checked)}
-                className="accent-[var(--color-primario)]"
+                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
               />
-              Tengo niños en casa
+              <span className="text-xs font-bold text-slate-700">Tengo niños</span>
             </label>
-            <label className="flex items-center gap-2 text-sm">
+
+            <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
               <input
                 type="checkbox"
                 checked={otrasMascotas}
                 onChange={(e) => setOtrasMascotas(e.target.checked)}
-                className="accent-[var(--color-primario)]"
+                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
               />
-              Tengo otras mascotas
+              <span className="text-xs font-bold text-slate-700">Otras mascotas</span>
             </label>
           </div>
+        </div>
 
+        {/* Sección 3: Teléfono */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-3">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span>📱</span> Contacto Directo
+          </h2>
           <div>
-            <label className="block text-sm font-medium mb-1.5">Tu celular</label>
+            <label className={claseEtiqueta}>Número de Celular / WhatsApp</label>
             <input
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
               placeholder="+56 9 1234 5678"
               className={claseCampo}
             />
-            <p className="text-xs text-[var(--color-texto-suave)] mt-1">
-              Solo se comparte con el refugio si tu solicitud es aprobada, para coordinar la
-              entrega.
+            <p className="text-[11px] font-medium text-slate-400 mt-1.5">
+              Solo se comparte con el refugio tras ser aprobada una postulación para coordinar la entrega.
             </p>
             {errores.telefono && <p className={claseErrorCampo}>{errores.telefono}</p>}
           </div>
+        </div>
 
-          {error && <p className="text-sm text-[var(--color-rojo)]">{error}</p>}
-          {guardado && (
-            <p className="text-sm font-medium text-[var(--color-verde)]">Cambios guardados.</p>
-          )}
+        {error && (
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+            {error}
+          </div>
+        )}
 
-          <button
-            type="submit"
-            disabled={cargando}
-            className="w-full bg-[var(--color-primario)] text-white font-semibold py-2.5 rounded-md hover:bg-[var(--color-primario-oscuro)] transition disabled:opacity-60"
-          >
-            {cargando ? "Guardando…" : yaExiste ? "Guardar cambios" : "Ver mis recomendaciones"}
-          </button>
-        </form>
+        {guardado && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+            <span>✓</span> ¡Tu perfil y preferencias fueron guardados exitosamente!
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={cargando}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-4 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
+        >
+          {cargando && <Spinner />}
+          {cargando
+            ? "Guardando cambios…"
+            : yaExiste
+            ? "Actualizar Perfil de Convivencia"
+            : "Completar Perfil y Ver Recomendaciones 🎯"}
+        </button>
+      </form>
 
       {yaExiste && (
         <button
           onClick={cerrarSesion}
-          className="w-full mt-3 py-2.5 rounded-md font-semibold text-[var(--color-texto-suave)]"
+          className="w-full mt-4 py-3 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 active:scale-95 transition-all"
         >
-          Cerrar sesión
+          Cerrar sesión de la cuenta
         </button>
       )}
     </PantallaAdoptante>

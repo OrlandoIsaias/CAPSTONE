@@ -91,7 +91,7 @@ export default function FichaMascota() {
     <div className="min-h-screen bg-[var(--color-fondo)] px-6 pt-20 pb-10">
       <BotonVolver />
       <div className="max-w-xl mx-auto">
-        <div className="w-full h-64 rounded-lg bg-[var(--color-primario)]/10 mb-6 overflow-hidden flex items-center justify-center">
+        <div className="w-full h-72 rounded-3xl bg-slate-100 mb-6 overflow-hidden flex items-center justify-center border-2 border-white ring-2 ring-slate-200/80 shadow-md relative">
           {fotoPrincipal ? (
             <img src={fotoPrincipal.url} alt={mascota.nombre} className="w-full h-full object-cover" />
           ) : (
