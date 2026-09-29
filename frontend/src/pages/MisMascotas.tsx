@@ -9,10 +9,10 @@ import type { Mascota } from "../types/mascotas";
 
 type Filtro = "todos" | "perros" | "gatos";
 
-const FILTROS: { id: Filtro; etiqueta: string }[] = [
-  { id: "todos", etiqueta: "Todos" },
-  { id: "perros", etiqueta: "Perros" },
-  { id: "gatos", etiqueta: "Gatos" },
+const FILTROS: { id: Filtro; etiqueta: string; icono: string; color: string }[] = [
+  { id: "todos", etiqueta: "Todos", icono: "🐾", color: "from-slate-800 to-slate-900" },
+  { id: "perros", etiqueta: "Perros", icono: "🐕", color: "from-orange-500 to-amber-500" },
+  { id: "gatos", etiqueta: "Gatos", icono: "🐈", color: "from-emerald-600 to-teal-600" },
 ];
 
 function esPerro(especie?: string) {
@@ -67,22 +67,22 @@ export default function MisMascotas() {
     <PantallaRefugio>
       <header className="flex items-center justify-between gap-3 mb-5">
         <div>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-emerald-100 text-emerald-700 mb-1 border border-emerald-200/80 shadow-xs">
-            🐾 Catálogo
-          </span>
-          <h1 className="text-2xl font-bold leading-tight">Mis Mascotas</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-slate-900 leading-tight">
+            Mis Mascotas
+          </h1>
         </div>
         <Link
           to="/mascota/nueva"
-          className="shrink-0 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm font-bold px-4 py-2.5 rounded-full shadow-xs active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+          className="shrink-0 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all"
         >
-          + Agregar
+          + Publicar
         </Link>
       </header>
 
+      {/* Buscador */}
       <div className="relative mb-4">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600/70">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" />
           </svg>
@@ -90,25 +90,38 @@ export default function MisMascotas() {
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar mascota por nombre o raza..."
-          className="w-full rounded-2xl bg-slate-100/80 border border-slate-200/80 pl-11 pr-4 py-3 text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all"
+          placeholder="Buscar mascota por nombre o raza…"
+          className="w-full rounded-2xl bg-white border border-slate-200/90 pl-11 pr-10 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
         />
+        {busqueda && (
+          <button
+            onClick={() => setBusqueda("")}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-100 w-5 h-5 rounded-full flex items-center justify-center"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
-      <div className="flex gap-2 mb-5">
-        {FILTROS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFiltro(f.id)}
-            className={`px-4 py-2 rounded-full text-sm font-bold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
-              filtro === f.id
-                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs"
-                : "bg-emerald-50/70 text-emerald-900 border border-emerald-200/60 hover:bg-emerald-100/70"
-            }`}
-          >
-            {f.etiqueta}
-          </button>
-        ))}
+      {/* Filtros por Categoría */}
+      <div className="flex gap-2.5 mb-5 overflow-x-auto pb-1">
+        {FILTROS.map((f) => {
+          const activo = filtro === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setFiltro(f.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all active:scale-95 shadow-2xs ${
+                activo
+                  ? `bg-gradient-to-r ${f.color} text-white shadow-xs`
+                  : "bg-white border border-slate-200/80 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <span>{f.icono}</span>
+              <span>{f.etiqueta}</span>
+            </button>
+          );
+        })}
       </div>
 
       {cargando && (
@@ -118,61 +131,85 @@ export default function MisMascotas() {
           <SkeletonFila />
         </div>
       )}
-      {error && <p className="text-[var(--color-rojo)] text-sm font-medium">{error}</p>}
+
+      {error && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium mb-4">
+          {error}
+        </div>
+      )}
 
       {!cargando && !error && visibles.length === 0 && (
-        <div className="rounded-2xl bg-white border border-slate-200 p-6 text-center shadow-xs">
-          <p className="font-bold text-slate-800">
+        <div className="rounded-3xl bg-white border border-slate-200 p-8 text-center shadow-xs">
+          <span className="text-4xl block mb-2">🐾</span>
+          <p className="font-extrabold text-slate-800 text-base">
             {mascotas.length === 0 ? "Todavía no publicas ninguna mascota" : "Sin resultados"}
           </p>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
             {mascotas.length === 0
-              ? "Publica la primera para que empiece a recibir solicitudes."
-              : "Prueba con otro nombre o cambia el filtro."}
+              ? "Publica la primera para que empiece a recibir solicitudes de adoptantes."
+              : "Prueba con otro término de búsqueda."}
           </p>
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {visibles.map((m) => {
           const solicitudes = conteoSolicitudes[m.id] ?? 0;
           const foto = m.fotos.find((f) => f.es_principal) ?? m.fotos[0];
+          const esPerroM = esPerro(m.especie);
+          const iconoE = esPerroM ? "🐶" : "🐱";
+
           return (
             <button
               key={m.id}
               onClick={() => navigate(`/mis-mascotas/${m.id}`)}
-              className="w-full text-left flex gap-3.5 items-center bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs hover:shadow-sm hover:border-emerald-300 active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+              className="w-full text-left flex gap-3.5 items-center bg-white rounded-3xl border border-slate-200/90 p-3.5 shadow-xs hover:shadow-md hover:border-emerald-300 active:scale-[0.99] transition-all group"
             >
-              <span className="w-16 h-16 rounded-xl bg-emerald-100/80 shrink-0 overflow-hidden flex items-center justify-center border border-emerald-200/60">
+              {/* Marco fotográfico limpio */}
+              <div className="relative w-22 h-22 rounded-2xl overflow-hidden shadow-2xs border-2 border-white ring-2 ring-emerald-300/80 bg-slate-100 shrink-0 flex items-center justify-center">
                 {foto ? (
-                  <img src={foto.url} alt={m.nombre} className="w-full h-full object-cover" />
+                  <img
+                    src={foto.url}
+                    alt={m.nombre}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
                 ) : (
-                  <span className="text-xl font-black text-emerald-700">
-                    {m.nombre.charAt(0).toUpperCase()}
-                  </span>
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-100 to-teal-200 text-emerald-700">
+                    <span className="font-[family-name:var(--font-display)] text-2xl font-black">
+                      {m.nombre.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-800/80">Sin foto</span>
+                  </div>
                 )}
-              </span>
+              </div>
 
-              <span className="flex-1 min-w-0">
-                <span className="flex items-center gap-2 mb-0.5">
-                  <span className="font-bold text-slate-900 truncate">{m.nombre}</span>
+              <div className="flex-1 min-w-0 pr-2">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs">{iconoE}</span>
+                    <p className="font-[family-name:var(--font-display)] text-lg font-extrabold text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
+                      {m.nombre}
+                    </p>
+                  </div>
                   <EstadoMascotaBadge estado={m.estado} />
-                </span>
-                <span className="block text-sm text-slate-500 truncate">
-                  {[m.raza || m.especie, m.edad != null ? `${m.edad} años` : null]
+                </div>
+
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {[m.raza || m.especie, m.edad != null ? `${m.edad} ${m.edad === 1 ? "año" : "años"}` : null]
                     .filter(Boolean)
-                    .join(" · ") || "Sin datos adicionales"}
-                </span>
+                    .join(" • ") || "Sin datos adicionales"}
+                </p>
+
                 {solicitudes > 0 && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-700 bg-orange-100 border border-orange-200/80 px-2.5 py-0.5 rounded-full mt-1.5 shadow-xs">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-orange-700 bg-orange-100 border border-orange-200/80 px-2.5 py-0.5 rounded-full mt-1.5 shadow-2xs">
                     <span>📩</span> {solicitudes} {solicitudes === 1 ? "solicitud pendiente" : "solicitudes pendientes"}
                   </span>
                 )}
-              </span>
+              </div>
 
-              <span className="text-slate-400 shrink-0">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m9 5 7 7-7 7" />
+              <span className="text-slate-300 group-hover:text-slate-600 shrink-0 pr-1 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
                 </svg>
               </span>
             </button>

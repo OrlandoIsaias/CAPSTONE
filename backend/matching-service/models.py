@@ -12,6 +12,7 @@ Matching Service es DUEÑO de la tabla matches (la escribe); las otras dos
 las trata como solo lectura.
 """
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from database import Base
@@ -47,6 +48,20 @@ class Mascota(Base):
     espacio_minimo_requerido = Column(String)
     estado = Column(String, nullable=False, default="disponible")
     fecha_publicacion = Column(DateTime, server_default=func.now())
+
+    fotos = relationship("FotoMascota", back_populates="mascota")
+
+
+class FotoMascota(Base):
+    __tablename__ = "fotos_mascota"
+
+    id = Column(Integer, primary_key=True)
+    mascota_id = Column(Integer, ForeignKey("mascotas.id"), nullable=False)
+    url = Column(String, nullable=False)
+    es_principal = Column(Boolean, nullable=False, default=False)
+    orden = Column(Integer)
+
+    mascota = relationship("Mascota", back_populates="fotos")
 
 
 class Match(Base):

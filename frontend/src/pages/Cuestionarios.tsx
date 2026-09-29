@@ -27,8 +27,6 @@ export default function Cuestionarios() {
   useEffect(() => {
     postulacionesRecibidas()
       .then(async (lista) => {
-        // Un mismo adoptante puede postular a varias mascotas: su cuestionario
-        // es uno solo, así que nos quedamos con su postulación más reciente.
         const porAdoptante = new Map<number, number>();
         for (const p of lista) {
           if (!porAdoptante.has(p.adoptante_id)) porAdoptante.set(p.adoptante_id, p.id);
@@ -44,10 +42,14 @@ export default function Cuestionarios() {
 
   return (
     <PantallaRefugio>
-      <h1 className="text-2xl font-bold mb-1">Cuestionarios</h1>
-      <p className="text-sm text-[var(--color-texto-suave)] mb-5">
-        El estilo de vida que declaró cada persona que postuló a tus mascotas.
-      </p>
+      <header className="mb-5">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-slate-900 leading-tight">
+          Cuestionarios de Adoptantes
+        </h1>
+        <p className="text-xs font-medium text-slate-500 mt-1">
+          Estilo de vida y rutinas declaradas por cada postulante para tus mascotas.
+        </p>
+      </header>
 
       {cargando && (
         <div className="space-y-3">
@@ -56,52 +58,91 @@ export default function Cuestionarios() {
           <SkeletonFila />
         </div>
       )}
-      {error && <p className="text-[var(--color-rojo)] text-sm">{error}</p>}
+
+      {error && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium mb-4">
+          {error}
+        </div>
+      )}
+
+      {!cargando && !error && (
+        <div className="flex items-center justify-between mb-3 px-1">
+          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+            {fichas.length} {fichas.length === 1 ? "cuestionario disponible" : "cuestionarios disponibles"}
+          </p>
+          <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200/60">
+            Perfiles
+          </span>
+        </div>
+      )}
 
       {!cargando && !error && fichas.length === 0 && (
-        <div className="rounded-2xl bg-[var(--color-superficie)] border border-[var(--color-borde)] p-6 text-center">
-          <p className="font-medium">Todavía no hay cuestionarios</p>
-          <p className="text-sm text-[var(--color-texto-suave)] mt-1">
-            Cada persona que postula responde uno antes de poder hacerlo.
+        <div className="rounded-3xl bg-white border border-slate-200/90 p-8 text-center shadow-xs">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-50 text-purple-500 flex items-center justify-center text-3xl mb-3 shadow-2xs border border-purple-100">
+            📝
+          </div>
+          <h2 className="font-extrabold text-slate-800 text-base mb-1">
+            Todavía no hay cuestionarios recibidos
+          </h2>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto">
+            Aparecerán automáticamente aquí a medida que los adoptantes postulen a tus animales.
           </p>
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {fichas.map((f) => {
           const nombre = f.adoptante_nombre ?? `Adoptante #${f.adoptante_id}`;
-          const rasgos = [
-            f.espacio_disponible ? ESPACIO[f.espacio_disponible] : null,
-            f.experiencia_previa ? EXPERIENCIA[f.experiencia_previa] : null,
-            f.tiempo_disponible_horas_dia != null ? `${f.tiempo_disponible_horas_dia} h/día` : null,
-            f.tiene_ninos ? "Con niños" : null,
-            f.otras_mascotas ? "Con otras mascotas" : null,
-          ].filter(Boolean) as string[];
 
           return (
             <button
               key={f.id}
               onClick={() => navigate(`/solicitudes/${f.id}`)}
-              className="w-full text-left bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] p-4 active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
+              className="w-full text-left bg-white rounded-3xl border border-slate-200/90 p-4.5 shadow-xs hover:shadow-md hover:border-purple-300 active:scale-[0.99] transition-all group"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <AvatarIniciales nombre={nombre} />
-                <div className="min-w-0">
-                  <p className="font-bold truncate">{nombre}</p>
-                  <p className="text-sm text-[var(--color-texto-suave)] truncate">
-                    Postuló a {f.mascota_nombre}
-                  </p>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <AvatarIniciales nombre={nombre} />
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-slate-900 text-base truncate group-hover:text-purple-700 transition-colors">
+                      {nombre}
+                    </p>
+                    <p className="text-xs font-semibold text-purple-600 truncate">
+                      🐾 Postuló por {f.mascota_nombre}
+                    </p>
+                  </div>
                 </div>
+                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-200/60 shrink-0">
+                  Ver Ficha →
+                </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {rasgos.map((r) => (
-                  <span
-                    key={r}
-                    className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-superficie-apagada)] text-[var(--color-texto)]"
-                  >
-                    {r}
+
+              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
+                {f.espacio_disponible && (
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                    🏡 {ESPACIO[f.espacio_disponible]}
                   </span>
-                ))}
+                )}
+                {f.tiempo_disponible_horas_dia != null && (
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/60">
+                    ⏱️ {f.tiempo_disponible_horas_dia}h/día
+                  </span>
+                )}
+                {f.experiencia_previa && (
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 border border-purple-200/60">
+                    🎓 {EXPERIENCIA[f.experiencia_previa]}
+                  </span>
+                )}
+                {f.tiene_ninos && (
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60">
+                    👶 Con niños
+                  </span>
+                )}
+                {f.otras_mascotas && (
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60">
+                    🐕 Otras mascotas
+                  </span>
+                )}
               </div>
             </button>
           );

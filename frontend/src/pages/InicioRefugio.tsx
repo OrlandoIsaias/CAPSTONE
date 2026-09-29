@@ -110,10 +110,6 @@ export default function InicioRefugio() {
     <PantallaRefugio>
       <header className="flex items-start justify-between mb-6">
         <div>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-orange-100 text-orange-700 mb-1.5 border border-orange-200/80 shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-            Refugio
-          </span>
           <h1 className="text-2xl font-bold leading-tight">
             {nombreRefugio ?? usuario?.nombre ?? "Tu refugio"}{" "}
             <span aria-hidden="true">🐾</span>

@@ -66,12 +66,18 @@ def obtener_recomendaciones(
         )
         db.execute(stmt)
 
+        foto_principal = next((f.url for f in mascota.fotos if f.es_principal), None)
+        if not foto_principal and mascota.fotos:
+            foto_principal = mascota.fotos[0].url
+
         resultados.append(
             schemas.RecomendacionOut(
                 mascota_id=mascota.id,
                 nombre=mascota.nombre,
                 especie=mascota.especie,
                 raza=mascota.raza,
+                edad=mascota.edad,
+                url_foto=foto_principal,
                 estado=mascota.estado,
                 score_compatibilidad=score,
                 fecha_calculo=mascota.fecha_publicacion,  # se corrige abajo tras el commit
@@ -127,11 +133,17 @@ def obtener_score_individual(
         .first()
     )
 
+    foto_principal = next((f.url for f in mascota.fotos if f.es_principal), None)
+    if not foto_principal and mascota.fotos:
+        foto_principal = mascota.fotos[0].url
+
     return schemas.RecomendacionOut(
         mascota_id=mascota.id,
         nombre=mascota.nombre,
         especie=mascota.especie,
         raza=mascota.raza,
+        edad=mascota.edad,
+        url_foto=foto_principal,
         estado=mascota.estado,
         score_compatibilidad=score,
         fecha_calculo=match_guardado.fecha_calculo,

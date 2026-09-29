@@ -82,11 +82,11 @@ export default function MascotaRefugio() {
 
       {mascota && (
         <>
-          <div className="w-full h-48 rounded-2xl bg-[var(--color-primario-suave)] overflow-hidden flex items-center justify-center mb-4">
+          <div className="w-full h-64 rounded-3xl bg-slate-100 overflow-hidden flex items-center justify-center mb-5 border-2 border-white ring-2 ring-emerald-300/80 shadow-md relative">
             {foto ? (
               <img src={foto.url} alt={mascota.nombre} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-5xl font-bold text-[var(--color-primario)]">
+              <span className="text-5xl font-bold text-emerald-600 font-[family-name:var(--font-display)]">
                 {mascota.nombre.charAt(0).toUpperCase()}
               </span>
             )}
