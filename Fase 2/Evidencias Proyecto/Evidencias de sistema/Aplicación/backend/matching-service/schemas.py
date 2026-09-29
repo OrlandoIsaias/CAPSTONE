@@ -14,6 +14,13 @@ class RecomendacionOut(BaseModel):
     estado: str
     score_compatibilidad: float
     fecha_calculo: datetime
+    # Rasgos de la mascota, incluidos para que el frontend arme la
+    # descripción corta (descripcionCorta) sin tener que volver a pedir
+    # el listado completo de mascotas.
+    nivel_energia: Optional[str] = None
+    nivel_socializacion: Optional[str] = None
+    compatible_ninos: Optional[bool] = None
+    compatible_otras_mascotas: Optional[bool] = None
 
     class Config:
         from_attributes = True

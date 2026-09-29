@@ -13,7 +13,7 @@ if not DATABASE_URL:
         "Crea un archivo .env en esta carpeta con: DATABASE_URL=postgresql://..."
     )
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, pool_recycle=270)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

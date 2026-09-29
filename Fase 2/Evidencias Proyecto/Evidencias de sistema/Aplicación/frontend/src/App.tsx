@@ -22,15 +22,26 @@ import Recomendaciones from "./pages/Recomendaciones";
 import Registro from "./pages/Registro";
 import Solicitudes from "./pages/Solicitudes";
 
+const CLAVE_SPLASH_VISTO = "housefound_splash_visto";
+
 function App() {
-  const [mostrarSplash, setMostrarSplash] = useState(true);
+  // sessionStorage (no localStorage): la animación de bienvenida se ve una
+  // vez por sesión del navegador, no en cada recarga de la página — pero
+  // sigue apareciendo si cierras la pestaña/el navegador y vuelves después,
+  // que es cuando sí tiene sentido mostrarla de nuevo.
+  const [mostrarSplash, setMostrarSplash] = useState(
+    () => sessionStorage.getItem(CLAVE_SPLASH_VISTO) !== "1"
+  );
+
+  function ocultarSplash() {
+    sessionStorage.setItem(CLAVE_SPLASH_VISTO, "1");
+    setMostrarSplash(false);
+  }
 
   return (
     <ToastProvider>
       <ConfirmProvider>
-        {mostrarSplash && (
-          <SplashScreen onFinish={() => setMostrarSplash(false)} />
-        )}
+        {mostrarSplash && <SplashScreen onFinish={ocultarSplash} />}
 
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />

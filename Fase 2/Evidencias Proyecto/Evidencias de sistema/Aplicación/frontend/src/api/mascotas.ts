@@ -1,9 +1,10 @@
 import { apiClient } from "./client";
 import type { Mascota, MascotaInput } from "../types/mascotas";
 
-export async function listarMascotas(estado?: string): Promise<Mascota[]> {
+export async function listarMascotas(estado?: string, signal?: AbortSignal): Promise<Mascota[]> {
   const { data } = await apiClient.get<Mascota[]>("/mascotas", {
     params: estado ? { estado } : undefined,
+    signal,
   });
   return data;
 }

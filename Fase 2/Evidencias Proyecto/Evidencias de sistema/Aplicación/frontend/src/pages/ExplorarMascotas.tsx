@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import { listarMascotas } from "../api/mascotas";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { TarjetaMascota } from "../components/TarjetaMascota";
-import { SkeletonFila } from "../components/Skeleton";
+import { CargandoVista } from "../components/Spinner";
 import { descripcionCorta } from "../utils/descripcion";
 import { useGuardados } from "../utils/guardados";
 import type { Mascota } from "../types/mascotas";
@@ -32,10 +33,21 @@ export default function ExplorarMascotas() {
   const { ids: guardados, alternar } = useGuardados();
 
   useEffect(() => {
-    listarMascotas("disponible")
+    // Ver el mismo comentario en Recomendaciones.tsx: sin abortar, StrictMode
+    // (solo en desarrollo) dispara esta petición dos veces.
+    const controlador = new AbortController();
+
+    listarMascotas("disponible", controlador.signal)
       .then(setMascotas)
-      .catch(() => setError("No pudimos cargar las mascotas disponibles."))
-      .finally(() => setCargando(false));
+      .catch((err) => {
+        if (axios.isCancel(err)) return;
+        setError("No pudimos cargar las mascotas disponibles.");
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) setCargando(false);
+      });
+
+    return () => controlador.abort();
   }, []);
 
   const visibles = useMemo(() => {
@@ -106,13 +118,7 @@ export default function ExplorarMascotas() {
         })}
       </div>
 
-      {cargando && (
-        <div className="space-y-3">
-          <SkeletonFila />
-          <SkeletonFila />
-          <SkeletonFila />
-        </div>
-      )}
+      {cargando && <CargandoVista mensaje="Cargando mascotas disponibles…" />}
 
       {error && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium mb-4">

@@ -1,42 +1,88 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { iniciarSesion as iniciarSesionApi } from "../api/auth";
+import { Spinner } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
+import { REGEX_EMAIL } from "../utils/validacion";
 import type { Rol } from "../types/auth";
 import axios from "axios";
 
+type Errores = Partial<Record<"email" | "password", string>>;
+
+// Un solo mensaje para correo inexistente, contraseña incorrecta o rol
+// equivocado — nunca decimos cuál de los tres fue. Diferenciarlos le
+// confirma a quien esté probando credenciales que el correo existe (y, si
+// distinguiéramos el rol, hasta qué tipo de cuenta es), incluso cuando el
+// backend ya responde igual para los dos primeros casos.
+const MENSAJE_CREDENCIALES_INVALIDAS = "Correo o contraseña inválidos.";
+
 export default function Login() {
   const navigate = useNavigate();
-  const { iniciarSesion } = useAuth();
+  // cargando (de useAuth) = todavía revisando si hay una sesión guardada en
+  // localStorage; se renombra para no chocar con el "cargando" propio del
+  // envío del formulario, más abajo.
+  const { usuario, cargando: cargandoSesion, iniciarSesion } = useAuth();
 
   const [rol, setRol] = useState<Rol>("refugio");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verPassword, setVerPassword] = useState(false);
+  const [errores, setErrores] = useState<Errores>({});
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+
+  // Ya hay una sesión activa (token guardado y válido) — no tiene sentido
+  // mostrar el formulario de login de nuevo. Se manda directo al panel que
+  // corresponde según el rol REAL de la cuenta (no un selector que ni se
+  // llegó a tocar), igual que hace RutaProtegida en el resto de la app.
+  if (!cargandoSesion && usuario) {
+    return <Navigate to={usuario.rol === "adoptante" ? "/explorar" : "/inicio"} replace />;
+  }
+
+  function validar(): boolean {
+    const nuevosErrores: Errores = {};
+    if (!REGEX_EMAIL.test(email.trim())) {
+      nuevosErrores.email = "Ingresa un correo válido.";
+    }
+    if (!password) {
+      nuevosErrores.password = "Ingresa tu contraseña.";
+    }
+    setErrores(nuevosErrores);
+    return Object.values(nuevosErrores).every((v) => !v);
+  }
 
   async function manejarEnvio(evento: FormEvent) {
     evento.preventDefault();
     setError(null);
+
+    if (!validar()) return;
+
     setCargando(true);
     try {
       const resultado = await iniciarSesionApi({ email, password });
 
-      // El rol real lo define la cuenta, no el selector. Si no coinciden lo
-      // decimos en vez de mandar al usuario a una sección que no le toca.
+      // El rol real lo define la cuenta, no el selector. Si no coinciden,
+      // usamos el mismo mensaje genérico que credenciales incorrectas —
+      // ver MENSAJE_CREDENCIALES_INVALIDAS arriba.
       if (resultado.usuario.rol !== rol) {
-        setError(
-          `Esta cuenta está registrada como ${resultado.usuario.rol}. Cambia la opción de arriba para entrar.`
-        );
+        setError(MENSAJE_CREDENCIALES_INVALIDAS);
         return;
       }
 
       iniciarSesion(resultado.access_token, resultado.usuario);
       navigate(resultado.usuario.rol === "adoptante" ? "/explorar" : "/inicio");
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
-        setError("Email o contraseña incorrectos.");
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        // Límite de intentos: acá sí mostramos el detalle del servidor
+        // (cuántos minutos faltan) — a esta altura ya no hay nada que
+        // ocultar, cinco intentos fallidos seguidos es señal suficiente.
+        setError(
+          typeof err.response.data?.detail === "string"
+            ? err.response.data.detail
+            : "Demasiados intentos. Intenta de nuevo más tarde."
+        );
+      } else if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setError(MENSAJE_CREDENCIALES_INVALIDAS);
       } else {
         setError("No pudimos iniciar sesión. Intenta de nuevo.");
       }
@@ -88,6 +134,7 @@ export default function Login() {
               placeholder="tu@correo.com"
               className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-superficie)] px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40"
             />
+            {errores.email && <p className="text-sm text-[var(--color-rojo)] mt-1">{errores.email}</p>}
           </div>
 
           <div>
@@ -111,6 +158,7 @@ export default function Login() {
                 {verPassword ? "Ocultar" : "Ver"}
               </button>
             </div>
+            {errores.password && <p className="text-sm text-[var(--color-rojo)] mt-1">{errores.password}</p>}
           </div>
 
           {error && <p className="text-sm text-[var(--color-rojo)]">{error}</p>}
@@ -118,8 +166,9 @@ export default function Login() {
           <button
             type="submit"
             disabled={cargando}
-            className="w-full bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] transition-colors disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
           >
+            {cargando && <Spinner />}
             {cargando ? "Ingresando…" : `Entrar como ${rol}`}
           </button>
         </form>

@@ -9,3 +9,21 @@ export function Spinner({ className = "w-4 h-4" }: { className?: string }) {
     </svg>
   );
 }
+
+/** Vista de carga a pantalla completa (dentro del contenido): spinner grande
+    centrado + mensaje. Se usa mientras se espera la respuesta de la API en
+    las pantallas que muestran resultados de una búsqueda/consulta. */
+export function CargandoVista({
+  mensaje = "Cargando…",
+  className = "text-slate-400 py-16",
+}: {
+  mensaje?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-col items-center justify-center gap-3 ${className}`}>
+      <Spinner className="w-9 h-9" />
+      <p className="text-sm font-semibold">{mensaje}</p>
+    </div>
+  );
+}

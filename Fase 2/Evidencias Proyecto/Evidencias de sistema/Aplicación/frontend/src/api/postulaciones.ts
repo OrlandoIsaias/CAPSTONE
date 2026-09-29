@@ -6,8 +6,8 @@ export async function crearPostulacion(mascotaId: number): Promise<Postulacion> 
   return data;
 }
 
-export async function misPostulaciones(): Promise<Postulacion[]> {
-  const { data } = await apiClient.get<Postulacion[]>("/postulaciones/mias");
+export async function misPostulaciones(signal?: AbortSignal): Promise<Postulacion[]> {
+  const { data } = await apiClient.get<Postulacion[]>("/postulaciones/mias", { signal });
   return data;
 }
 
