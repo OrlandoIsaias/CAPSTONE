@@ -147,7 +147,7 @@ export default function PublicarMascota() {
         // de la mascota — ya quedó creada, la foto se puede agregar después.
         await agregarFoto(mascota.id, fotoArchivo).catch(() => {});
       }
-      mostrarToast(`¡${mascota.nombre} fue publicado! 🐾`);
+      mostrarToast(`¡${mascota.nombre} fue publicado con éxito!`);
       navigate("/mis-mascotas");
     } catch {
       setError("No pudimos publicar la mascota. Revisa los datos e intenta de nuevo.");

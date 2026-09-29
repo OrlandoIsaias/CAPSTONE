@@ -28,10 +28,6 @@ export function TarjetaMascota({
 }) {
   const mostrarGuardado = onAlternarGuardado !== undefined;
 
-  const esPerro = (especie ?? "").toLowerCase().includes("perr");
-  const esGato = (especie ?? "").toLowerCase().includes("gat");
-  const iconoEspecie = esPerro ? "🐶" : esGato ? "🐱" : "🐾";
-
   return (
     <Link
       to={`/mascota/${mascotaId}`}
@@ -57,8 +53,7 @@ export function TarjetaMascota({
 
       {/* Contenido e información */}
       <div className="flex-1 min-w-0 pr-10">
-        <div className="flex items-center gap-1.5 mb-0.5">
-          <span className="text-xs">{iconoEspecie}</span>
+        <div className="mb-0.5">
           <h3 className="font-[family-name:var(--font-display)] text-lg font-extrabold text-slate-900 truncate group-hover:text-orange-600 transition-colors">
             {nombre}
           </h3>
@@ -76,7 +71,7 @@ export function TarjetaMascota({
           </p>
         )}
 
-        {!mostrarGuardado && score !== undefined && (
+        {score !== undefined && (
           <div className="mt-2">
             <InsigniaScore score={score} />
           </div>

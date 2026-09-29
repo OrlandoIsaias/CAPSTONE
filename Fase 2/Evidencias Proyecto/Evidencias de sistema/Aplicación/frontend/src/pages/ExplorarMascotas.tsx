@@ -9,10 +9,10 @@ import type { Mascota } from "../types/mascotas";
 
 type Filtro = "todos" | "perros" | "gatos";
 
-const FILTROS: { id: Filtro; etiqueta: string; icono: string; color: string }[] = [
-  { id: "todos", etiqueta: "Todos", icono: "🐾", color: "from-slate-800 to-slate-900" },
-  { id: "perros", etiqueta: "Perros", icono: "🐕", color: "from-orange-500 to-amber-500" },
-  { id: "gatos", etiqueta: "Gatos", icono: "🐈", color: "from-emerald-600 to-teal-600" },
+const FILTROS: { id: Filtro; etiqueta: string; color: string }[] = [
+  { id: "todos", etiqueta: "Todos", color: "from-slate-800 to-slate-900" },
+  { id: "perros", etiqueta: "Perros", color: "from-orange-500 to-amber-500" },
+  { id: "gatos", etiqueta: "Gatos", color: "from-emerald-600 to-teal-600" },
 ];
 
 function esPerro(especie?: string) {
@@ -100,7 +100,6 @@ export default function ExplorarMascotas() {
                   : "bg-white border border-slate-200/80 text-slate-700 hover:bg-slate-50"
               }`}
             >
-              <span>{f.icono}</span>
               <span>{f.etiqueta}</span>
             </button>
           );
@@ -134,7 +133,6 @@ export default function ExplorarMascotas() {
 
       {!cargando && !error && visibles.length === 0 && (
         <div className="rounded-3xl bg-white border border-slate-200 p-8 text-center shadow-xs">
-          <span className="text-4xl block mb-2">🔍</span>
           <p className="font-extrabold text-slate-800 text-base">
             {mascotas.length === 0 ? "No hay mascotas publicadas todavía" : "No encontramos coincidencias"}
           </p>

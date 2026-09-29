@@ -111,8 +111,7 @@ export default function InicioRefugio() {
       <header className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold leading-tight">
-            {nombreRefugio ?? usuario?.nombre ?? "Tu refugio"}{" "}
-            <span aria-hidden="true">🐾</span>
+            {nombreRefugio ?? usuario?.nombre ?? "Tu refugio"}
           </h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -212,8 +211,11 @@ export default function InicioRefugio() {
           className="w-full text-left mb-6 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-rose-500/10 border border-amber-300/70 p-4 flex items-center justify-between gap-3 shadow-xs hover:border-amber-400 active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0 text-base">
-              ✨
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0 font-bold text-sm">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
             </span>
             <div className="min-w-0">
               <p className="font-bold text-amber-950 text-sm truncate">Completa el perfil de tu refugio</p>
