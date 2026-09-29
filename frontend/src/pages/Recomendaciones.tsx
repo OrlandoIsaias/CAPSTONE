@@ -13,7 +13,7 @@ import type { Mascota } from "../types/mascotas";
 import axios from "axios";
 
 export default function Recomendaciones() {
-  const { usuario, cerrarSesion } = useAuth();
+  const { usuario } = useAuth();
   const { ids: guardados, alternar } = useGuardados();
   const navigate = useNavigate();
   const [recomendaciones, setRecomendaciones] = useState<Recomendacion[]>([]);
@@ -49,22 +49,14 @@ export default function Recomendaciones() {
 
   return (
     <PantallaAdoptante>
-      <div className="flex justify-between items-start mb-5">
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-slate-900 leading-tight">
-            Tus recomendaciones
-          </h1>
-          <p className="text-xs font-medium text-slate-500 mt-1">
-            Priorizadas especialmente para <span className="font-bold text-slate-700">{usuario?.nombre}</span>
-          </p>
-        </div>
-        <button
-          onClick={cerrarSesion}
-          className="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shadow-2xs"
-        >
-          Salir
-        </button>
-      </div>
+      <header className="mb-5">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-slate-900 leading-tight">
+          Tus recomendaciones
+        </h1>
+        <p className="text-xs font-medium text-slate-500 mt-1">
+          Priorizadas especialmente para <span className="font-bold text-slate-700">{usuario?.nombre}</span>
+        </p>
+      </header>
 
       {cargando && (
         <div className="space-y-3">
@@ -82,7 +74,6 @@ export default function Recomendaciones() {
 
       {!cargando && !error && recomendaciones.length === 0 && (
         <div className="rounded-3xl bg-white border border-slate-200 p-8 text-center shadow-xs">
-          <span className="text-4xl block mb-2">🐾</span>
           <p className="font-extrabold text-slate-800 text-base">
             Todavía no hay mascotas disponibles
           </p>

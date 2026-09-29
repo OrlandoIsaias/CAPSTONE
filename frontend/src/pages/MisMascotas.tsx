@@ -9,10 +9,10 @@ import type { Mascota } from "../types/mascotas";
 
 type Filtro = "todos" | "perros" | "gatos";
 
-const FILTROS: { id: Filtro; etiqueta: string; icono: string; color: string }[] = [
-  { id: "todos", etiqueta: "Todos", icono: "🐾", color: "from-slate-800 to-slate-900" },
-  { id: "perros", etiqueta: "Perros", icono: "🐕", color: "from-orange-500 to-amber-500" },
-  { id: "gatos", etiqueta: "Gatos", icono: "🐈", color: "from-emerald-600 to-teal-600" },
+const FILTROS: { id: Filtro; etiqueta: string; color: string }[] = [
+  { id: "todos", etiqueta: "Todos", color: "from-slate-800 to-slate-900" },
+  { id: "perros", etiqueta: "Perros", color: "from-orange-500 to-amber-500" },
+  { id: "gatos", etiqueta: "Gatos", color: "from-emerald-600 to-teal-600" },
 ];
 
 function esPerro(especie?: string) {
@@ -117,7 +117,6 @@ export default function MisMascotas() {
                   : "bg-white border border-slate-200/80 text-slate-700 hover:bg-slate-50"
               }`}
             >
-              <span>{f.icono}</span>
               <span>{f.etiqueta}</span>
             </button>
           );
@@ -140,7 +139,6 @@ export default function MisMascotas() {
 
       {!cargando && !error && visibles.length === 0 && (
         <div className="rounded-3xl bg-white border border-slate-200 p-8 text-center shadow-xs">
-          <span className="text-4xl block mb-2">🐾</span>
           <p className="font-extrabold text-slate-800 text-base">
             {mascotas.length === 0 ? "Todavía no publicas ninguna mascota" : "Sin resultados"}
           </p>
@@ -156,8 +154,6 @@ export default function MisMascotas() {
         {visibles.map((m) => {
           const solicitudes = conteoSolicitudes[m.id] ?? 0;
           const foto = m.fotos.find((f) => f.es_principal) ?? m.fotos[0];
-          const esPerroM = esPerro(m.especie);
-          const iconoE = esPerroM ? "🐶" : "🐱";
 
           return (
             <button
@@ -185,8 +181,7 @@ export default function MisMascotas() {
 
               <div className="flex-1 min-w-0 pr-2">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-xs">{iconoE}</span>
+                  <div className="min-w-0">
                     <p className="font-[family-name:var(--font-display)] text-lg font-extrabold text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
                       {m.nombre}
                     </p>
@@ -202,7 +197,7 @@ export default function MisMascotas() {
 
                 {solicitudes > 0 && (
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-orange-700 bg-orange-100 border border-orange-200/80 px-2.5 py-0.5 rounded-full mt-1.5 shadow-2xs">
-                    <span>📩</span> {solicitudes} {solicitudes === 1 ? "solicitud pendiente" : "solicitudes pendientes"}
+                    {solicitudes} {solicitudes === 1 ? "solicitud pendiente" : "solicitudes pendientes"}
                   </span>
                 )}
               </div>

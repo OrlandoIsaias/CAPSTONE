@@ -6,6 +6,7 @@ import SplashScreen from "./components/SplashScreen";
 import { ToastProvider } from "./components/Toast";
 import Cuestionarios from "./pages/Cuestionarios";
 import DetalleSolicitud from "./pages/DetalleSolicitud";
+import EditarPerfilAdoptante from "./pages/EditarPerfilAdoptante";
 import ExplorarMascotas from "./pages/ExplorarMascotas";
 import FichaMascota from "./pages/FichaMascota";
 import Guardados from "./pages/Guardados";
@@ -50,6 +51,14 @@ function App() {
             element={
               <RutaProtegida rolRequerido="adoptante">
                 <PerfilAdoptante />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/perfil-adoptante/editar"
+            element={
+              <RutaProtegida rolRequerido="adoptante">
+                <EditarPerfilAdoptante />
               </RutaProtegida>
             }
           />

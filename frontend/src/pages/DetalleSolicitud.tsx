@@ -104,7 +104,7 @@ export default function DetalleSolicitud() {
       await confirmarAdopcion(solicitud.id);
       const actualizada = await detallePostulacion(solicitud.id);
       setSolicitud(actualizada);
-      mostrarToast(`¡${solicitud.mascota_nombre} está en su nuevo hogar! 🎉`);
+      mostrarToast(`¡${solicitud.mascota_nombre} está en su nuevo hogar!`);
     } catch {
       mostrarToast("No pudimos confirmar la adopción. Intenta de nuevo.", "error");
     } finally {
@@ -251,7 +251,7 @@ export default function DetalleSolicitud() {
                 <a
                   href={linkWhatsApp(
                     solicitud.adoptante_telefono,
-                    `Hola ${nombre}, te escribo por la adopción de ${solicitud.mascota_nombre} 🐾 ¿Coordinamos la entrega?`
+                    `Hola ${nombre}, te escribo por la adopción de ${solicitud.mascota_nombre}. ¿Coordinamos la entrega?`
                   )}
                   target="_blank"
                   rel="noreferrer"

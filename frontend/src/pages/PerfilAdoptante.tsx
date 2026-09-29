@@ -1,282 +1,207 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { guardarPerfilAdoptante, obtenerPerfilAdoptante } from "../api/auth";
+import { obtenerPerfilAdoptante } from "../api/auth";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
-import { Spinner } from "../components/Spinner";
+import { Skeleton } from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
-import { normalizarTelefonoCL, validarTelefonoCL } from "../utils/telefono";
-import type { EspacioDisponible, ExperienciaPrevia, NivelActividad } from "../types/auth";
+import type { PerfilAdoptante as IPerfilAdoptante } from "../types/auth";
 
-type Errores = Partial<Record<"telefono", string>>;
+const ETIQUETAS_ESPACIO: Record<string, string> = {
+  departamento: "Departamento",
+  casa_patio: "Casa con patio",
+  casa_grande: "Casa grande / Parcela",
+};
+
+const ETIQUETAS_EXPERIENCIA: Record<string, string> = {
+  ninguna: "Primera vez (Ninguna)",
+  basica: "Básica",
+  alta: "Alta / Experto",
+};
+
+const ETIQUETAS_ACTIVIDAD: Record<string, string> = {
+  bajo: "Tranquilo / Bajo",
+  medio: "Moderado / Medio",
+  alto: "Deportista / Alto",
+};
 
 export default function PerfilAdoptante() {
+  const { usuario, cerrarSesion } = useAuth();
   const navigate = useNavigate();
-  const { cerrarSesion } = useAuth();
 
-  const [espacioDisponible, setEspacioDisponible] = useState<EspacioDisponible>("departamento");
-  const [tiempoDisponible, setTiempoDisponible] = useState(4);
-  const [experienciaPrevia, setExperienciaPrevia] = useState<ExperienciaPrevia>("ninguna");
-  const [tieneNinos, setTieneNinos] = useState(false);
-  const [otrasMascotas, setOtrasMascotas] = useState(false);
-  const [nivelActividad, setNivelActividad] = useState<NivelActividad>("medio");
-  const [telefono, setTelefono] = useState("");
-
-  const [yaExiste, setYaExiste] = useState<boolean | null>(null);
-  const [errores, setErrores] = useState<Errores>({});
-  const [error, setError] = useState<string | null>(null);
-  const [guardado, setGuardado] = useState(false);
-  const [cargando, setCargando] = useState(false);
+  const [perfil, setPerfil] = useState<IPerfilAdoptante | null>(null);
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     obtenerPerfilAdoptante()
-      .then((p) => {
-        setEspacioDisponible(p.espacio_disponible);
-        setTiempoDisponible(p.tiempo_disponible_horas_dia);
-        setExperienciaPrevia(p.experiencia_previa);
-        setTieneNinos(p.tiene_ninos);
-        setOtrasMascotas(p.otras_mascotas);
-        setNivelActividad(p.nivel_actividad_fisica);
-        setTelefono(p.telefono ?? "");
-        setYaExiste(true);
-      })
-      .catch(() => setYaExiste(false));
+      .then((p) => setPerfil(p))
+      .catch(() => setPerfil(null))
+      .finally(() => setCargando(false));
   }, []);
-
-  function validar(): boolean {
-    const nuevosErrores: Errores = {};
-    if (!validarTelefonoCL(telefono)) {
-      nuevosErrores.telefono = "Ingresa un celular chileno válido, ej: +56 9 1234 5678.";
-    }
-    setErrores(nuevosErrores);
-    return Object.values(nuevosErrores).every((v) => !v);
-  }
-
-  async function manejarEnvio(evento: FormEvent) {
-    evento.preventDefault();
-    setError(null);
-    setGuardado(false);
-
-    if (!validar()) return;
-
-    setCargando(true);
-    try {
-      await guardarPerfilAdoptante({
-        espacio_disponible: espacioDisponible,
-        tiempo_disponible_horas_dia: tiempoDisponible,
-        experiencia_previa: experienciaPrevia,
-        tiene_ninos: tieneNinos,
-        otras_mascotas: otrasMascotas,
-        nivel_actividad_fisica: nivelActividad,
-        telefono: normalizarTelefonoCL(telefono),
-      });
-      if (yaExiste) {
-        setGuardado(true);
-        setTimeout(() => setGuardado(false), 2500);
-      } else {
-        navigate("/explorar");
-      }
-    } catch {
-      setError("No pudimos guardar tu perfil. Revisa los datos e intenta de nuevo.");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  const claseCampo =
-    "w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all";
-  const claseEtiqueta = "block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5";
-  const claseErrorCampo = "text-xs font-semibold text-rose-600 mt-1";
 
   return (
     <PantallaAdoptante>
       {/* Encabezado */}
       <header className="mb-5">
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-slate-900 leading-tight">
-          {yaExiste ? "Tu perfil de adoptante" : "Cuéntanos cómo vives"}
+          Mi Perfil
         </h1>
         <p className="text-xs font-medium text-slate-500 mt-1">
-          Usamos esta información para conectar contigo mascotas compatibles con tu ritmo diario.
+          Gestiona tu información y preferencias de adopción.
         </p>
       </header>
 
-      {/* Banner de acceso a solicitudes */}
-      {yaExiste && (
-        <Link
-          to="/mis-solicitudes"
-          className="flex items-center justify-between mb-5 rounded-3xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/5 border border-blue-200 p-4 shadow-xs hover:border-blue-300 active:scale-[0.99] transition-all group"
-        >
+      {/* Tarjeta de Identidad */}
+      <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-4 space-y-4">
+        {/* Cabecera del usuario con Avatar */}
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-[family-name:var(--font-display)] text-2xl font-black flex items-center justify-center shadow-md border-2 border-white ring-2 ring-indigo-200">
+              {usuario?.nombre?.charAt(0).toUpperCase() || "U"}
+            </div>
+            <span className="absolute -bottom-1 -right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-white" title="Cuenta activa" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-extrabold text-slate-900 text-lg leading-snug truncate">
+              {usuario?.nombre}
+            </h2>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {usuario?.email}
+            </p>
+            {perfil?.telefono ? (
+              <p className="text-xs font-bold text-indigo-600 mt-0.5">
+                Tel: {perfil.telefono}
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-400 italic mt-0.5">
+                Sin teléfono de contacto
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Cuadro destacado para Editar Perfil o Cuestionario */}
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-[1.5px] shadow-sm mb-4">
+        <div className="bg-white rounded-[22px] p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-lg shadow-2xs">
-              📋
+            <span className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-base shrink-0 shadow-2xs">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                <path d="m15 5 4 4" />
+              </svg>
             </span>
             <div>
-              <p className="font-extrabold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">
-                Historial de Solicitudes
-              </p>
-              <p className="text-xs font-medium text-slate-500">
-                Revisa el estado de tus postulaciones y chats.
+              <h3 className="font-extrabold text-slate-900 text-sm">
+                Editar estilo de vida y cuestionario
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Actualiza vivienda, horarios y convivencia para recalcular tu afinidad.
               </p>
             </div>
           </div>
-          <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 group-hover:text-slate-700 shadow-2xs">
-            →
-          </span>
-        </Link>
-      )}
+          <button
+            onClick={() => navigate("/perfil-adoptante/editar")}
+            className="w-full sm:w-auto shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-sm hover:shadow-md active:scale-95 transition-all"
+          >
+            Editar datos →
+          </button>
+        </div>
+      </div>
 
-      <form onSubmit={manejarEnvio} className="space-y-4">
-        {/* Sección 1: Vivienda y Horarios */}
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-4">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <span>🏡</span> Hogar y Disponibilidad
+      {/* Resumen de Datos Importantes (Estilo de Vida) */}
+      <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-4 space-y-3.5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+            Resumen de Estilo de Vida
           </h2>
-
-          <div>
-            <label className={claseEtiqueta}>Espacio disponible en casa</label>
-            <select
-              value={espacioDisponible}
-              onChange={(e) => setEspacioDisponible(e.target.value as EspacioDisponible)}
-              className={claseCampo}
-            >
-              <option value="departamento">Departamento</option>
-              <option value="casa_patio">Casa con patio</option>
-              <option value="casa_grande">Casa grande / Parcela</option>
-            </select>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className={claseEtiqueta}>Tiempo diario disponible</label>
-              <span className="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200/70">
-                {tiempoDisponible} {tiempoDisponible === 1 ? "hora" : "horas"} al día
-              </span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={12}
-              value={tiempoDisponible}
-              onChange={(e) => setTiempoDisponible(Number(e.target.value))}
-              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-            />
-            <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-1">
-              <span>0h (Poco tiempo)</span>
-              <span>6h</span>
-              <span>12h (Dedicación alta)</span>
-            </div>
-          </div>
+          <Link
+            to="/perfil-adoptante/editar"
+            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800"
+          >
+            Modificar
+          </Link>
         </div>
 
-        {/* Sección 2: Rutina y Convivencia */}
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-4">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <span>⚡</span> Experiencia y Convivencia
-          </h2>
+        {cargando && (
+          <div className="grid grid-cols-2 gap-2.5">
+            <Skeleton className="h-16 rounded-2xl" />
+            <Skeleton className="h-16 rounded-2xl" />
+            <Skeleton className="h-16 rounded-2xl" />
+            <Skeleton className="h-16 rounded-2xl" />
+          </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={claseEtiqueta}>Experiencia previa</label>
-              <select
-                value={experienciaPrevia}
-                onChange={(e) => setExperienciaPrevia(e.target.value as ExperienciaPrevia)}
-                className={claseCampo}
-              >
-                <option value="ninguna">Ninguna (Primera vez)</option>
-                <option value="basica">Básica</option>
-                <option value="alta">Alta / Experto</option>
-              </select>
+        {!cargando && perfil && (
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vivienda</p>
+              <p className="text-xs font-black text-slate-800 mt-0.5">
+                {ETIQUETAS_ESPACIO[perfil.espacio_disponible] ?? perfil.espacio_disponible}
+              </p>
             </div>
-            <div>
-              <label className={claseEtiqueta}>Nivel de actividad</label>
-              <select
-                value={nivelActividad}
-                onChange={(e) => setNivelActividad(e.target.value as NivelActividad)}
-                className={claseCampo}
-              >
-                <option value="bajo">Bajo (Sedentario/Tranquilo)</option>
-                <option value="medio">Medio (Paseos diarios)</option>
-                <option value="alto">Alto (Deportista/Muy activo)</option>
-              </select>
+
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tiempo Diario</p>
+              <p className="text-xs font-black text-slate-800 mt-0.5">
+                {perfil.tiempo_disponible_horas_dia} {perfil.tiempo_disponible_horas_dia === 1 ? "hora" : "horas"}/día
+              </p>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Experiencia</p>
+              <p className="text-xs font-black text-slate-800 mt-0.5">
+                {ETIQUETAS_EXPERIENCIA[perfil.experiencia_previa] ?? perfil.experiencia_previa}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Actividad Física</p>
+              <p className="text-xs font-black text-slate-800 mt-0.5">
+                {ETIQUETAS_ACTIVIDAD[perfil.nivel_actividad_fisica] ?? perfil.nivel_actividad_fisica}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Niños en Casa</p>
+              <p className="text-xs font-black text-slate-800 mt-0.5">
+                {perfil.tiene_ninos ? "Sí tiene niños" : "Sin niños"}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Otras Mascotas</p>
+              <p className="text-xs font-black text-slate-800 mt-0.5">
+                {perfil.otras_mascotas ? "Sí tiene mascotas" : "Sin mascotas"}
+              </p>
             </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
-              <input
-                type="checkbox"
-                checked={tieneNinos}
-                onChange={(e) => setTieneNinos(e.target.checked)}
-                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
-              />
-              <span className="text-xs font-bold text-slate-700">Tengo niños</span>
-            </label>
-
-            <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
-              <input
-                type="checkbox"
-                checked={otrasMascotas}
-                onChange={(e) => setOtrasMascotas(e.target.checked)}
-                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
-              />
-              <span className="text-xs font-bold text-slate-700">Otras mascotas</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Sección 3: Teléfono */}
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-3">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <span>📱</span> Contacto Directo
-          </h2>
-          <div>
-            <label className={claseEtiqueta}>Número de Celular / WhatsApp</label>
-            <input
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              placeholder="+56 9 1234 5678"
-              className={claseCampo}
-            />
-            <p className="text-[11px] font-medium text-slate-400 mt-1.5">
-              Solo se comparte con el refugio tras ser aprobada una postulación para coordinar la entrega.
+        {!cargando && !perfil && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center">
+            <p className="text-xs font-extrabold text-amber-900">
+              Aún no has completado tu cuestionario de afinidad.
             </p>
-            {errores.telefono && <p className={claseErrorCampo}>{errores.telefono}</p>}
-          </div>
-        </div>
-
-        {error && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
-            {error}
-          </div>
-        )}
-
-        {guardado && (
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-            <span>✓</span> ¡Tu perfil y preferencias fueron guardados exitosamente!
+            <p className="text-[11px] text-amber-700 mt-1 mb-3">
+              Completa tus datos para encontrar las mascotas más compatibles contigo.
+            </p>
+            <button
+              onClick={() => navigate("/perfil-adoptante/editar")}
+              className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs"
+            >
+              Completar Cuestionario Ahora
+            </button>
           </div>
         )}
+      </div>
 
-        <button
-          type="submit"
-          disabled={cargando}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-4 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
-        >
-          {cargando && <Spinner />}
-          {cargando
-            ? "Guardando cambios…"
-            : yaExiste
-            ? "Actualizar Perfil de Convivencia"
-            : "Completar Perfil y Ver Recomendaciones 🎯"}
-        </button>
-      </form>
-
-      {yaExiste && (
-        <button
-          onClick={cerrarSesion}
-          className="w-full mt-4 py-3 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 active:scale-95 transition-all"
-        >
-          Cerrar sesión de la cuenta
-        </button>
-      )}
+      {/* Botón de Cerrar Sesión */}
+      <button
+        onClick={cerrarSesion}
+        className="w-full py-3 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 active:scale-95 transition-all"
+      >
+        Cerrar sesión de la cuenta
+      </button>
     </PantallaAdoptante>
   );
 }

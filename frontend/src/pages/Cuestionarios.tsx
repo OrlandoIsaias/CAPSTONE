@@ -78,9 +78,6 @@ export default function Cuestionarios() {
 
       {!cargando && !error && fichas.length === 0 && (
         <div className="rounded-3xl bg-white border border-slate-200/90 p-8 text-center shadow-xs">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-50 text-purple-500 flex items-center justify-center text-3xl mb-3 shadow-2xs border border-purple-100">
-            📝
-          </div>
           <h2 className="font-extrabold text-slate-800 text-base mb-1">
             Todavía no hay cuestionarios recibidos
           </h2>
@@ -108,7 +105,7 @@ export default function Cuestionarios() {
                       {nombre}
                     </p>
                     <p className="text-xs font-semibold text-purple-600 truncate">
-                      🐾 Postuló por {f.mascota_nombre}
+                      Postuló por {f.mascota_nombre}
                     </p>
                   </div>
                 </div>
@@ -120,27 +117,27 @@ export default function Cuestionarios() {
               <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
                 {f.espacio_disponible && (
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                    🏡 {ESPACIO[f.espacio_disponible]}
+                    {ESPACIO[f.espacio_disponible]}
                   </span>
                 )}
                 {f.tiempo_disponible_horas_dia != null && (
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/60">
-                    ⏱️ {f.tiempo_disponible_horas_dia}h/día
+                    {f.tiempo_disponible_horas_dia}h/día
                   </span>
                 )}
                 {f.experiencia_previa && (
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 border border-purple-200/60">
-                    🎓 {EXPERIENCIA[f.experiencia_previa]}
+                    {EXPERIENCIA[f.experiencia_previa]}
                   </span>
                 )}
                 {f.tiene_ninos && (
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60">
-                    👶 Con niños
+                    Con niños
                   </span>
                 )}
                 {f.otras_mascotas && (
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60">
-                    🐕 Otras mascotas
+                    Otras mascotas
                   </span>
                 )}
               </div>

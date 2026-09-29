@@ -53,20 +53,17 @@ export default function MisSolicitudes() {
 
       {!cargando && !error && solicitudes.length === 0 && (
         <div className="rounded-3xl bg-white border border-slate-200/90 p-8 text-center shadow-xs">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-blue-50 text-blue-500 flex items-center justify-center text-3xl mb-3 shadow-2xs border border-blue-100">
-            📋
-          </div>
           <h2 className="font-extrabold text-slate-800 text-base mb-1">
             No tienes postulaciones activas
           </h2>
           <p className="text-xs text-slate-500 max-w-xs mx-auto mb-5 leading-relaxed">
-            Cuando encuentres una mascota que te encante, presiona "Postular a esta mascota" para iniciar el proceso de adopción.
+            Cuando encuentres una mascota que te interese, presiona "Postular a esta mascota" para iniciar el proceso de adopción.
           </p>
           <Link
             to="/explorar"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs shadow-sm hover:shadow-md active:scale-95 transition-all"
           >
-            Explorar Compañeros 🐾
+            Explorar Compañeros
           </Link>
         </div>
       )}
@@ -96,7 +93,6 @@ export default function MisSolicitudes() {
 
               {s.estado === "pendiente" && (
                 <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center gap-2 text-xs font-medium text-amber-700 bg-amber-50/60 px-3 py-2 rounded-2xl">
-                  <span>⏳</span>
                   <span>El refugio está evaluando tu perfil de estilo de vida.</span>
                 </div>
               )}
@@ -105,15 +101,15 @@ export default function MisSolicitudes() {
                 <div className="mt-3 pt-3 border-t border-emerald-200/70 space-y-2.5">
                   <p className="text-xs font-bold text-emerald-900">
                     {s.mascota_estado === "adoptada"
-                      ? `🎉 ¡Felicitaciones! La adopción de ${s.mascota_nombre} fue concretada con éxito.`
-                      : `🎉 ¡Tu postulación fue aprobada! Coordina los detalles con ${s.refugio_nombre ?? "el refugio"}.`}
+                      ? `La adopción de ${s.mascota_nombre} fue concretada con éxito.`
+                      : `¡Tu postulación fue aprobada! Coordina los detalles con ${s.refugio_nombre ?? "el refugio"}.`}
                   </p>
                   {s.mascota_estado !== "adoptada" &&
                     (s.refugio_telefono ? (
                       <a
                         href={linkWhatsApp(
                           s.refugio_telefono,
-                          `Hola, te escribo por la adopción de ${s.mascota_nombre} 🐾 ¿Coordinamos la entrega?`
+                          `Hola, te escribo por la adopción de ${s.mascota_nombre}. ¿Coordinamos la entrega?`
                         )}
                         target="_blank"
                         rel="noreferrer"
