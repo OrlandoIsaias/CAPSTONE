@@ -1,26 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { obtenerMascota } from "../api/mascotas";
 import { obtenerScoreIndividual } from "../api/matching";
 import { crearPostulacion } from "../api/postulaciones";
 import { BotonVolver } from "../components/BotonVolver";
-import { InsigniaScore } from "../components/InsigniaScore";
 import { SkeletonFila } from "../components/Skeleton";
 import type { Mascota } from "../types/mascotas";
 
-const ETIQUETAS: Record<string, string> = {
-  bajo: "Bajo",
-  medio: "Medio",
-  alto: "Alto",
-  departamento: "Departamento",
-  casa_patio: "Casa con patio",
-  casa_grande: "Casa grande",
-};
-
-function etiqueta(valor?: string) {
-  if (!valor) return "No especificado";
-  return ETIQUETAS[valor] ?? valor;
+function etiqueta(v?: string) {
+  if (!v) return "-";
+  return v.charAt(0).toUpperCase() + v.slice(1).replace("_", " ");
 }
 
 export default function FichaMascota() {
@@ -28,11 +18,15 @@ export default function FichaMascota() {
 
   const [mascota, setMascota] = useState<Mascota | null>(null);
   const [score, setScore] = useState<number | null>(null);
-  const [cargando, setCargando] = useState(true);
+  const [fotoActiva, setFotoActiva] = useState(0);
   const [postulando, setPostulando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: "exito" | "error"; texto: string } | null>(null);
-  const [fotoActiva, setFotoActiva] = useState(0);
-  const [errorCarga, setErrorCarga] = useState(false);
+  const [cargando, setCargando] = useState(true);
+
+  const carruselRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
 
   useEffect(() => {
     if (!id) return;
@@ -51,9 +45,50 @@ export default function FichaMascota() {
     obtenerScoreIndividual(mascotaId)
       .then((rec) => setScore(rec.score_compatibilidad))
       .catch(() => {
-        // No hay perfil o el usuario es refugio — se omite el score silenciosamente.
+        // Omitir score si no aplica
       });
   }, [id]);
+
+  function manejarScroll() {
+    if (!carruselRef.current) return;
+    const ancho = carruselRef.current.clientWidth;
+    if (ancho > 0) {
+      const nuevoIndex = Math.round(carruselRef.current.scrollLeft / ancho);
+      const fotosCount = mascota?.fotos?.length ?? 0;
+      if (nuevoIndex >= 0 && nuevoIndex < fotosCount && nuevoIndex !== fotoActiva) {
+        setFotoActiva(nuevoIndex);
+      }
+    }
+  }
+
+  function irAFoto(index: number) {
+    setFotoActiva(index);
+    if (carruselRef.current) {
+      carruselRef.current.scrollTo({
+        left: index * carruselRef.current.clientWidth,
+        behavior: "smooth",
+      });
+    }
+  }
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (!carruselRef.current) return;
+    isDraggingRef.current = true;
+    startXRef.current = e.pageX - carruselRef.current.offsetLeft;
+    scrollLeftRef.current = carruselRef.current.scrollLeft;
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current || !carruselRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - carruselRef.current.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    carruselRef.current.scrollLeft = scrollLeftRef.current - walk;
+  };
+
+  const onMouseUpOrLeave = () => {
+    isDraggingRef.current = false;
+  };
 
   async function manejarPostular() {
     if (!mascota) return;
@@ -75,7 +110,7 @@ export default function FichaMascota() {
     }
   }
 
-  /* ── Estado de carga ── */
+  /* Estado de carga */
   if (cargando) {
     return (
       <div className="min-h-screen bg-[var(--color-fondo)]">
@@ -91,7 +126,7 @@ export default function FichaMascota() {
     );
   }
 
-  /* ── Mascota no encontrada ── */
+  /* Mascota no encontrada */
   if (!mascota) {
     return (
       <div className="min-h-screen bg-[var(--color-fondo)]">
@@ -109,7 +144,6 @@ export default function FichaMascota() {
   }
 
   const fotos = mascota.fotos ?? [];
-  const fotoMostrada = fotos[fotoActiva] ?? null;
 
   const ATRIBUTOS = [
     { etiq: "Nivel de energía", val: etiqueta(mascota.nivel_energia) },
@@ -125,45 +159,87 @@ export default function FichaMascota() {
       <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-24">
         <BotonVolver />
 
-        {/* ── Galería de fotos ── */}
+        {/* Galería Swipeable de fotos */}
         <div className="mt-4 mb-6">
           <div className="w-full h-72 rounded-3xl bg-slate-100 overflow-hidden border-2 border-white ring-2 ring-slate-200/80 shadow-md relative">
-            {fotoMostrada && !errorCarga ? (
-              <img
-                key={fotoMostrada.url}
-                src={fotoMostrada.url}
-                alt={mascota.nombre}
-                onError={() => setErrorCarga(true)}
-                className="w-full h-full object-cover"
-              />
+            {fotos.length > 0 ? (
+              <div
+                ref={carruselRef}
+                onScroll={manejarScroll}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUpOrLeave}
+                onMouseLeave={onMouseUpOrLeave}
+                className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-none touch-pan-x cursor-grab active:cursor-grabbing select-none"
+              >
+                {fotos.map((f, i) => (
+                  <div
+                    key={f.id || f.url || i}
+                    className="w-full h-full shrink-0 snap-center relative overflow-hidden flex items-center justify-center bg-slate-900"
+                  >
+                    <img
+                      src={f.url}
+                      alt={`${mascota.nombre} - Foto ${i + 1}`}
+                      draggable={false}
+                      className="w-full h-full object-cover pointer-events-none"
+                    />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-orange-100 to-amber-200 text-orange-600">
                 <span className="font-[family-name:var(--font-display)] text-6xl font-black">
                   {mascota.nombre.charAt(0).toUpperCase()}
                 </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-orange-700/80 mt-1">Sin foto</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-700/80 mt-1">
+                  Sin foto
+                </span>
               </div>
             )}
 
             {/* Score superpuesto */}
             {score !== null && (
-              <div className="absolute top-3.5 right-3.5">
-                <InsigniaScore score={score} />
+              <div className="absolute top-3.5 right-3.5 z-10">
+                <span className="bg-emerald-600 text-white font-black text-xs px-2.5 py-1 rounded-full shadow-md">
+                  {Math.round(score * 100)}% afinidad
+                </span>
+              </div>
+            )}
+
+            {/* Contador flotante */}
+            {fotos.length > 1 && (
+              <div className="absolute bottom-3 right-3 bg-slate-950/70 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-xs pointer-events-none z-10">
+                {fotoActiva + 1} / {fotos.length}
+              </div>
+            )}
+
+            {/* Puntos indicadores */}
+            {fotos.length > 1 && (
+              <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 pointer-events-none z-10">
+                {fotos.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      i === fotoActiva ? "w-5 bg-white shadow-xs" : "w-1.5 bg-white/50"
+                    }`}
+                  />
+                ))}
               </div>
             )}
           </div>
 
-          {/* Miniaturas si hay más de una foto */}
+          {/* Miniaturas interactivas */}
           {fotos.length > 1 && (
-            <div className="flex gap-2 mt-2.5 overflow-x-auto pb-1">
+            <div className="flex gap-2 mt-2.5 overflow-x-auto pb-1 scrollbar-none">
               {fotos.map((f, i) => (
                 <button
-                  key={f.url}
-                  onClick={() => { setFotoActiva(i); setErrorCarga(false); }}
+                  key={f.id || f.url || i}
+                  type="button"
+                  onClick={() => irAFoto(i)}
                   className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
                     i === fotoActiva
-                      ? "border-orange-500 shadow-sm"
-                      : "border-transparent opacity-60 hover:opacity-90"
+                      ? "border-orange-500 shadow-sm ring-2 ring-orange-200 scale-105"
+                      : "border-transparent opacity-60 hover:opacity-100"
                   }`}
                 >
                   <img src={f.url} alt="" className="w-full h-full object-cover" />
@@ -173,22 +249,22 @@ export default function FichaMascota() {
           )}
         </div>
 
-        {/* ── Nombre y subtítulo ── */}
+        {/* Nombre y subtítulo */}
         <div className="mb-5">
           <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-slate-900 leading-tight">
             {mascota.nombre}
           </h1>
           <p className="text-sm font-semibold text-slate-500 mt-1">
-            {[mascota.especie, mascota.raza].filter(Boolean).join(" · ") || "Sin datos adicionales"}
+            {[mascota.especie, mascota.raza].filter(Boolean).join(" • ") || "Sin datos adicionales"}
             {mascota.edad != null && (
               <span className="ml-2 text-orange-600 font-bold">
-                · {mascota.edad} {mascota.edad === 1 ? "año" : "años"}
+                • {mascota.edad} {mascota.edad === 1 ? "año" : "años"}
               </span>
             )}
           </p>
         </div>
 
-        {/* ── Grid de atributos ── */}
+        {/* Grid de atributos */}
         <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-5">
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3.5">
             Características
@@ -203,7 +279,7 @@ export default function FichaMascota() {
           </div>
         </div>
 
-        {/* ── Feedback de postulación ── */}
+        {/* Feedback de postulación */}
         {mensaje && (
           <div
             className={`p-4 rounded-2xl border text-sm font-semibold mb-4 ${
@@ -216,7 +292,7 @@ export default function FichaMascota() {
           </div>
         )}
 
-        {/* ── Botón de postulación ── */}
+        {/* Botón de postulación */}
         {mascota.estado === "disponible" ? (
           <button
             onClick={manejarPostular}
@@ -224,7 +300,7 @@ export default function FichaMascota() {
             className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black py-4 rounded-2xl shadow-sm hover:shadow-md active:scale-95 transition-all disabled:opacity-60"
           >
             {postulando
-              ? "Enviando…"
+              ? "Enviando..."
               : mensaje?.tipo === "exito"
               ? "Postulación enviada"
               : "Postular a esta mascota"}

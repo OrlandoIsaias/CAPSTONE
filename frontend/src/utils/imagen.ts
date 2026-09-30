@@ -1,0 +1,78 @@
+/**
+ * Redimensiona y recorta automáticamente cualquier imagen a un formato
+ * cuadrado (1:1) centrado, optimizado para móvil (máximo 480x480 px, o su
+ * tamaño natural si es menor para evitar sobreescalar).
+ */
+export async function redimensionarAlCuadrado(
+  archivo: File,
+  tamanoMax: number = 480,
+  calidad: number = 0.90
+): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(archivo);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      try {
+        const natW = img.naturalWidth || img.width;
+        const natH = img.naturalHeight || img.height;
+
+        // Dimensión mínima para el recorte cuadrado centrado
+        const minLado = Math.min(natW, natH);
+        const srcX = (natW - minLado) / 2;
+        const srcY = (natH - minLado) / 2;
+
+        // Tamaño final compacto optimizado para vistas móviles (máximo 480px)
+        const dimensionFinal = Math.min(minLado, tamanoMax);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = dimensionFinal;
+        canvas.height = dimensionFinal;
+        const ctx = canvas.getContext("2d");
+
+        if (!ctx) {
+          resolve(archivo);
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+
+        ctx.drawImage(img, srcX, srcY, minLado, minLado, 0, 0, dimensionFinal, dimensionFinal);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(archivo);
+              return;
+            }
+            const nombreNormalizado = archivo.name.replace(/\.[^/.]+$/, "") + ".jpg";
+            const nuevoArchivo = new File([blob], nombreNormalizado, { type: "image/jpeg" });
+            resolve(nuevoArchivo);
+          },
+          "image/jpeg",
+          calidad
+        );
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(archivo);
+    };
+
+    img.src = url;
+  });
+}
+
+export function leerArchivoComoDataUrl(archivo: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => resolve(lector.result as string);
+    lector.onerror = () => reject(lector.error);
+    lector.readAsDataURL(archivo);
+  });
+}
