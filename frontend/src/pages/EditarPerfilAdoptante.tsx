@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Home, ChevronDown, Phone } from "lucide-react";
 import { guardarPerfilAdoptante, obtenerPerfilAdoptante } from "../api/auth";
 import { Spinner } from "../components/Spinner";
 import { useToast } from "../context/ToastContext";
@@ -38,7 +38,7 @@ export default function EditarPerfilAdoptante() {
         setTelefono(p.telefono ?? "");
       })
       .catch(() => {
-        // Puede ser primer registro
+        // Puede ser primer registro o aún no configurado
       })
       .finally(() => setCargandoInicial(false));
   }, []);
@@ -78,8 +78,6 @@ export default function EditarPerfilAdoptante() {
     }
   }
 
-  const claseCampo =
-    "w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all";
   const claseEtiqueta = "block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5";
   const claseErrorCampo = "text-xs font-semibold text-rose-600 mt-1";
 
@@ -122,15 +120,23 @@ export default function EditarPerfilAdoptante() {
 
             <div>
               <label className={claseEtiqueta}>Espacio disponible en casa</label>
-              <select
-                value={espacioDisponible}
-                onChange={(e) => setEspacioDisponible(e.target.value as EspacioDisponible)}
-                className={claseCampo}
-              >
-                <option value="departamento">Departamento</option>
-                <option value="casa_patio">Casa con patio</option>
-                <option value="casa_grande">Casa grande / Parcela</option>
-              </select>
+              <div className="relative group">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center text-indigo-600 pointer-events-none">
+                  <Home size={16} strokeWidth={2.2} />
+                </div>
+                <select
+                  value={espacioDisponible}
+                  onChange={(e) => setEspacioDisponible(e.target.value as EspacioDisponible)}
+                  className="w-full appearance-none rounded-2xl border border-slate-200/90 bg-slate-50/60 pl-14 pr-10 py-3.5 text-sm font-semibold text-slate-800 hover:bg-white hover:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer shadow-2xs"
+                >
+                  <option value="departamento">Departamento</option>
+                  <option value="casa_patio">Casa con patio</option>
+                  <option value="casa_grande">Casa grande / Parcela</option>
+                </select>
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-indigo-600 pointer-events-none transition-colors">
+                  <ChevronDown size={18} strokeWidth={2.2} />
+                </div>
+              </div>
             </div>
 
             <div>
@@ -162,30 +168,41 @@ export default function EditarPerfilAdoptante() {
               Experiencia y Convivencia
             </h2>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className={claseEtiqueta}>Experiencia previa</label>
-                <select
-                  value={experienciaPrevia}
-                  onChange={(e) => setExperienciaPrevia(e.target.value as ExperienciaPrevia)}
-                  className={claseCampo}
-                >
-                  <option value="ninguna">Ninguna (Primera vez)</option>
-                  <option value="basica">Básica</option>
-                  <option value="alta">Alta / Experto</option>
-                </select>
+                <div className="relative group">
+                  <select
+                    value={experienciaPrevia}
+                    onChange={(e) => setExperienciaPrevia(e.target.value as ExperienciaPrevia)}
+                    className="w-full appearance-none rounded-2xl border border-slate-200/90 bg-slate-50/60 px-4 pr-10 py-3.5 text-sm font-semibold text-slate-800 hover:bg-white hover:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <option value="ninguna">Ninguna (Primera vez)</option>
+                    <option value="basica">Básica</option>
+                    <option value="alta">Alta / Experto</option>
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-indigo-600 pointer-events-none transition-colors">
+                    <ChevronDown size={18} strokeWidth={2.2} />
+                  </div>
+                </div>
               </div>
+
               <div>
                 <label className={claseEtiqueta}>Nivel de actividad</label>
-                <select
-                  value={nivelActividad}
-                  onChange={(e) => setNivelActividad(e.target.value as NivelActividad)}
-                  className={claseCampo}
-                >
-                  <option value="bajo">Bajo (Tranquilo)</option>
-                  <option value="medio">Medio (Paseos diarios)</option>
-                  <option value="alto">Alto (Deportista)</option>
-                </select>
+                <div className="relative group">
+                  <select
+                    value={nivelActividad}
+                    onChange={(e) => setNivelActividad(e.target.value as NivelActividad)}
+                    className="w-full appearance-none rounded-2xl border border-slate-200/90 bg-slate-50/60 px-4 pr-10 py-3.5 text-sm font-semibold text-slate-800 hover:bg-white hover:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <option value="bajo">Bajo (Tranquilo)</option>
+                    <option value="medio">Medio (Paseos)</option>
+                    <option value="alto">Alto (Deportista)</option>
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-indigo-600 pointer-events-none transition-colors">
+                    <ChevronDown size={18} strokeWidth={2.2} />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -219,14 +236,19 @@ export default function EditarPerfilAdoptante() {
             </h2>
             <div>
               <label className={claseEtiqueta}>Número de Celular / WhatsApp</label>
-              <input
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                placeholder="+56 9 1234 5678"
-                className={claseCampo}
-              />
+              <div className="relative group">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center text-indigo-600 pointer-events-none">
+                  <Phone size={15} strokeWidth={2.2} />
+                </div>
+                <input
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  placeholder="+56 9 1234 5678"
+                  className="w-full rounded-2xl border border-slate-200/90 bg-slate-50/60 pl-14 pr-4 py-3.5 text-sm font-semibold text-slate-800 placeholder:text-slate-400 hover:bg-white hover:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all shadow-2xs"
+                />
+              </div>
               <p className="text-[11px] font-medium text-slate-400 mt-1.5">
-                Se compartirá con el refugio solo cuando tu postulación sea aprobada.
+                Estructura: +56 9 XXXX XXXX. Se compartirá con el refugio solo cuando tu postulación sea aprobada.
               </p>
               {errores.telefono && <p className={claseErrorCampo}>{errores.telefono}</p>}
             </div>
@@ -245,7 +267,7 @@ export default function EditarPerfilAdoptante() {
               className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-4 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
             >
               {guardando && <Spinner />}
-              {guardando ? "Guardando cambios…" : "Guardar Cambios"}
+              {guardando ? "Guardando cambios..." : "Guardar Cambios"}
             </button>
 
             <button

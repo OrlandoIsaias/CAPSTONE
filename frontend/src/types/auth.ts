@@ -19,6 +19,7 @@ export interface UsuarioRegistro {
   email: string;
   password: string;
   rol: Rol;
+  telefono?: string;
 }
 
 export interface UsuarioLogin {

@@ -15,8 +15,13 @@ export function AuthLayout({
       {/* Panel de marca — visible siempre, ocupa toda la pantalla en mobile
           (arriba, compacto) y la mitad izquierda en escritorio. */}
       <div className="bg-[var(--color-primario)] text-white px-8 py-12 md:w-2/5 md:px-14 md:py-16 flex flex-col justify-between">
-        <div>
-          <p className="font-[family-name:var(--font-display)] text-2xl tracking-tight">
+        <div className="flex items-center gap-3">
+          <img
+            src="/img/logo.png"
+            alt="HouseFound"
+            className="w-9 h-9 object-contain bg-white/10 rounded-xl p-1 backdrop-blur-xs"
+          />
+          <p className="font-[family-name:var(--font-display)] text-2xl tracking-tight font-bold">
             HouseFound
           </p>
         </div>

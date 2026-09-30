@@ -3,10 +3,11 @@ import { useNavigate, Link } from "react-router-dom";
 import { registrar } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 import { REGEX_SOLO_LETRAS } from "../utils/validacion";
+import { validarTelefonoCL, normalizarTelefonoCL } from "../utils/telefono";
 import type { Rol } from "../types/auth";
 import axios from "axios";
 
-type Errores = Partial<Record<"nombre" | "password", string>>;
+type Errores = Partial<Record<"nombre" | "password" | "telefono", string>>;
 
 export default function Registro() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function Registro() {
 
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
   const [verPassword, setVerPassword] = useState(false);
   const [rol, setRol] = useState<Rol>("refugio");
@@ -25,6 +27,9 @@ export default function Registro() {
     const nuevosErrores: Errores = {};
     if (!REGEX_SOLO_LETRAS.test(nombre.trim())) {
       nuevosErrores.nombre = "Solo letras, mínimo 2 caracteres, sin números ni símbolos.";
+    }
+    if (telefono.trim() && !validarTelefonoCL(telefono)) {
+      nuevosErrores.telefono = "Ingresa un celular chileno válido (+56 9 1234 5678).";
     }
     if (password.length < 6) {
       nuevosErrores.password = "La contraseña debe tener al menos 6 caracteres.";
@@ -39,9 +44,16 @@ export default function Registro() {
     if (!validar()) return;
     setCargando(true);
     try {
-      const resultado = await registrar({ nombre, email, password, rol });
+      const telefonoNormalizado = telefono.trim() ? normalizarTelefonoCL(telefono) : undefined;
+      const resultado = await registrar({
+        nombre,
+        email,
+        password,
+        rol,
+        telefono: telefonoNormalizado,
+      });
       iniciarSesion(resultado.access_token, resultado.usuario);
-      navigate(rol === "adoptante" ? "/perfil-adoptante" : "/perfil-refugio");
+      navigate(rol === "adoptante" ? "/perfil-adoptante/editar" : "/perfil-refugio");
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
         setError("Ese email ya está registrado.");
@@ -57,24 +69,31 @@ export default function Registro() {
     "block text-[11px] font-semibold tracking-[0.1em] uppercase text-[var(--color-texto-suave)] mb-1.5";
 
   return (
-    <div className="min-h-screen bg-[var(--color-fondo)] flex items-center">
-      <div className="mx-auto w-full max-w-[480px] px-6 py-10">
-
-        {/* Logo / marca grande y en negro */}
-        <h1 className="font-[family-name:var(--font-display)] text-4xl sm:text-5xl font-black text-slate-900 mb-6 tracking-tight">
+    <div className="min-h-screen bg-[var(--color-fondo)] flex flex-col items-center justify-center px-4 py-12">
+      {/* Logo e Isotipo HouseFound */}
+      <div className="w-full max-w-[480px] mb-8 flex flex-col items-center justify-center text-center">
+        <img
+          src="/img/logo.png"
+          alt="HouseFound"
+          className="w-28 h-28 sm:w-32 sm:h-32 object-contain mb-3 drop-shadow-md transition-transform hover:scale-105 duration-200"
+        />
+        <h1 className="font-[family-name:var(--font-display)] text-4xl sm:text-5xl font-black text-[var(--color-texto)] tracking-tight">
           HouseFound
         </h1>
+      </div>
 
+      {/* Tarjeta / Cuadrado estilizado */}
+      <div className="w-full max-w-[480px] bg-[var(--color-superficie)] border border-[var(--color-borde)] rounded-3xl p-8 sm:p-10 shadow-sm">
         {/* Encabezado */}
-        <h2 className="text-3xl font-bold leading-tight mb-1.5">Crea tu cuenta</h2>
+        <h2 className="text-3xl font-bold leading-tight mb-1.5 text-[var(--color-texto)]">Crea tu cuenta</h2>
         <p className="text-[var(--color-texto-suave)] mb-7">
           ¿Ya tienes una?{" "}
-          <Link to="/login" className="font-semibold text-[var(--color-primario)]">
+          <Link to="/login" className="font-semibold text-[var(--color-primario)] hover:underline">
             Inicia sesión
           </Link>
         </p>
 
-        {/* Selector de rol idéntico al Login */}
+        {/* Selector de rol */}
         <div className="flex p-1 rounded-2xl bg-[var(--color-superficie-apagada)] mb-7">
           {(["refugio", "adoptante"] as Rol[]).map((r) => (
             <button
@@ -104,7 +123,7 @@ export default function Registro() {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               placeholder={rol === "refugio" ? "Nombre del responsable" : "Tu nombre"}
-              className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-superficie)] px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40"
+              className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
             />
             {errores.nombre && (
               <p className="text-xs text-[var(--color-rojo)] mt-1">{errores.nombre}</p>
@@ -122,8 +141,28 @@ export default function Registro() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@correo.com"
-              className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-superficie)] px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40"
+              className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
             />
+          </div>
+
+          <div>
+            <label className={claseEtiqueta} htmlFor="telefono">
+              {rol === "refugio" ? "Teléfono de contacto" : "Teléfono celular"}
+            </label>
+            <input
+              id="telefono"
+              type="tel"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              placeholder="+56 9 1234 5678"
+              className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
+            />
+            <p className="text-[11px] text-[var(--color-texto-suave)] mt-1">
+              Estructura: <span className="font-medium text-slate-700">+56 9 XXXX XXXX</span> (9 dígitos)
+            </p>
+            {errores.telefono && (
+              <p className="text-xs text-[var(--color-rojo)] mt-1">{errores.telefono}</p>
+            )}
           </div>
 
           <div>
@@ -139,7 +178,7 @@ export default function Registro() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres"
-                className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-superficie)] px-4 py-3 pr-16 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40"
+                className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 pr-16 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
               />
               <button
                 type="button"
@@ -159,9 +198,9 @@ export default function Registro() {
           <button
             type="submit"
             disabled={cargando}
-            className="w-full bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] transition-colors disabled:opacity-60"
+            className="w-full bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
           >
-            {cargando ? "Creando cuenta…" : `Crear cuenta como ${rol}`}
+            {cargando ? "Creando cuenta..." : `Crear cuenta como ${rol}`}
           </button>
         </form>
 
