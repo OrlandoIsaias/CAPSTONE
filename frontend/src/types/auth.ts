@@ -3,7 +3,7 @@ export type Rol = "adoptante" | "refugio";
 export interface Usuario {
   id: number;
   nombre: string;
-  email: string;
+  email?: string | null;
   rol: Rol;
   fecha_registro: string;
 }
@@ -22,9 +22,16 @@ export interface UsuarioRegistro {
   telefono?: string;
 }
 
+export interface CodigoEnviado {
+  correo_enmascarado: string;
+  expira_en_segundos: number;
+  reenviar_en_segundos: number;
+}
+
 export interface UsuarioLogin {
   email: string;
   password: string;
+  rol?: Rol;
 }
 
 // Espejo exacto de los CHECK constraints de la base de datos —

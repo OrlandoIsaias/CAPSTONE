@@ -15,7 +15,7 @@ export function RutaProtegida({
   if (cargando) return null;
 
   if (!usuario) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={rolRequerido === "adoptante" ? "/login/adoptante" : "/login/refugio"} replace />;
   }
 
   if (rolRequerido && usuario.rol !== rolRequerido) {

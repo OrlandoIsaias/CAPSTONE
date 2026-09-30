@@ -89,7 +89,7 @@ export default function Registro() {
         <h2 className="text-3xl font-bold leading-tight mb-1.5 text-[var(--color-texto)]">Crea tu cuenta</h2>
         <p className="text-[var(--color-texto-suave)] mb-7">
           ¿Ya tienes una?{" "}
-          <Link to="/login" className="font-semibold text-[var(--color-primario)] hover:underline">
+          <Link to="/login/adoptante" className="font-semibold text-[var(--color-primario)] hover:underline">
             Inicia sesión
           </Link>
         </p>
@@ -190,19 +190,6 @@ export default function Registro() {
         <p className="text-center text-sm text-[var(--color-texto-suave)] mt-6">
           Al registrarte aceptas usar la plataforma de forma responsable.
         </p>
-
-        {/* Acceso para Organizaciones / Refugios */}
-        <div className="mt-8 pt-6 border-t border-[var(--color-borde)] text-center">
-          <p className="text-xs text-[var(--color-texto-suave)] mb-2">
-            ¿Representas a una fundación, refugio o agrupación de rescate?
-          </p>
-          <Link
-            to="/registro-refugio"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primario)] hover:underline"
-          >
-            Solicitar registro y verificación de refugio →
-          </Link>
-        </div>
       </div>
     </div>
   );

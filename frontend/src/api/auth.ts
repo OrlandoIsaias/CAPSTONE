@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import type { GenericAbortSignal } from "axios";
 import type {
+  CodigoEnviado,
   PerfilAdoptante,
   PerfilAdoptanteInput,
   PerfilRefugio,
@@ -17,6 +18,16 @@ export async function registrar(datos: UsuarioRegistro): Promise<TokenOut> {
 
 export async function iniciarSesion(datos: UsuarioLogin): Promise<TokenOut> {
   const { data } = await apiClient.post<TokenOut>("/auth/login", datos);
+  return data;
+}
+
+export async function solicitarCodigoRefugio(rut: string): Promise<CodigoEnviado> {
+  const { data } = await apiClient.post<CodigoEnviado>("/auth/refugio/solicitar-codigo", { rut });
+  return data;
+}
+
+export async function verificarCodigoRefugio(rut: string, codigo: string): Promise<TokenOut> {
+  const { data } = await apiClient.post<TokenOut>("/auth/refugio/verificar-codigo", { rut, codigo });
   return data;
 }
 

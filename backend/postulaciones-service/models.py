@@ -20,7 +20,7 @@ class Usuario(Base):
 
     id = Column(Integer, primary_key=True)
     nombre = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True)
 
 
 class PerfilAdoptante(Base):
