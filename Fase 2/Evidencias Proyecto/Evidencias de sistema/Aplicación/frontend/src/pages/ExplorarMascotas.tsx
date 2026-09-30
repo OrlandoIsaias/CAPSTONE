@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Search, X } from "lucide-react";
 import { listarMascotas } from "../api/mascotas";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { TarjetaMascota } from "../components/TarjetaMascota";
@@ -77,10 +78,7 @@ export default function ExplorarMascotas() {
       {/* Buscador Moderno */}
       <div className="relative mb-4">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
+          <Search size={18} strokeWidth={2.2} />
         </span>
         <input
           value={busqueda}
@@ -91,9 +89,10 @@ export default function ExplorarMascotas() {
         {busqueda && (
           <button
             onClick={() => setBusqueda("")}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-100 w-5 h-5 rounded-full flex items-center justify-center"
+            aria-label="Limpiar búsqueda"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-slate-100 w-5 h-5 rounded-full flex items-center justify-center"
           >
-            ✕
+            <X size={12} strokeWidth={3} />
           </button>
         )}
       </div>

@@ -9,13 +9,13 @@ export async function listarMascotas(estado?: string, signal?: AbortSignal): Pro
   return data;
 }
 
-export async function obtenerMascota(id: number): Promise<Mascota> {
-  const { data } = await apiClient.get<Mascota>(`/mascotas/${id}`);
+export async function obtenerMascota(id: number, signal?: AbortSignal): Promise<Mascota> {
+  const { data } = await apiClient.get<Mascota>(`/mascotas/${id}`, { signal });
   return data;
 }
 
-export async function misMascotas(): Promise<Mascota[]> {
-  const { data } = await apiClient.get<Mascota[]>("/mascotas/mias");
+export async function misMascotas(signal?: AbortSignal): Promise<Mascota[]> {
+  const { data } = await apiClient.get<Mascota[]>("/mascotas/mias", { signal });
   return data;
 }
 

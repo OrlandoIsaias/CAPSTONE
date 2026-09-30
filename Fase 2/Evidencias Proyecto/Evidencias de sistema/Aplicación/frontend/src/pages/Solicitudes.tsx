@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { ChevronRight } from "lucide-react";
 import { postulacionesRecibidas } from "../api/postulaciones";
 import { AvatarIniciales, EstadoPostulacionBadge } from "../components/Badges";
 import { PantallaRefugio } from "../components/BarraRefugio";
-import { SkeletonFila } from "../components/Skeleton";
+import { CargandoVista } from "../components/Spinner";
 import type { EstadoPostulacion, Postulacion } from "../types/postulaciones";
 
 type Filtro = "todas" | EstadoPostulacion;
@@ -23,10 +25,18 @@ export default function Solicitudes() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    postulacionesRecibidas()
+    const controlador = new AbortController();
+
+    postulacionesRecibidas(controlador.signal)
       .then(setPostulaciones)
-      .catch(() => setError("No pudimos cargar las solicitudes."))
-      .finally(() => setCargando(false));
+      .catch((err) => {
+        if (!axios.isCancel(err)) setError("No pudimos cargar las solicitudes.");
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) setCargando(false);
+      });
+
+    return () => controlador.abort();
   }, []);
 
   const visibles = useMemo(
@@ -65,13 +75,7 @@ export default function Solicitudes() {
         })}
       </div>
 
-      {cargando && (
-        <div className="space-y-3">
-          <SkeletonFila />
-          <SkeletonFila />
-          <SkeletonFila />
-        </div>
-      )}
+      {cargando && <CargandoVista mensaje="Cargando solicitudes…" />}
       {error && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium mb-4">
           {error}
@@ -140,9 +144,7 @@ export default function Solicitudes() {
               </div>
 
               <span className="text-slate-300 group-hover:text-slate-600 shrink-0 pr-1 transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
+                <ChevronRight size={18} strokeWidth={2.5} />
               </span>
             </button>
           );

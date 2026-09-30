@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
+import { ChevronLeft } from "lucide-react";
 import {
   confirmarAdopcion,
   detallePostulacion,
@@ -7,8 +9,7 @@ import {
 } from "../api/postulaciones";
 import { AvatarIniciales, EstadoPostulacionBadge } from "../components/Badges";
 import { PantallaRefugio } from "../components/BarraRefugio";
-import { Skeleton } from "../components/Skeleton";
-import { Spinner } from "../components/Spinner";
+import { CargandoVista, Spinner } from "../components/Spinner";
 import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
 import { fechaCorta } from "../utils/tiempo";
@@ -46,10 +47,18 @@ export default function DetalleSolicitud() {
 
   useEffect(() => {
     if (!id) return;
-    detallePostulacion(Number(id))
+    const controlador = new AbortController();
+
+    detallePostulacion(Number(id), controlador.signal)
       .then(setSolicitud)
-      .catch(() => setError("No pudimos cargar esta solicitud."))
-      .finally(() => setCargando(false));
+      .catch((err) => {
+        if (!axios.isCancel(err)) setError("No pudimos cargar esta solicitud.");
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) setCargando(false);
+      });
+
+    return () => controlador.abort();
   }, [id]);
 
   const nombre = solicitud?.adoptante_nombre ?? `Adoptante #${solicitud?.adoptante_id ?? ""}`;
@@ -120,23 +129,12 @@ export default function DetalleSolicitud() {
           aria-label="Volver"
           className="w-10 h-10 rounded-full bg-[var(--color-superficie-apagada)] flex items-center justify-center shrink-0 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m15 5-7 7 7 7" />
-          </svg>
+          <ChevronLeft size={20} strokeWidth={2.2} />
         </button>
         <h1 className="text-xl font-bold">Solicitud de adopción</h1>
       </header>
 
-      {cargando && (
-        <>
-          <Skeleton className="h-20 rounded-2xl mb-3" />
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Skeleton className="h-20 rounded-2xl" />
-            <Skeleton className="h-20 rounded-2xl" />
-          </div>
-          <Skeleton className="h-56 rounded-2xl mb-5" />
-        </>
-      )}
+      {cargando && <CargandoVista mensaje="Cargando solicitud…" />}
       {error && <p className="text-[var(--color-rojo)] text-sm mb-4">{error}</p>}
 
       {solicitud && (
