@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { GenericAbortSignal } from "axios";
 import type {
   PerfilAdoptante,
   PerfilAdoptanteInput,
@@ -26,8 +27,8 @@ export async function guardarPerfilAdoptante(
   return data;
 }
 
-export async function obtenerPerfilAdoptante(): Promise<PerfilAdoptante> {
-  const { data } = await apiClient.get<PerfilAdoptante>("/auth/perfil-adoptante");
+export async function obtenerPerfilAdoptante(signal?: GenericAbortSignal): Promise<PerfilAdoptante> {
+  const { data } = await apiClient.get<PerfilAdoptante>("/auth/perfil-adoptante", { signal });
   return data;
 }
 
@@ -38,7 +39,7 @@ export async function guardarPerfilRefugio(
   return data;
 }
 
-export async function obtenerPerfilRefugio(): Promise<PerfilRefugio> {
-  const { data } = await apiClient.get<PerfilRefugio>("/auth/perfil-refugio");
+export async function obtenerPerfilRefugio(signal?: GenericAbortSignal): Promise<PerfilRefugio> {
+  const { data } = await apiClient.get<PerfilRefugio>("/auth/perfil-refugio", { signal });
   return data;
 }

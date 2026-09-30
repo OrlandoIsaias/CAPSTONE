@@ -46,11 +46,17 @@ class UsuarioRegistro(BaseModel):
     email: EmailStr
     password: str
     rol: Literal["adoptante", "refugio"]
+    telefono: Optional[str] = None
 
     @field_validator("email")
     @classmethod
     def normalizar_email(cls, v: str) -> str:
         return v.strip().lower()
+
+    @field_validator("telefono")
+    @classmethod
+    def validar_telefono(cls, v: Optional[str]) -> Optional[str]:
+        return _validar_y_normalizar_telefono_opcional(v)
 
 
 class UsuarioLogin(BaseModel):

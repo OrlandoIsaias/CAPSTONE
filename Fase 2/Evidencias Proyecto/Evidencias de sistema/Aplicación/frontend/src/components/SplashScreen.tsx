@@ -32,10 +32,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-transparent">
       {/* Contenido (Logo y eslogan): se desvanece suavemente al abrir las puertas */}
       <div
-        className={`z-30 text-center transform pointer-events-none transition-all duration-300 ease-out ${
+        className={`z-30 text-center flex flex-col items-center transform pointer-events-none transition-all duration-300 ease-out ${
           animationStarted ? 'opacity-0 scale-95' : 'opacity-100 scale-90'
         }`}
       >
+        <img
+          src="/img/logo.png"
+          alt="HouseFound"
+          className="w-20 h-20 mb-3 object-contain drop-shadow-sm"
+        />
         <h1 className="mb-2 text-4xl sm:text-5xl font-extrabold tracking-wide">
           <span className="text-[#E06228]">HOUSE</span>
           <span className="text-black">FOUND</span>

@@ -95,12 +95,24 @@ export default function Login() {
     "block text-[11px] font-semibold tracking-[0.1em] uppercase text-[var(--color-texto-suave)] mb-1.5";
 
   return (
-    <div className="min-h-screen bg-[var(--color-fondo)] flex items-center">
-      <div className="mx-auto w-full max-w-[480px] px-6 py-10">
+    <div className="min-h-screen bg-[var(--color-fondo)] flex flex-col items-center justify-center px-4 py-12">
+      {/* Logo e Isotipo HouseFound */}
+      <div className="w-full max-w-[480px] mb-8 flex flex-col items-center justify-center text-center">
+        <img
+          src="/img/logo.png"
+          alt="HouseFound"
+          className="w-28 h-28 sm:w-32 sm:h-32 object-contain mb-3 drop-shadow-md transition-transform hover:scale-105 duration-200"
+        />
+        <h1 className="font-[family-name:var(--font-display)] text-4xl sm:text-5xl font-black text-[var(--color-texto)] tracking-tight">
+          HouseFound
+        </h1>
+      </div>
+
+      <div className="w-full max-w-[480px] bg-[var(--color-superficie)] border border-[var(--color-borde)] rounded-3xl p-8 sm:p-10 shadow-sm">
         <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-[var(--color-primario)] mb-2">
           Bienvenido de vuelta
         </p>
-        <h1 className="text-3xl font-bold leading-tight mb-1.5">Inicia sesión</h1>
+        <h2 className="text-3xl font-bold leading-tight mb-1.5 text-[var(--color-texto)]">Inicia sesión</h2>
         <p className="text-[var(--color-texto-suave)] mb-7">Sigamos creando finales felices.</p>
 
         <div className="flex p-1 rounded-2xl bg-[var(--color-superficie-apagada)] mb-7">
@@ -132,7 +144,7 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@correo.com"
-              className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-superficie)] px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40"
+              className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
             />
             {errores.email && <p className="text-sm text-[var(--color-rojo)] mt-1">{errores.email}</p>}
           </div>
@@ -148,7 +160,7 @@ export default function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-superficie)] px-4 py-3 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40"
+                className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
               />
               <button
                 type="button"

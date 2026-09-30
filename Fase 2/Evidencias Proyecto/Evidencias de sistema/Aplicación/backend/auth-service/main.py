@@ -51,6 +51,26 @@ def registrar_usuario(datos: schemas.UsuarioRegistro, db: Session = Depends(get_
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ese email ya está registrado")
     db.refresh(nuevo_usuario)
 
+    if datos.telefono:
+        if datos.rol == "adoptante":
+            perfil = models.PerfilAdoptante(
+                usuario_id=nuevo_usuario.id,
+                telefono=datos.telefono,
+                espacio_disponible="departamento",
+                tiempo_disponible_horas_dia=4,
+                experiencia_previa="ninguna",
+                nivel_actividad_fisica="medio",
+            )
+            db.add(perfil)
+        elif datos.rol == "refugio":
+            refugio = models.Refugio(
+                usuario_id=nuevo_usuario.id,
+                nombre_refugio=datos.nombre,
+                telefono_contacto=datos.telefono,
+            )
+            db.add(refugio)
+        db.commit()
+
     token = security.crear_access_token({"sub": str(nuevo_usuario.id), "rol": nuevo_usuario.rol})
     return schemas.TokenOut(access_token=token, usuario=nuevo_usuario)
 

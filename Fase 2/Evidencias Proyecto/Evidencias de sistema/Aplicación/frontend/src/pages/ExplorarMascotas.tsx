@@ -72,11 +72,10 @@ function TarjetaMascotaGrid({
               onAlternarGuardado(mascota.id);
             }}
             aria-label={guardado ? "Quitar de guardados" : "Guardar mascota"}
-            className={`absolute top-2 right-2 w-7 h-7 rounded-full backdrop-blur-md flex items-center justify-center shadow-xs transition-transform active:scale-90 ${
-              guardado
+            className={`absolute top-2 right-2 w-7 h-7 rounded-full backdrop-blur-md flex items-center justify-center shadow-xs transition-transform active:scale-90 ${guardado
                 ? "bg-rose-500 text-white"
                 : "bg-white/90 text-slate-400 hover:text-rose-500"
-            }`}
+              }`}
           >
             <svg
               width="14"
@@ -111,13 +110,12 @@ function TarjetaMascotaGrid({
       <div className="px-1 pt-2">
         {score != null ? (
           <span
-            className={`text-[10px] font-black px-2 py-0.5 rounded-md inline-block ${
-              score >= 0.8
+            className={`text-[10px] font-black px-2 py-0.5 rounded-md inline-block ${score >= 0.8
                 ? "text-emerald-700 bg-emerald-50 border border-emerald-200/70"
                 : score >= 0.5
-                ? "text-amber-700 bg-amber-50 border border-amber-200/70"
-                : "text-slate-600 bg-slate-100"
-            }`}
+                  ? "text-amber-700 bg-amber-50 border border-amber-200/70"
+                  : "text-slate-600 bg-slate-100"
+              }`}
           >
             {Math.round(score * 100)}% afinidad
           </span>
@@ -386,11 +384,10 @@ export default function ExplorarMascotas() {
               <button
                 key={f.id}
                 onClick={() => setFiltro(f.id)}
-                className={`flex items-center px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all active:scale-95 shadow-2xs ${
-                  activo
+                className={`flex items-center px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all active:scale-95 shadow-2xs ${activo
                     ? "bg-slate-900 text-white shadow-xs"
                     : "bg-white border border-slate-200/90 text-slate-700 hover:border-orange-300 hover:bg-slate-50"
-                }`}
+                  }`}
               >
                 <span>{f.etiqueta}</span>
               </button>
