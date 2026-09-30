@@ -1,3 +1,10 @@
+/** Zona cuadrada a recortar, en píxeles de la imagen original. */
+export interface AreaRecorte {
+  x: number;
+  y: number;
+  lado: number;
+}
+
 /**
  * Redimensiona y recorta automáticamente cualquier imagen a un formato
  * cuadrado (1:1) centrado, optimizado para móvil (máximo 480x480 px, o su
@@ -5,6 +12,19 @@
  */
 export async function redimensionarAlCuadrado(
   archivo: File,
+  tamanoMax: number = 480,
+  calidad: number = 0.90
+): Promise<File> {
+  return recortarCuadrado(archivo, null, tamanoMax, calidad);
+}
+
+/**
+ * Recorta la zona cuadrada que eligió el usuario en el editor de fotos
+ * (AjustarFoto). Con `area = null` usa el recorte centrado de siempre.
+ */
+export async function recortarCuadrado(
+  archivo: File,
+  area: AreaRecorte | null,
   tamanoMax: number = 480,
   calidad: number = 0.90
 ): Promise<File> {
@@ -18,13 +38,13 @@ export async function redimensionarAlCuadrado(
         const natW = img.naturalWidth || img.width;
         const natH = img.naturalHeight || img.height;
 
-        // Dimensión mínima para el recorte cuadrado centrado
-        const minLado = Math.min(natW, natH);
-        const srcX = (natW - minLado) / 2;
-        const srcY = (natH - minLado) / 2;
+        // Sin área elegida: el cuadrado más grande posible, centrado
+        const minLado = area ? area.lado : Math.min(natW, natH);
+        const srcX = area ? area.x : (natW - minLado) / 2;
+        const srcY = area ? area.y : (natH - minLado) / 2;
 
         // Tamaño final compacto optimizado para vistas móviles (máximo 480px)
-        const dimensionFinal = Math.min(minLado, tamanoMax);
+        const dimensionFinal = Math.round(Math.min(minLado, tamanoMax));
 
         const canvas = document.createElement("canvas");
         canvas.width = dimensionFinal;

@@ -24,6 +24,11 @@ export async function crearMascota(datos: MascotaInput): Promise<Mascota> {
   return data;
 }
 
+export async function actualizarMascota(id: number, datos: MascotaInput): Promise<Mascota> {
+  const { data } = await apiClient.put<Mascota>(`/mascotas/${id}`, datos);
+  return data;
+}
+
 export async function agregarFoto(
   mascotaId: number, 
   archivoImagen: File, 

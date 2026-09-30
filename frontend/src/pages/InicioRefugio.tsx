@@ -457,7 +457,7 @@ export default function InicioRefugio() {
               etiqueta="Cuestionarios"
               color="purple"
               icono={<MessageCircle size={20} strokeWidth={2} />}
-              onClick={() => navigate("/cuestionarios")}
+              onClick={() => navigate("/solicitudes")}
             />
             <Metrica
               valor={adoptados}
