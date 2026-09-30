@@ -11,13 +11,16 @@ export async function misPostulaciones(signal?: AbortSignal): Promise<Postulacio
   return data;
 }
 
-export async function postulacionesRecibidas(): Promise<Postulacion[]> {
-  const { data } = await apiClient.get<Postulacion[]>("/postulaciones/recibidas");
+export async function postulacionesRecibidas(signal?: AbortSignal): Promise<Postulacion[]> {
+  const { data } = await apiClient.get<Postulacion[]>("/postulaciones/recibidas", { signal });
   return data;
 }
 
-export async function detallePostulacion(postulacionId: number): Promise<PostulacionDetalle> {
-  const { data } = await apiClient.get<PostulacionDetalle>(`/postulaciones/${postulacionId}`);
+export async function detallePostulacion(
+  postulacionId: number,
+  signal?: AbortSignal
+): Promise<PostulacionDetalle> {
+  const { data } = await apiClient.get<PostulacionDetalle>(`/postulaciones/${postulacionId}`, { signal });
   return data;
 }
 

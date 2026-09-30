@@ -1,13 +1,35 @@
 import { NavLink } from "react-router-dom";
+import { CircleUserRound, FileText, Home, MessageCircle, PawPrint } from "lucide-react";
 import type { ReactNode } from "react";
 
-type TabColor = "orange" | "emerald" | "blue" | "purple";
+type TabColor = "orange" | "emerald" | "blue" | "purple" | "indigo";
 
 const PESTANAS: { to: string; etiqueta: string; icono: ReactNode; color: TabColor }[] = [
-  { to: "/inicio", etiqueta: "Inicio", icono: <IconoCasa />, color: "orange" },
-  { to: "/mis-mascotas", etiqueta: "Mascotas", icono: <IconoHuella />, color: "emerald" },
-  { to: "/solicitudes", etiqueta: "Solicitudes", icono: <IconoDocumento />, color: "blue" },
-  { to: "/cuestionarios", etiqueta: "Preguntas", icono: <IconoGlobo />, color: "purple" },
+  { to: "/inicio", etiqueta: "Inicio", icono: <Home size={20} strokeWidth={1.8} />, color: "orange" },
+  {
+    to: "/mis-mascotas",
+    etiqueta: "Mascotas",
+    icono: <PawPrint size={20} strokeWidth={1.8} />,
+    color: "emerald",
+  },
+  {
+    to: "/solicitudes",
+    etiqueta: "Solicitudes",
+    icono: <FileText size={20} strokeWidth={1.8} />,
+    color: "blue",
+  },
+  {
+    to: "/cuestionarios",
+    etiqueta: "Preguntas",
+    icono: <MessageCircle size={20} strokeWidth={1.8} />,
+    color: "purple",
+  },
+  {
+    to: "/perfil-refugio",
+    etiqueta: "Perfil",
+    icono: <CircleUserRound size={20} strokeWidth={1.8} />,
+    color: "indigo",
+  },
 ];
 
 const ESTILOS_PESTANA: Record<TabColor, { iconoActivo: string; textoActivo: string }> = {
@@ -26,6 +48,10 @@ const ESTILOS_PESTANA: Record<TabColor, { iconoActivo: string; textoActivo: stri
   purple: {
     iconoActivo: "bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white shadow-xs shadow-purple-600/30",
     textoActivo: "text-purple-700 font-bold",
+  },
+  indigo: {
+    iconoActivo: "bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-xs shadow-indigo-600/30",
+    textoActivo: "text-indigo-700 font-bold",
   },
 };
 
@@ -80,43 +106,5 @@ export function PantallaRefugio({ children }: { children: ReactNode }) {
       <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-28">{children}</div>
       <BarraRefugio />
     </div>
-  );
-}
-
-function IconoCasa() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V21h14V9.5" />
-    </svg>
-  );
-}
-
-function IconoHuella() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <ellipse cx="6" cy="9" rx="1.9" ry="2.6" />
-      <ellipse cx="10.5" cy="5.8" rx="1.9" ry="2.6" />
-      <ellipse cx="15.5" cy="5.8" rx="1.9" ry="2.6" />
-      <ellipse cx="19" cy="9.5" rx="1.9" ry="2.6" />
-      <path d="M12.5 12c2.6 0 4.8 1.9 4.8 4.3 0 2-1.5 3.2-3.4 3.2-1 0-1.3-.4-2.4-.4s-1.4.4-2.4.4c-1.9 0-3.4-1.2-3.4-3.2 0-2.4 2.2-4.3 4.8-4.3Z" />
-    </svg>
-  );
-}
-
-function IconoDocumento() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5V7.5Z" />
-      <path d="M14 3v4.5h4.5" />
-    </svg>
-  );
-}
-
-function IconoGlobo() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 12.5c0 3.6-3.6 6.5-8 6.5-1 0-2-.15-2.9-.42L4 20.5l1.3-3.3C4.2 16 3.5 14.4 3.5 12.5 3.5 8.9 7.1 6 11.5 6s8.5 2.9 8.5 6.5Z" />
-    </svg>
   );
 }
