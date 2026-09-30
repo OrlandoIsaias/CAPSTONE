@@ -27,17 +27,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
-  // Al cargar la app, recupera la sesión guardada (si existe), para que
-  // el usuario no tenga que loguearse de nuevo cada vez que refresca.
+  // Al cargar la app, se usa sessionStorage para que la sesión solo persista
+  // mientras la pestaña/navegador esté abierta, y se pida login al reabrir el navegador.
   useEffect(() => {
-    const tokenGuardado = localStorage.getItem("housefound_token");
-    const usuarioGuardado = localStorage.getItem("housefound_usuario");
+    // Limpieza de cualquier sesión persistente anterior en localStorage
+    localStorage.removeItem("housefound_token");
+    localStorage.removeItem("housefound_usuario");
+
+    const tokenGuardado = sessionStorage.getItem("housefound_token");
+    const usuarioGuardado = sessionStorage.getItem("housefound_usuario");
+    let sesionRestaurada = false;
     if (tokenGuardado && usuarioGuardado && !tokenExpirado(tokenGuardado)) {
-      setToken(tokenGuardado);
-      setUsuario(JSON.parse(usuarioGuardado));
-    } else {
-      localStorage.removeItem("housefound_token");
-      localStorage.removeItem("housefound_usuario");
+      try {
+        setUsuario(JSON.parse(usuarioGuardado));
+        setToken(tokenGuardado);
+        sesionRestaurada = true;
+      } catch {
+        sesionRestaurada = false;
+      }
+    }
+    if (!sesionRestaurada) {
+      sessionStorage.removeItem("housefound_token");
+      sessionStorage.removeItem("housefound_usuario");
     }
     setCargando(false);
 
@@ -52,13 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   function iniciarSesion(nuevoToken: string, nuevoUsuario: Usuario) {
-    localStorage.setItem("housefound_token", nuevoToken);
-    localStorage.setItem("housefound_usuario", JSON.stringify(nuevoUsuario));
+    sessionStorage.setItem("housefound_token", nuevoToken);
+    sessionStorage.setItem("housefound_usuario", JSON.stringify(nuevoUsuario));
     setToken(nuevoToken);
     setUsuario(nuevoUsuario);
   }
 
   function cerrarSesion() {
+    sessionStorage.removeItem("housefound_token");
+    sessionStorage.removeItem("housefound_usuario");
     localStorage.removeItem("housefound_token");
     localStorage.removeItem("housefound_usuario");
     setToken(null);

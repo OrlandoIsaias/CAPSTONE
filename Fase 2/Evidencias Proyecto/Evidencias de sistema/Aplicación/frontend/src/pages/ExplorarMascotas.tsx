@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { listarMascotas } from "../api/mascotas";
 import { obtenerRecomendaciones } from "../api/matching";
 import { misPostulaciones } from "../api/postulaciones";
@@ -8,7 +7,7 @@ import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { SkeletonFila } from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
 import { useGuardados } from "../utils/guardados";
-import type { Mascota } from "../types/mascotas";
+import type { FotoMascota, Mascota } from "../types/mascotas";
 import type { Recomendacion } from "../types/matching";
 import type { Postulacion } from "../types/postulaciones";
 
@@ -72,10 +71,11 @@ function TarjetaMascotaGrid({
               onAlternarGuardado(mascota.id);
             }}
             aria-label={guardado ? "Quitar de guardados" : "Guardar mascota"}
-            className={`absolute top-2 right-2 w-7 h-7 rounded-full backdrop-blur-md flex items-center justify-center shadow-xs transition-transform active:scale-90 ${guardado
+            className={`absolute top-2 right-2 w-7 h-7 rounded-full backdrop-blur-md flex items-center justify-center shadow-xs transition-transform active:scale-90 ${
+              guardado
                 ? "bg-rose-500 text-white"
                 : "bg-white/90 text-slate-400 hover:text-rose-500"
-              }`}
+            }`}
           >
             <svg
               width="14"
@@ -99,7 +99,7 @@ function TarjetaMascotaGrid({
           <p className="text-[11px] font-semibold text-slate-400 truncate mt-0.5">
             {[
               mascota.raza || mascota.especie,
-              mascota.edad != null ? `${mascota.edad} ${mascota.edad === 1 ? "año" : "a."}` : null,
+              mascota.edad != null ? `${mascota.edad} ${mascota.edad === 1 ? "año" : "años"}` : null,
             ]
               .filter(Boolean)
               .join(" • ") || "Sin detalles"}
@@ -110,19 +110,18 @@ function TarjetaMascotaGrid({
       <div className="px-1 pt-2">
         {score != null ? (
           <span
-            className={`text-[10px] font-black px-2 py-0.5 rounded-md inline-block ${score >= 0.8
+            className={`text-[10px] font-black px-2 py-0.5 rounded-md inline-block ${
+              score >= 0.8
                 ? "text-emerald-700 bg-emerald-50 border border-emerald-200/70"
                 : score >= 0.5
-                  ? "text-amber-700 bg-amber-50 border border-amber-200/70"
-                  : "text-slate-600 bg-slate-100"
-              }`}
+                ? "text-amber-700 bg-amber-50 border border-amber-200/70"
+                : "text-slate-600 bg-slate-100"
+            }`}
           >
             {Math.round(score * 100)}% afinidad
           </span>
         ) : (
-          <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md">
-            Disponible
-          </span>
+          <span className="text-[10px] font-bold text-slate-400">Disponible</span>
         )}
       </div>
     </Link>
@@ -130,80 +129,56 @@ function TarjetaMascotaGrid({
 }
 
 export default function ExplorarMascotas() {
-  const { usuario } = useAuth();
   const navigate = useNavigate();
+  const { usuario } = useAuth();
   const { ids: guardados, alternar } = useGuardados();
 
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
-  const [scoresMap, setScoresMap] = useState<Record<number, number>>({});
-  const [destacado, setDestacado] = useState<Mascota | null>(null);
-  const [destacadoScore, setDestacadoScore] = useState<number | null>(null);
-  const [imgHeroError, setImgHeroError] = useState(false);
+  const [recomendaciones, setRecomendaciones] = useState<Recomendacion[]>([]);
   const [solicitudActiva, setSolicitudActiva] = useState<Postulacion | null>(null);
-
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imgHeroError, setImgHeroError] = useState(false);
 
   useEffect(() => {
-    const controlador = new AbortController();
-
     Promise.all([
-      listarMascotas("disponible", controlador.signal),
-      obtenerRecomendaciones(controlador.signal).catch(() => [] as Recomendacion[]),
-      misPostulaciones().catch(() => [] as Postulacion[]),
-    ])
-      .then(([listado, recs, postulaciones]) => {
-        setMascotas(listado);
-
-        // Mapear scores por mascota
-        const sMap: Record<number, number> = {};
-        for (const r of recs) {
-          sMap[r.mascota_id] = r.score_compatibilidad;
-        }
-        setScoresMap(sMap);
-
-        // Encontrar mascota destacada priorizando las que tienen foto
-        let mascotaElegida: Mascota | null = null;
-        let scoreElegido: number | null = null;
-
-        for (const r of recs) {
-          const m = listado.find((item) => item.id === r.mascota_id);
-          if (m && m.fotos && m.fotos.length > 0) {
-            mascotaElegida = m;
-            scoreElegido = r.score_compatibilidad;
-            break;
-          }
-        }
-
-        if (!mascotaElegida && listado.length > 0) {
-          mascotaElegida = listado.find((m) => m.fotos && m.fotos.length > 0) || listado[0];
-          if (mascotaElegida && sMap[mascotaElegida.id] != null) {
-            scoreElegido = sMap[mascotaElegida.id];
-          }
-        }
-
-        setDestacado(mascotaElegida);
-        setDestacadoScore(scoreElegido);
-        setImgHeroError(false);
-
-        // Buscar si tiene alguna postulación pendiente
-        const pendiente = postulaciones.find((p) => p.estado === "pendiente");
-        if (pendiente) {
-          setSolicitudActiva(pendiente);
-        }
-      })
-      .catch((err) => {
-        if (axios.isCancel(err)) return;
-        setError("No pudimos cargar las mascotas disponibles.");
-      })
-      .finally(() => {
-        if (!controlador.signal.aborted) setCargando(false);
-      });
-
-    return () => controlador.abort();
+      listarMascotas("disponible")
+        .then(setMascotas)
+        .catch(() => setError("No pudimos cargar las mascotas disponibles.")),
+      obtenerRecomendaciones()
+        .then(setRecomendaciones)
+        .catch(() => setRecomendaciones([])),
+      misPostulaciones()
+        .then((lista) => {
+          const pendiente = lista.find(
+            (p) => p.estado === "pendiente" || p.estado === "aprobada"
+          );
+          setSolicitudActiva(pendiente || null);
+        })
+        .catch(() => setSolicitudActiva(null)),
+    ]).finally(() => setCargando(false));
   }, []);
+
+  const scoresMap = useMemo(() => {
+    const mapa: Record<number, number> = {};
+    for (const r of recomendaciones) {
+      mapa[r.mascota_id] = r.score_compatibilidad;
+    }
+    return mapa;
+  }, [recomendaciones]);
+
+  // Mascota destacada del día
+  const destacado = useMemo(() => {
+    if (recomendaciones.length > 0) {
+      const encontrada = mascotas.find((m) => m.id === recomendaciones[0].mascota_id);
+      if (encontrada) return encontrada;
+    }
+    return mascotas[0] || null;
+  }, [recomendaciones, mascotas]);
+
+  const destacadoScore = destacado ? scoresMap[destacado.id] : null;
 
   const visibles = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -218,20 +193,17 @@ export default function ExplorarMascotas() {
     });
   }, [mascotas, filtro, busqueda]);
 
-  const fotoDestacada = destacado?.fotos?.find((f) => f.es_principal) ?? destacado?.fotos?.[0];
+  const fotoDestacada = destacado?.fotos?.find((f: FotoMascota) => f.es_principal) ?? destacado?.fotos?.[0];
 
   return (
     <PantallaAdoptante>
       {/* 1. Encabezado con Saludo Personalizado */}
       <header className="flex items-center justify-between mb-4">
         <div>
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-orange-600 bg-orange-100/80 px-2.5 py-0.5 rounded-full">
-            Descubre & Adopta
-          </span>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl font-black text-slate-900 mt-1 leading-tight">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
             ¡Hola, {usuario?.nombre?.split(" ")[0] || "Adoptante"}!
           </h1>
-          <p className="text-xs font-medium text-slate-500">
+          <p className="text-xs font-medium text-slate-500 mt-0.5">
             Encuentra al compañero ideal para tu hogar.
           </p>
         </div>
@@ -259,22 +231,24 @@ export default function ExplorarMascotas() {
               </svg>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-100">
-                Postulación en evaluación
+              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">
+                Postulación en curso
               </p>
-              <p className="text-xs font-bold leading-tight truncate">
-                {solicitudActiva.mascota_nombre} está en revisión por el refugio
+              <p className="text-xs font-black truncate">
+                {solicitudActiva.estado === "aprobada"
+                  ? "¡Tu postulación fue aprobada!"
+                  : "Tu solicitud está siendo revisada por el refugio"}
               </p>
             </div>
           </div>
-          <span className="text-[11px] font-extrabold bg-white text-emerald-800 px-3 py-1.5 rounded-xl shadow-xs whitespace-nowrap shrink-0">
+          <span className="text-xs font-black bg-white text-emerald-700 px-3 py-1.5 rounded-xl shadow-xs shrink-0">
             Ver estado
           </span>
         </div>
       )}
 
-      {/* 3. Hero Card: "Match Destacado del Día" */}
-      {!cargando && destacado && !busqueda && filtro === "todos" && (
+      {/* 3. Tarjeta Hero / Destacado del Día (si no hay búsqueda) */}
+      {!busqueda && filtro === "todos" && destacado && (
         <div className="mb-5">
           <div
             onClick={() => navigate(`/mascota/${destacado.id}`)}
@@ -348,7 +322,7 @@ export default function ExplorarMascotas() {
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre, raza o especie…"
+          placeholder="Buscar por nombre, raza o especie..."
           className="w-full rounded-2xl bg-white border border-slate-200/90 pl-11 pr-10 py-3.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 shadow-xs focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 transition-all"
         />
         {busqueda && (
@@ -384,10 +358,11 @@ export default function ExplorarMascotas() {
               <button
                 key={f.id}
                 onClick={() => setFiltro(f.id)}
-                className={`flex items-center px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all active:scale-95 shadow-2xs ${activo
+                className={`flex items-center px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all active:scale-95 shadow-2xs ${
+                  activo
                     ? "bg-slate-900 text-white shadow-xs"
                     : "bg-white border border-slate-200/90 text-slate-700 hover:border-orange-300 hover:bg-slate-50"
-                  }`}
+                }`}
               >
                 <span>{f.etiqueta}</span>
               </button>
