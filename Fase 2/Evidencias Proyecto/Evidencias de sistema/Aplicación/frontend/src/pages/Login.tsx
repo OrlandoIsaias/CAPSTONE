@@ -4,7 +4,6 @@ import { iniciarSesion as iniciarSesionApi } from "../api/auth";
 import { Spinner } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import { REGEX_EMAIL } from "../utils/validacion";
-import type { Rol } from "../types/auth";
 import axios from "axios";
 
 type Errores = Partial<Record<"email" | "password", string>>;
@@ -18,12 +17,8 @@ const MENSAJE_CREDENCIALES_INVALIDAS = "Correo o contraseña inválidos.";
 
 export default function Login() {
   const navigate = useNavigate();
-  // cargando (de useAuth) = todavía revisando si hay una sesión guardada en
-  // localStorage; se renombra para no chocar con el "cargando" propio del
-  // envío del formulario, más abajo.
   const { usuario, cargando: cargandoSesion, iniciarSesion } = useAuth();
 
-  const [rol, setRol] = useState<Rol>("refugio");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verPassword, setVerPassword] = useState(false);
@@ -31,10 +26,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
-  // Ya hay una sesión activa (token guardado y válido) — no tiene sentido
-  // mostrar el formulario de login de nuevo. Se manda directo al panel que
-  // corresponde según el rol REAL de la cuenta (no un selector que ni se
-  // llegó a tocar), igual que hace RutaProtegida en el resto de la app.
   if (!cargandoSesion && usuario) {
     return <Navigate to={usuario.rol === "adoptante" ? "/explorar" : "/inicio"} replace />;
   }
@@ -61,21 +52,15 @@ export default function Login() {
     try {
       const resultado = await iniciarSesionApi({ email, password });
 
-      // El rol real lo define la cuenta, no el selector. Si no coinciden,
-      // usamos el mismo mensaje genérico que credenciales incorrectas —
-      // ver MENSAJE_CREDENCIALES_INVALIDAS arriba.
-      if (resultado.usuario.rol !== rol) {
-        setError(MENSAJE_CREDENCIALES_INVALIDAS);
+      if (resultado.usuario.rol !== "adoptante") {
+        setError("Esta cuenta pertenece a una organización. Ingresa desde el Portal Organizaciones.");
         return;
       }
 
       iniciarSesion(resultado.access_token, resultado.usuario);
-      navigate(resultado.usuario.rol === "adoptante" ? "/explorar" : "/inicio");
+      navigate("/explorar");
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
-        // Límite de intentos: acá sí mostramos el detalle del servidor
-        // (cuántos minutos faltan) — a esta altura ya no hay nada que
-        // ocultar, cinco intentos fallidos seguidos es señal suficiente.
         setError(
           typeof err.response.data?.detail === "string"
             ? err.response.data.detail
@@ -109,27 +94,14 @@ export default function Login() {
       </div>
 
       <div className="w-full max-w-[480px] bg-[var(--color-superficie)] border border-[var(--color-borde)] rounded-3xl p-8 sm:p-10 shadow-sm">
-        <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-[var(--color-primario)] mb-2">
-          Bienvenido de vuelta
-        </p>
-        <h2 className="text-3xl font-bold leading-tight mb-1.5 text-[var(--color-texto)]">Inicia sesión</h2>
-        <p className="text-[var(--color-texto-suave)] mb-7">Sigamos creando finales felices.</p>
-
-        <div className="flex p-1 rounded-2xl bg-[var(--color-superficie-apagada)] mb-7">
-          {(["refugio", "adoptante"] as Rol[]).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRol(r)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize transition-colors ${
-                rol === r
-                  ? "bg-[var(--color-superficie)] text-[var(--color-texto)] shadow-sm"
-                  : "text-[var(--color-texto-suave)]"
-              }`}
-            >
-              {r}
-            </button>
-          ))}
+        <div className="mb-6">
+          <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-[var(--color-primario)] mb-2">
+            Portal Adoptantes
+          </p>
+          <h2 className="text-3xl font-bold leading-tight mb-1.5 text-[var(--color-texto)]">Inicia sesión</h2>
+          <p className="text-[var(--color-texto-suave)]">
+            Encuentra a tu compañero ideal y sigue tus postulaciones.
+          </p>
         </div>
 
         <form onSubmit={manejarEnvio} className="space-y-4">
@@ -173,24 +145,59 @@ export default function Login() {
             {errores.password && <p className="text-sm text-[var(--color-rojo)] mt-1">{errores.password}</p>}
           </div>
 
-          {error && <p className="text-sm text-[var(--color-rojo)]">{error}</p>}
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-[var(--color-rojo)]">
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={cargando}
-            className="w-full flex items-center justify-center gap-2 bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
+            className="w-full flex items-center justify-center gap-2 bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2 shadow-sm"
           >
             {cargando && <Spinner />}
-            {cargando ? "Ingresando…" : `Entrar como ${rol}`}
+            {cargando ? "Ingresando…" : "Entrar como Adoptante"}
           </button>
         </form>
 
         <p className="text-center text-sm text-[var(--color-texto-suave)] mt-6">
           ¿Aún no tienes cuenta?{" "}
-          <Link to="/registro" className="font-semibold text-[var(--color-primario)]">
-            Crear cuenta
+          <Link to="/registro" className="font-semibold text-[var(--color-primario)] hover:underline">
+            Crear cuenta de adoptante
           </Link>
         </p>
+
+        {/* Separador y tarjeta exclusiva para Organizaciones / Refugios */}
+        <div className="mt-8 pt-6 border-t border-[var(--color-borde)]">
+          <div className="rounded-2xl border border-[var(--color-borde)] bg-[var(--color-superficie)] p-5 text-center shadow-sm">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--color-primario)]/10 text-[var(--color-primario)] mb-3">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <h2 className="text-base font-bold text-[var(--color-texto)] mb-1">
+              ¿Eres una Fundación o Refugio?
+            </h2>
+            <p className="text-xs text-[var(--color-texto-suave)] mb-4">
+              Accede al portal de gestión institucional para publicar animales y revisar postulaciones.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <Link
+                to="/refugio/login"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[var(--color-superficie-apagada)] text-[var(--color-texto)] hover:bg-[var(--color-borde)] transition-colors"
+              >
+                Ingreso Refugios
+              </Link>
+              <Link
+                to="/registro-refugio"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[var(--color-primario)] border border-[var(--color-primario)]/30 hover:bg-[var(--color-primario)]/10 transition-colors"
+              >
+                Solicitar Registro Institucional
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

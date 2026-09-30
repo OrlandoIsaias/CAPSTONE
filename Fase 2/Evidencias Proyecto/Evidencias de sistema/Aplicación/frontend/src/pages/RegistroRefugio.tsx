@@ -2,13 +2,13 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { registrar } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
-import { REGEX_SOLO_LETRAS } from "../utils/validacion";
 import { validarTelefonoCL, normalizarTelefonoCL } from "../utils/telefono";
+import { REGEX_EMAIL } from "../utils/validacion";
 import axios from "axios";
 
-type Errores = Partial<Record<"nombre" | "password" | "telefono", string>>;
+type Errores = Partial<Record<"nombre" | "email" | "password" | "telefono", string>>;
 
-export default function Registro() {
+export default function RegistroRefugio() {
   const navigate = useNavigate();
   const { iniciarSesion } = useAuth();
 
@@ -23,11 +23,14 @@ export default function Registro() {
 
   function validar(): boolean {
     const nuevosErrores: Errores = {};
-    if (!REGEX_SOLO_LETRAS.test(nombre.trim())) {
-      nuevosErrores.nombre = "Solo letras, mínimo 2 caracteres, sin números ni símbolos.";
+    if (nombre.trim().length < 2) {
+      nuevosErrores.nombre = "Ingresa el nombre oficial de la organización o refugio.";
     }
-    if (telefono.trim() && !validarTelefonoCL(telefono)) {
-      nuevosErrores.telefono = "Ingresa un celular chileno válido (+56 9 1234 5678).";
+    if (!REGEX_EMAIL.test(email.trim())) {
+      nuevosErrores.email = "Ingresa un correo electrónico institucional válido.";
+    }
+    if (!telefono.trim() || !validarTelefonoCL(telefono)) {
+      nuevosErrores.telefono = "Ingresa un celular de contacto válido (+56 9 1234 5678).";
     }
     if (password.length < 6) {
       nuevosErrores.password = "La contraseña debe tener al menos 6 caracteres.";
@@ -42,21 +45,21 @@ export default function Registro() {
     if (!validar()) return;
     setCargando(true);
     try {
-      const telefonoNormalizado = telefono.trim() ? normalizarTelefonoCL(telefono) : undefined;
+      const telefonoNormalizado = normalizarTelefonoCL(telefono);
       const resultado = await registrar({
-        nombre,
-        email,
+        nombre: nombre.trim(),
+        email: email.trim().toLowerCase(),
         password,
-        rol: "adoptante",
+        rol: "refugio",
         telefono: telefonoNormalizado,
       });
       iniciarSesion(resultado.access_token, resultado.usuario);
-      navigate("/perfil-adoptante/editar");
+      navigate("/perfil-refugio/editar");
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
-        setError("Ese email ya está registrado.");
+        setError("Este correo electrónico ya está registrado en la plataforma.");
       } else {
-        setError("No pudimos crear tu cuenta. Intenta de nuevo.");
+        setError("No pudimos procesar el registro institucional. Intenta de nuevo.");
       }
     } finally {
       setCargando(false);
@@ -68,44 +71,44 @@ export default function Registro() {
 
   return (
     <div className="min-h-screen bg-[var(--color-fondo)] flex flex-col items-center justify-center px-4 py-12">
-      {/* Logo e Isotipo HouseFound */}
-      <div className="w-full max-w-[480px] mb-8 flex flex-col items-center justify-center text-center">
-        <img
-          src="/img/logo.png"
-          alt="HouseFound"
-          className="w-28 h-28 sm:w-32 sm:h-32 object-contain mb-3 drop-shadow-md transition-transform hover:scale-105 duration-200"
-        />
-        <h1 className="font-[family-name:var(--font-display)] text-4xl sm:text-5xl font-black text-[var(--color-texto)] tracking-tight">
-          HouseFound
-        </h1>
+      {/* Volver a adoptantes */}
+      <div className="w-full max-w-[480px] mb-4">
+        <Link
+          to="/registro"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-texto-suave)] hover:text-[var(--color-primario)] transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          ¿Buscas adoptar? Ir al registro de Adoptantes
+        </Link>
       </div>
 
-      {/* Tarjeta / Cuadrado estilizado */}
+      {/* Tarjeta institucional */}
       <div className="w-full max-w-[480px] bg-[var(--color-superficie)] border border-[var(--color-borde)] rounded-3xl p-8 sm:p-10 shadow-sm">
-        {/* Encabezado */}
-        <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-[var(--color-primario)] mb-2">
-          Portal Adoptantes
-        </p>
-        <h2 className="text-3xl font-bold leading-tight mb-1.5 text-[var(--color-texto)]">Crea tu cuenta</h2>
-        <p className="text-[var(--color-texto-suave)] mb-7">
-          ¿Ya tienes una?{" "}
-          <Link to="/login" className="font-semibold text-[var(--color-primario)] hover:underline">
-            Inicia sesión
-          </Link>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-[11px] font-bold tracking-wide uppercase mb-3">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Portal Organizaciones & Refugios
+        </div>
+
+        <h1 className="text-2xl font-bold leading-tight mb-1.5 text-[var(--color-texto)]">
+          Registro de Organización
+        </h1>
+        <p className="text-xs text-[var(--color-texto-suave)] mb-6">
+          Inscribe tu fundación, protectora o refugio para publicar mascotas y recibir postulaciones filtradas por compatibilidad.
         </p>
 
-        {/* Formulario */}
         <form onSubmit={manejarEnvio} className="space-y-4">
           <div>
             <label className={claseEtiqueta} htmlFor="nombre">
-              Nombre completo
+              Nombre de la Fundación o Refugio
             </label>
             <input
               id="nombre"
               required
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Tu nombre y apellido"
+              placeholder="Ej: Fundación Garras y Bigotes"
               className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
             />
             {errores.nombre && (
@@ -115,7 +118,7 @@ export default function Registro() {
 
           <div>
             <label className={claseEtiqueta} htmlFor="email">
-              Correo electrónico
+              Correo institucional oficial
             </label>
             <input
               id="email"
@@ -123,25 +126,29 @@ export default function Registro() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@correo.com"
+              placeholder="contacto@fundacion.cl"
               className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
             />
+            {errores.email && (
+              <p className="text-xs text-[var(--color-rojo)] mt-1">{errores.email}</p>
+            )}
           </div>
 
           <div>
             <label className={claseEtiqueta} htmlFor="telefono">
-              Teléfono celular
+              Teléfono / Celular de contacto oficial
             </label>
             <input
               id="telefono"
               type="tel"
+              required
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
               placeholder="+56 9 1234 5678"
               className="w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-fondo)]/40 px-4 py-3 text-sm placeholder:text-[var(--color-texto-suave)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40 focus:bg-white"
             />
             <p className="text-[11px] text-[var(--color-texto-suave)] mt-1">
-              Estructura: <span className="font-medium text-slate-700">+56 9 XXXX XXXX</span> (9 dígitos)
+              Se utilizará para coordinar con adoptantes preseleccionados (+56 9 XXXX XXXX).
             </p>
             {errores.telefono && (
               <p className="text-xs text-[var(--color-rojo)] mt-1">{errores.telefono}</p>
@@ -150,7 +157,7 @@ export default function Registro() {
 
           <div>
             <label className={claseEtiqueta} htmlFor="password">
-              Contraseña
+              Contraseña de acceso
             </label>
             <div className="relative">
               <input
@@ -176,31 +183,25 @@ export default function Registro() {
             )}
           </div>
 
-          {error && <p className="text-sm text-[var(--color-rojo)]">{error}</p>}
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-[var(--color-rojo)]">
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={cargando}
-            className="w-full bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
+            className="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3.5 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 shadow-sm"
           >
-            {cargando ? "Creando cuenta..." : "Crear cuenta de Adoptante"}
+            {cargando ? "Registrando organización…" : "Solicitar Registro Institucional"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-[var(--color-texto-suave)] mt-6">
-          Al registrarte aceptas usar la plataforma de forma responsable.
-        </p>
-
-        {/* Acceso para Organizaciones / Refugios */}
-        <div className="mt-8 pt-6 border-t border-[var(--color-borde)] text-center">
-          <p className="text-xs text-[var(--color-texto-suave)] mb-2">
-            ¿Representas a una fundación, refugio o agrupación de rescate?
-          </p>
-          <Link
-            to="/registro-refugio"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primario)] hover:underline"
-          >
-            Solicitar registro y verificación de refugio →
+        <div className="mt-6 pt-5 border-t border-[var(--color-borde)] text-center text-xs text-[var(--color-texto-suave)]">
+          ¿Tu organización ya tiene cuenta?{" "}
+          <Link to="/refugio/login" className="font-semibold text-[var(--color-primario)] hover:underline">
+            Inicia sesión aquí →
           </Link>
         </div>
       </div>
