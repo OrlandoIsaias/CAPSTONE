@@ -1,16 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import {
+  Bell,
+  Camera,
+  Check,
+  Clock,
+  FileText,
+  Home,
+  MessageCircle,
+  PawPrint,
+  Pencil,
+  Plus,
+} from "lucide-react";
 import { obtenerPerfilRefugio } from "../api/auth";
 import { misMascotas } from "../api/mascotas";
 import { postulacionesRecibidas } from "../api/postulaciones";
 import { PantallaRefugio } from "../components/BarraRefugio";
-import { SkeletonMetrica, Skeleton } from "../components/Skeleton";
+import { CargandoVista } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
-import { tiempoRelativo } from "../utils/tiempo";
+import { diasDesde, tiempoRelativo } from "../utils/tiempo";
+import { guardarPerfilRefugioCache, leerPerfilRefugioCache } from "../utils/perfilRefugioCache";
 import type { Mascota } from "../types/mascotas";
 import type { Postulacion } from "../types/postulaciones";
 
 const CLAVE_LEIDAS = "housefound_notificaciones_leidas";
+
+// Una solicitud pendiente o una publicación sin interés durante más de este
+// tiempo se considera "estancada" — lo suficiente para ser una señal real,
+// no tan poco que marque como urgente algo publicado ayer.
+const DIAS_ESTANCADO = 2;
+const DIAS_SIN_INTERES = 14;
 
 type Actividad = {
   id: string;
@@ -20,11 +40,24 @@ type Actividad = {
   fecha: string;
 };
 
+function saludo(): string {
+  const hora = new Date().getHours();
+  if (hora < 12) return "Buenos días";
+  if (hora < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 export default function InicioRefugio() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
 
-  const [nombreRefugio, setNombreRefugio] = useState<string | null>(null);
+  // Con caché: si ya visitaste esta pantalla (o Datos del refugio) antes,
+  // se muestra el nombre real del refugio de inmediato. Sin esto, mientras
+  // se espera la respuesta del servidor se caía al nombre personal de la
+  // cuenta (usuario?.nombre, más abajo) y luego "saltaba" al del refugio.
+  const [nombreRefugio, setNombreRefugio] = useState<string | null>(() =>
+    usuario ? (leerPerfilRefugioCache(usuario.id)?.nombre_refugio ?? null) : null
+  );
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
   const [postulaciones, setPostulaciones] = useState<Postulacion[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -38,19 +71,36 @@ export default function InicioRefugio() {
   });
 
   useEffect(() => {
+    // AbortController: sin esto, StrictMode (solo en desarrollo) dispara
+    // las 3 peticiones dos veces — ver el mismo patrón en Recomendaciones.tsx.
+    const controlador = new AbortController();
+
     Promise.all([
-      obtenerPerfilRefugio()
-        .then((p) => setNombreRefugio(p.nombre_refugio))
+      obtenerPerfilRefugio(controlador.signal)
+        .then((p) => {
+          setNombreRefugio(p.nombre_refugio);
+          if (usuario) guardarPerfilRefugioCache(usuario.id, p);
+        })
         // 404 = el refugio todavía no completó su perfil; no es un error
-        .catch(() => setNombreRefugio(null)),
-      misMascotas()
+        .catch((err) => {
+          if (!axios.isCancel(err)) setNombreRefugio(null);
+        }),
+      misMascotas(controlador.signal)
         .then(setMascotas)
-        .catch(() => setMascotas([])),
-      postulacionesRecibidas()
+        .catch((err) => {
+          if (!axios.isCancel(err)) setMascotas([]);
+        }),
+      postulacionesRecibidas(controlador.signal)
         .then(setPostulaciones)
-        .catch(() => setPostulaciones([])),
-    ]).finally(() => setCargando(false));
-  }, []);
+        .catch((err) => {
+          if (!axios.isCancel(err)) setPostulaciones([]);
+        }),
+    ]).finally(() => {
+      if (!controlador.signal.aborted) setCargando(false);
+    });
+
+    return () => controlador.abort();
+  }, [usuario]);
 
   const activos = mascotas.filter((m) => m.estado !== "adoptada").length;
   const adoptados = mascotas.filter((m) => m.estado === "adoptada").length;
@@ -59,6 +109,121 @@ export default function InicioRefugio() {
   // poder postular, así que los postulantes distintos son los cuestionarios
   // que este refugio tiene disponibles para revisar.
   const cuestionarios = new Set(postulaciones.map((p) => p.adoptante_id)).size;
+
+  // Todo lo que sigue se deriva de `mascotas` y `postulaciones`, que ya están
+  // en memoria — ninguna de estas mejoras agrega una consulta nueva al backend.
+
+  // Solicitudes que nadie ha revisado en un buen rato — más urgentes que una
+  // solicitud recién llegada, aunque ambas cuenten igual en "Solicitudes".
+  const solicitudesEstancadas = useMemo(
+    () =>
+      postulaciones.filter(
+        (p) => p.estado === "pendiente" && diasDesde(p.fecha_postulacion) >= DIAS_ESTANCADO
+      ),
+    [postulaciones]
+  );
+
+  // Aprobadas pero todavía no confirmadas como adoptadas: el refugio le debe
+  // un siguiente paso al adoptante (coordinar la entrega).
+  const entregasPendientes = useMemo(
+    () => postulaciones.filter((p) => p.estado === "aprobada" && p.mascota_estado === "en_proceso"),
+    [postulaciones]
+  );
+
+  const mascotasSinFoto = useMemo(
+    () => mascotas.filter((m) => m.estado !== "adoptada" && m.fotos.length === 0),
+    [mascotas]
+  );
+
+  // Disponibles desde hace tiempo y sin una sola solicitud — candidatas a
+  // revisar precio, fotos o descripción.
+  const mascotasSinInteres = useMemo(() => {
+    const idsConSolicitud = new Set(postulaciones.map((p) => p.mascota_id));
+    return mascotas.filter(
+      (m) =>
+        m.estado === "disponible" &&
+        diasDesde(m.fecha_publicacion) >= DIAS_SIN_INTERES &&
+        !idsConSolicitud.has(m.id)
+    );
+  }, [mascotas, postulaciones]);
+
+  // La mascota con más solicitudes en los últimos 7 días — un dato con cara,
+  // no solo un número.
+  const mascotaDestacada = useMemo(() => {
+    const hace7Dias = new Map<number, number>();
+    for (const p of postulaciones) {
+      if (diasDesde(p.fecha_postulacion) <= 7) {
+        hace7Dias.set(p.mascota_id, (hace7Dias.get(p.mascota_id) ?? 0) + 1);
+      }
+    }
+    let mejorId: number | null = null;
+    let mejorConteo = 1; // con 1 sola solicitud no amerita destacarla
+    for (const [id, conteo] of hace7Dias) {
+      if (conteo > mejorConteo) {
+        mejorId = id;
+        mejorConteo = conteo;
+      }
+    }
+    const mascota = mejorId ? mascotas.find((m) => m.id === mejorId) : undefined;
+    return mascota ? { mascota, conteo: mejorConteo } : null;
+  }, [postulaciones, mascotas]);
+
+  const mascotasRecientes = useMemo(
+    () =>
+      mascotas
+        .filter((m) => m.estado !== "adoptada")
+        .sort((a, b) => new Date(b.fecha_publicacion).getTime() - new Date(a.fecha_publicacion).getTime())
+        .slice(0, 6),
+    [mascotas]
+  );
+
+  const accionesPendientes = useMemo(() => {
+    const acciones: {
+      id: string;
+      titulo: string;
+      detalle: string;
+      icono: React.ReactNode;
+      color: "amber" | "blue" | "rose";
+    }[] = [];
+
+    if (solicitudesEstancadas.length > 0) {
+      acciones.push({
+        id: "estancadas",
+        titulo: `${solicitudesEstancadas.length} ${solicitudesEstancadas.length === 1 ? "solicitud lleva" : "solicitudes llevan"} más de ${DIAS_ESTANCADO} días esperando`,
+        detalle: "Revísalas antes de que el adoptante pierda el interés.",
+        icono: <Clock size={19} strokeWidth={2} />,
+        color: "amber",
+      });
+    }
+    if (entregasPendientes.length > 0) {
+      acciones.push({
+        id: "entregas",
+        titulo: `${entregasPendientes.length} ${entregasPendientes.length === 1 ? "entrega" : "entregas"} por coordinar`,
+        detalle: "Aprobadas — confirma la adopción cuando se concreten.",
+        icono: <Home size={21} strokeWidth={2} />,
+        color: "blue",
+      });
+    }
+    if (mascotasSinFoto.length > 0) {
+      acciones.push({
+        id: "sin-foto",
+        titulo: `${mascotasSinFoto.length} ${mascotasSinFoto.length === 1 ? "mascota" : "mascotas"} sin fotos`,
+        detalle: "Las publicaciones con fotos reciben más solicitudes.",
+        icono: <Camera size={19} strokeWidth={2} />,
+        color: "rose",
+      });
+    }
+    if (mascotasSinInteres.length > 0) {
+      acciones.push({
+        id: "sin-interes",
+        titulo: `${mascotasSinInteres.length} ${mascotasSinInteres.length === 1 ? "mascota" : "mascotas"} sin solicitudes hace ${DIAS_SIN_INTERES}+ días`,
+        detalle: "Prueba actualizar sus fotos o descripción.",
+        icono: <PawPrint size={22} strokeWidth={2} />,
+        color: "rose",
+      });
+    }
+    return acciones;
+  }, [solicitudesEstancadas, entregasPendientes, mascotasSinFoto, mascotasSinInteres]);
 
   const actividad = useMemo<Actividad[]>(() => {
     return postulaciones
@@ -110,22 +275,12 @@ export default function InicioRefugio() {
     <PantallaRefugio>
       <header className="flex items-start justify-between mb-6">
         <div>
+          <p className="text-sm font-medium text-[var(--color-texto-suave)] mb-0.5">{saludo()}</p>
           <h1 className="text-2xl font-bold leading-tight">
             {nombreRefugio ?? usuario?.nombre ?? "Tu refugio"}
           </h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => navigate("/perfil-refugio")}
-            aria-label="Datos del refugio"
-            className="w-10 h-10 rounded-full bg-[var(--color-superficie)] border border-[var(--color-borde)] flex items-center justify-center text-[var(--color-texto)] active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="8" r="3.4" />
-              <path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" />
-            </svg>
-          </button>
-
           <div className="relative">
             <button
               onClick={() => setMostrarNotificaciones((v) => !v)}
@@ -133,10 +288,7 @@ export default function InicioRefugio() {
               aria-expanded={mostrarNotificaciones}
               className="w-10 h-10 rounded-full bg-[var(--color-superficie)] border border-[var(--color-borde)] flex items-center justify-center text-[var(--color-texto)] active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5Z" />
-                <path d="M10.5 19a1.8 1.8 0 0 0 3 0" />
-              </svg>
+              <Bell size={18} strokeWidth={1.8} />
             </button>
             {sinLeer > 0 && (
               <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-[var(--color-primario)] text-white text-[11px] font-semibold flex items-center justify-center pointer-events-none">
@@ -212,10 +364,7 @@ export default function InicioRefugio() {
         >
           <div className="flex items-center gap-3 min-w-0">
             <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0 font-bold text-sm">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-              </svg>
+              <Pencil size={18} strokeWidth={2} />
             </span>
             <div className="min-w-0">
               <p className="font-bold text-amber-950 text-sm truncate">Completa el perfil de tu refugio</p>
@@ -231,72 +380,162 @@ export default function InicioRefugio() {
       )}
 
       {cargando ? (
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <SkeletonMetrica />
-          <SkeletonMetrica />
-          <SkeletonMetrica />
-          <SkeletonMetrica />
+        <CargandoVista mensaje="Cargando tu panel…" className="text-[var(--color-texto-suave)] py-16" />
+      ) : mascotas.length === 0 ? (
+        <div className="rounded-3xl bg-[var(--color-superficie)] border border-[var(--color-borde)] p-8 text-center shadow-xs">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center mb-4 shadow-md">
+            <PawPrint size={22} strokeWidth={2} />
+          </div>
+          <h2 className="font-extrabold text-lg mb-1.5">¡Bienvenido a HouseFound!</h2>
+          <p className="text-sm text-[var(--color-texto-suave)] max-w-xs mx-auto mb-5">
+            Publica tu primera mascota para que los adoptantes puedan encontrarla y empezar a
+            postular.
+          </p>
+          <button
+            onClick={() => navigate("/mascota/nueva")}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm shadow-md hover:shadow-lg active:scale-95 transition-all"
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            Publicar tu primera mascota
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <Metrica
-            valor={activos}
-            etiqueta="Animales activos"
-            color="orange"
-            icono={<IconoHuellaRelleno />}
-          />
-          <Metrica
-            valor={pendientes}
-            etiqueta="Solicitudes"
-            color="blue"
-            icono={<IconoDocRelleno />}
-          />
-          <Metrica
-            valor={cuestionarios}
-            etiqueta="Cuestionarios"
-            color="purple"
-            icono={<IconoGloboRelleno />}
-          />
-          <Metrica
-            valor={adoptados}
-            etiqueta="Adoptados"
-            color="emerald"
-            icono={<IconoCasaRelleno />}
-          />
-        </div>
-      )}
+        <>
+          {accionesPendientes.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-lg font-bold mb-3">Requiere tu atención</h2>
+              <div className="space-y-2.5">
+                {accionesPendientes.map((a) => {
+                  const estilo = ESTILOS_ACCION[a.color];
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={() => navigate("/solicitudes")}
+                      className={`w-full text-left flex gap-3 p-3.5 rounded-2xl bg-[var(--color-superficie)] border border-[var(--color-borde)] shadow-xs hover:shadow-sm active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2 ${estilo.borde}`}
+                    >
+                      <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${estilo.iconoBox}`}>
+                        {a.icono}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-semibold text-sm">{a.titulo}</span>
+                        <span className="block text-xs text-[var(--color-texto-suave)] leading-snug mt-0.5">
+                          {a.detalle}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-lg font-bold">Notificaciones</h2>
-        {sinLeer > 0 && (
           <button
-            onClick={marcarTodoLeido}
-            className="text-sm font-medium text-[var(--color-primario)]"
+            onClick={() => navigate("/mascota/nueva")}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm font-black py-3.5 rounded-2xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all mb-6"
           >
-            Marcar todo leído
+            <Plus size={16} strokeWidth={2.5} />
+            Publicar una mascota
           </button>
-        )}
-      </div>
 
-      {cargando && (
-        <div className="space-y-2.5">
-          <Skeleton className="h-[72px] rounded-2xl" />
-          <Skeleton className="h-[72px] rounded-2xl" />
-          <Skeleton className="h-[72px] rounded-2xl" />
-        </div>
-      )}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <Metrica
+              valor={activos}
+              etiqueta="Animales activos"
+              color="orange"
+              icono={<PawPrint size={22} strokeWidth={2} />}
+              onClick={() => navigate("/mis-mascotas")}
+            />
+            <Metrica
+              valor={pendientes}
+              etiqueta="Solicitudes"
+              color="blue"
+              icono={<FileText size={20} strokeWidth={2} />}
+              onClick={() => navigate("/solicitudes")}
+            />
+            <Metrica
+              valor={cuestionarios}
+              etiqueta="Cuestionarios"
+              color="purple"
+              icono={<MessageCircle size={20} strokeWidth={2} />}
+              onClick={() => navigate("/cuestionarios")}
+            />
+            <Metrica
+              valor={adoptados}
+              etiqueta="Adoptados"
+              color="emerald"
+              icono={<Home size={21} strokeWidth={2} />}
+              onClick={() => navigate("/mis-mascotas")}
+            />
+          </div>
 
-      {!cargando && actividad.length === 0 && (
-        <div className="rounded-2xl bg-[var(--color-superficie)] border border-[var(--color-borde)] p-6 text-center">
-          <p className="font-medium">Todo tranquilo por ahora</p>
-          <p className="text-sm text-[var(--color-texto-suave)] mt-1">
-            Cuando alguien postule a una de tus mascotas, aparecerá aquí.
-          </p>
-        </div>
-      )}
+          {mascotaDestacada && (
+            <div className="flex items-center gap-2.5 text-sm font-semibold text-[var(--color-primario)] bg-[var(--color-primario-suave)] rounded-2xl px-4 py-3 mb-8">
+              <span className="text-base">🔥</span>
+              <span>
+                <strong>{mascotaDestacada.mascota.nombre}</strong> es tu mascota más solicitada esta
+                semana ({mascotaDestacada.conteo} solicitudes)
+              </span>
+            </div>
+          )}
 
-      <div className="space-y-2.5">
-        {actividad.map((a) => {
+          <div className="mb-8">
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="text-lg font-bold">Tus mascotas</h2>
+              <button
+                onClick={() => navigate("/mis-mascotas")}
+                className="text-sm font-medium text-[var(--color-primario)]"
+              >
+                Ver todas
+              </button>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4">
+              {mascotasRecientes.map((m) => {
+                const foto = m.fotos.find((f) => f.es_principal) ?? m.fotos[0];
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => navigate(`/mis-mascotas/${m.id}`)}
+                    className="shrink-0 w-24 text-center active:scale-95 transition-transform"
+                  >
+                    <div className="w-24 h-24 rounded-2xl overflow-hidden bg-[var(--color-superficie-apagada)] border-2 border-white ring-2 ring-emerald-300/70 shadow-xs mb-1.5 flex items-center justify-center">
+                      {foto ? (
+                        <img src={foto.url} alt={m.nombre} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xl font-black text-emerald-700">
+                          {m.nombre.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-bold truncate">{m.nombre}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-lg font-bold">Notificaciones</h2>
+            {sinLeer > 0 && (
+              <button
+                onClick={marcarTodoLeido}
+                className="text-sm font-medium text-[var(--color-primario)]"
+              >
+                Marcar todo leído
+              </button>
+            )}
+          </div>
+
+          {actividad.length === 0 && (
+            <div className="rounded-2xl bg-[var(--color-superficie)] border border-[var(--color-borde)] p-6 text-center">
+              <p className="font-medium">Todo tranquilo por ahora</p>
+              <p className="text-sm text-[var(--color-texto-suave)] mt-1">
+                Cuando alguien postule a una de tus mascotas, aparecerá aquí.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2.5">
+            {actividad.map((a) => {
           const leida = leidas.includes(a.id);
           const esAdoptada = a.tipo === "adoptada";
           const esAprobada = a.tipo === "aprobada";
@@ -332,7 +571,7 @@ export default function InicioRefugio() {
               <span
                 className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${estiloBadge}`}
               >
-                {esAdoptada ? <IconoCheck /> : <IconoDocRelleno />}
+                {esAdoptada ? <Check size={18} strokeWidth={2.4} /> : <FileText size={20} strokeWidth={2} />}
               </span>
               <span className="flex-1 min-w-0">
                 <span className={`block font-semibold text-[15px] ${leida ? "text-[var(--color-texto-suave)]" : "text-[var(--color-texto)]"}`}>
@@ -350,8 +589,10 @@ export default function InicioRefugio() {
               )}
             </button>
           );
-        })}
-      </div>
+            })}
+          </div>
+        </>
+      )}
     </PantallaRefugio>
   );
 }
@@ -398,15 +639,20 @@ function Metrica({
   etiqueta,
   color,
   icono,
+  onClick,
 }: {
   valor: number;
   etiqueta: string;
   color: MetricaColor;
   icono: React.ReactNode;
+  onClick?: () => void;
 }) {
   const estilo = ESTILOS_METRICA[color];
   return (
-    <div className={`rounded-2xl p-4 flex items-center gap-3.5 transition-all ${estilo.tarjeta}`}>
+    <button
+      onClick={onClick}
+      className={`rounded-2xl p-4 flex items-center gap-3.5 transition-all text-left active:scale-[0.97] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2 ${estilo.tarjeta}`}
+    >
       <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${estilo.iconoBox}`}>
         {icono}
       </span>
@@ -418,52 +664,14 @@ function Metrica({
           {etiqueta}
         </span>
       </span>
-    </div>
+    </button>
   );
 }
 
-function IconoHuellaRelleno() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-      <ellipse cx="6" cy="9" rx="1.9" ry="2.6" />
-      <ellipse cx="10.5" cy="5.8" rx="1.9" ry="2.6" />
-      <ellipse cx="15.5" cy="5.8" rx="1.9" ry="2.6" />
-      <ellipse cx="19" cy="9.5" rx="1.9" ry="2.6" />
-      <path d="M12.5 12c2.6 0 4.8 1.9 4.8 4.3 0 2-1.5 3.2-3.4 3.2-1 0-1.3-.4-2.4-.4s-1.4.4-2.4.4c-1.9 0-3.4-1.2-3.4-3.2 0-2.4 2.2-4.3 4.8-4.3Z" />
-    </svg>
-  );
-}
+type AccionColor = "amber" | "blue" | "rose";
 
-function IconoDocRelleno() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5V7.5Z" />
-      <path d="M14 3v4.5h4.5" />
-    </svg>
-  );
-}
-
-function IconoGloboRelleno() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 12.5c0 3.6-3.6 6.5-8 6.5-1 0-2-.15-2.9-.42L4 20.5l1.3-3.3C4.2 16 3.5 14.4 3.5 12.5 3.5 8.9 7.1 6 11.5 6s8.5 2.9 8.5 6.5Z" />
-    </svg>
-  );
-}
-
-function IconoCasaRelleno() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V21h14V9.5" />
-    </svg>
-  );
-}
-
-function IconoCheck() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m5 12.5 4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
+const ESTILOS_ACCION: Record<AccionColor, { iconoBox: string; borde: string }> = {
+  amber: { iconoBox: "bg-amber-500 text-white", borde: "border-l-4 border-l-amber-500" },
+  blue: { iconoBox: "bg-blue-600 text-white", borde: "border-l-4 border-l-blue-500" },
+  rose: { iconoBox: "bg-rose-500 text-white", borde: "border-l-4 border-l-rose-500" },
+};

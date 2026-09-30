@@ -1,162 +1,145 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { guardarPerfilRefugio, obtenerPerfilRefugio } from "../api/auth";
-import { Spinner } from "../components/Spinner";
-import { useToast } from "../context/ToastContext";
+import axios from "axios";
+import { Pencil } from "lucide-react";
+import { obtenerPerfilRefugio } from "../api/auth";
+import { PantallaRefugio } from "../components/BarraRefugio";
 import { useAuth } from "../context/AuthContext";
-import { normalizarTelefonoCL, validarTelefonoCL } from "../utils/telefono";
-
-type Errores = Partial<Record<"nombreRefugio" | "telefono", string>>;
+import { guardarPerfilRefugioCache, leerPerfilRefugioCache } from "../utils/perfilRefugioCache";
+import type { PerfilRefugio as IPerfilRefugio } from "../types/auth";
 
 export default function PerfilRefugio() {
+  const { usuario, cerrarSesion } = useAuth();
   const navigate = useNavigate();
-  const { cerrarSesion } = useAuth();
-  const mostrarToast = useToast();
 
-  const [nombreRefugio, setNombreRefugio] = useState("");
-  const [direccion, setDireccion] = useState("");
-  const [telefono, setTelefono] = useState("");
-  // null mientras no sabemos si el perfil existe: cambia el texto de la
-  // pantalla entre "alta inicial" y "edición".
-  const [yaExiste, setYaExiste] = useState<boolean | null>(null);
-  const [errores, setErrores] = useState<Errores>({});
-  const [cargando, setCargando] = useState(false);
+  const [perfil, setPerfil] = useState<IPerfilRefugio | null>(() =>
+    usuario ? leerPerfilRefugioCache(usuario.id) : null
+  );
+  // Si ya había algo en caché, se muestra de inmediato — no hace falta
+  // tapar la pantalla con el spinner mientras se refresca por detrás.
+  const [cargando, setCargando] = useState(() =>
+    usuario ? leerPerfilRefugioCache(usuario.id) === null : true
+  );
 
   useEffect(() => {
-    obtenerPerfilRefugio()
+    const controlador = new AbortController();
+
+    obtenerPerfilRefugio(controlador.signal)
       .then((p) => {
-        setNombreRefugio(p.nombre_refugio);
-        setDireccion(p.direccion ?? "");
-        setTelefono(p.telefono_contacto ?? "");
-        setYaExiste(true);
+        setPerfil(p);
+        if (usuario) guardarPerfilRefugioCache(usuario.id, p);
       })
-      // 404 = todavía no lo completa; es el flujo normal tras registrarse
-      .catch(() => setYaExiste(false));
-  }, []);
-
-  function validar(): boolean {
-    const nuevosErrores: Errores = {};
-    if (nombreRefugio.trim().length < 2) {
-      nuevosErrores.nombreRefugio = "Ingresa el nombre del refugio.";
-    }
-    if (!validarTelefonoCL(telefono)) {
-      nuevosErrores.telefono = "Ingresa un celular chileno válido, ej: +56 9 1234 5678.";
-    }
-    setErrores(nuevosErrores);
-    return Object.values(nuevosErrores).every((v) => !v);
-  }
-
-  async function manejarEnvio(evento: FormEvent) {
-    evento.preventDefault();
-
-    if (!validar()) return;
-
-    setCargando(true);
-    try {
-      await guardarPerfilRefugio({
-        nombre_refugio: nombreRefugio.trim(),
-        direccion: direccion || undefined,
-        telefono_contacto: normalizarTelefonoCL(telefono),
+      .catch((err) => {
+        if (axios.isCancel(err)) return;
+        // 404 = el refugio todavía no completó su perfil; no es un error.
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
+          setPerfil(null);
+        }
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) setCargando(false);
       });
-      if (yaExiste) {
-        mostrarToast("Cambios guardados");
-      } else {
-        navigate("/inicio");
-      }
-    } catch {
-      mostrarToast("No pudimos guardar el perfil. Intenta de nuevo.", "error");
-    } finally {
-      setCargando(false);
-    }
-  }
 
-  const claseCampo =
-    "w-full rounded-xl border border-[var(--color-borde)] bg-[var(--color-superficie)] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primario)]/40";
-  const claseEtiqueta =
-    "block text-[11px] font-semibold tracking-[0.1em] uppercase text-[var(--color-texto-suave)] mb-1.5";
+    return () => controlador.abort();
+  }, [usuario]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-fondo)]">
-      <div className="mx-auto w-full max-w-[480px] px-5 py-8">
-        <header className="flex items-start justify-between gap-3 mb-7">
-          <div>
-            <h1 className="text-2xl font-bold leading-tight">
-              {yaExiste ? "Datos del refugio" : "Cuéntanos sobre tu refugio"}
-            </h1>
-            <p className="text-sm text-[var(--color-texto-suave)] mt-1.5">
-              Esta información acompaña a cada mascota que publiques.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate(-1)}
-            aria-label="Volver"
-            className="w-10 h-10 rounded-full bg-[var(--color-superficie-apagada)] flex items-center justify-center shrink-0 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 5-7 7 7 7" />
-            </svg>
-          </button>
-        </header>
+    <PantallaRefugio>
+      {/* Encabezado */}
+      <header className="mb-5">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-slate-900 leading-tight">
+          Mi Perfil
+        </h1>
+        <p className="text-xs font-medium text-slate-500 mt-1">Gestiona los datos de tu refugio.</p>
+      </header>
 
-        <form onSubmit={manejarEnvio} className="space-y-4">
-          <div>
-            <label className={claseEtiqueta}>Nombre del refugio</label>
-            <input
-              required
-              value={nombreRefugio}
-              onChange={(e) => setNombreRefugio(e.target.value)}
-              placeholder="Huellitas Felices"
-              className={claseCampo}
+      {/* Tarjeta de Identidad */}
+      <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-4 space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-[family-name:var(--font-display)] text-2xl font-black flex items-center justify-center shadow-md border-2 border-white ring-2 ring-indigo-200">
+              {(perfil?.nombre_refugio ?? usuario?.nombre)?.charAt(0).toUpperCase() || "R"}
+            </div>
+            <span
+              className="absolute -bottom-1 -right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-white"
+              title="Cuenta activa"
             />
-            {errores.nombreRefugio && (
-              <p className="text-sm text-[var(--color-rojo)] mt-1">{errores.nombreRefugio}</p>
+          </div>
+          <div className="min-w-0 flex-1">
+            {cargando ? (
+              <>
+                <p className="h-5 w-32 rounded bg-slate-100 animate-pulse mb-1.5" />
+                <p className="h-3.5 w-40 rounded bg-slate-100 animate-pulse" />
+              </>
+            ) : perfil ? (
+              <>
+                <h2 className="font-extrabold text-slate-900 text-lg leading-snug truncate">
+                  {perfil.nombre_refugio}
+                </h2>
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {perfil.direccion || usuario?.email}
+                </p>
+                <p className="text-xs font-bold text-indigo-600 mt-0.5">
+                  {perfil.telefono_contacto ? `Tel: ${perfil.telefono_contacto}` : "Sin teléfono de contacto"}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="font-extrabold text-slate-900 text-lg leading-snug truncate">
+                  {usuario?.nombre}
+                </h2>
+                <p className="text-xs font-semibold text-slate-500 truncate">{usuario?.email}</p>
+              </>
             )}
           </div>
-
-          <div>
-            <label className={claseEtiqueta}>Dirección</label>
-            <input
-              value={direccion}
-              onChange={(e) => setDireccion(e.target.value)}
-              placeholder="Opcional"
-              className={claseCampo}
-            />
-          </div>
-
-          <div>
-            <label className={claseEtiqueta}>Teléfono de contacto</label>
-            <input
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              placeholder="+56 9 1234 5678"
-              className={claseCampo}
-            />
-            <p className="text-xs text-[var(--color-texto-suave)] mt-1">
-              Se comparte con el adoptante cuando apruebas su solicitud, para coordinar la
-              entrega.
-            </p>
-            {errores.telefono && (
-              <p className="text-sm text-[var(--color-rojo)] mt-1">{errores.telefono}</p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={cargando}
-            className="w-full flex items-center justify-center gap-2 bg-[var(--color-primario)] text-white font-semibold py-3.5 rounded-xl hover:bg-[var(--color-primario-oscuro)] active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
-          >
-            {cargando && <Spinner />}
-            {cargando ? "Guardando…" : yaExiste ? "Guardar cambios" : "Continuar"}
-          </button>
-        </form>
-
-        <button
-          onClick={cerrarSesion}
-          className="w-full mt-3 py-3.5 rounded-xl font-semibold text-[var(--color-texto-suave)] active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primario)] focus-visible:ring-offset-2"
-        >
-          Cerrar sesión
-        </button>
+        </div>
       </div>
-    </div>
+
+      {/* Cuadro destacado para Editar */}
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-[1.5px] shadow-sm mb-4">
+        <div className="bg-white rounded-[22px] p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-base shrink-0 shadow-2xs">
+              <Pencil size={20} strokeWidth={2} />
+            </span>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm">Editar datos del refugio</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Nombre, dirección y teléfono de contacto.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate("/perfil-refugio/editar")}
+            className="w-full sm:w-auto shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-sm hover:shadow-md active:scale-95 transition-all"
+          >
+            Editar datos →
+          </button>
+        </div>
+      </div>
+
+      {!cargando && !perfil && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 text-center mb-4">
+          <p className="text-xs font-extrabold text-amber-900">
+            Aún no has completado el perfil de tu refugio.
+          </p>
+          <p className="text-[11px] text-amber-700 mt-1 mb-3">
+            Los adoptantes necesitan tu nombre y contacto para postular con confianza.
+          </p>
+          <button
+            onClick={() => navigate("/perfil-refugio/editar")}
+            className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs"
+          >
+            Completar Ahora
+          </button>
+        </div>
+      )}
+
+      {/* Botón de Cerrar Sesión */}
+      <button
+        onClick={cerrarSesion}
+        className="w-full py-3 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 active:scale-95 transition-all"
+      >
+        Cerrar sesión de la cuenta
+      </button>
+    </PantallaRefugio>
   );
 }

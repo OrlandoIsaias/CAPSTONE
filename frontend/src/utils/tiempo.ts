@@ -27,3 +27,9 @@ export function tiempoRelativo(iso: string): string {
 export function fechaCorta(iso: string): string {
   return aFecha(iso).toLocaleDateString("es-CL", { day: "numeric", month: "long" });
 }
+
+/** Días completos transcurridos desde `iso` — para detectar solicitudes o
+    publicaciones "estancadas" (ver InicioRefugio.tsx). */
+export function diasDesde(iso: string): number {
+  return Math.floor((Date.now() - aFecha(iso).getTime()) / 86_400_000);
+}
