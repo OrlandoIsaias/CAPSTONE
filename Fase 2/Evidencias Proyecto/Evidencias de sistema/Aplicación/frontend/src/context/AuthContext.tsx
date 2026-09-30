@@ -1,6 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { EVENTO_SESION_EXPIRADA } from "../api/client";
 import type { Usuario } from "../types/auth";
+
+function tokenExpirado(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" && payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
 
 interface AuthContextValue {
   usuario: Usuario | null;
@@ -22,11 +32,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const tokenGuardado = localStorage.getItem("housefound_token");
     const usuarioGuardado = localStorage.getItem("housefound_usuario");
-    if (tokenGuardado && usuarioGuardado) {
+    if (tokenGuardado && usuarioGuardado && !tokenExpirado(tokenGuardado)) {
       setToken(tokenGuardado);
       setUsuario(JSON.parse(usuarioGuardado));
+    } else {
+      localStorage.removeItem("housefound_token");
+      localStorage.removeItem("housefound_usuario");
     }
     setCargando(false);
+
+    // El interceptor de apiClient avisa cuando el backend rechaza el token,
+    // para que la UI salga del panel en vez de quedarse mostrando errores.
+    function alExpirar() {
+      setToken(null);
+      setUsuario(null);
+    }
+    window.addEventListener(EVENTO_SESION_EXPIRADA, alExpirar);
+    return () => window.removeEventListener(EVENTO_SESION_EXPIRADA, alExpirar);
   }, []);
 
   function iniciarSesion(nuevoToken: string, nuevoUsuario: Usuario) {

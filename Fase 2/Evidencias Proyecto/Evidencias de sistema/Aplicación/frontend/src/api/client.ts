@@ -4,6 +4,8 @@ import axios from "axios";
 // nunca directo con cada microservicio — es la razón de ser del gateway.
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
+export const EVENTO_SESION_EXPIRADA = "housefound:sesion-expirada";
+
 export const apiClient = axios.create({
   baseURL: API_URL,
 });
@@ -27,6 +29,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem("housefound_token");
       localStorage.removeItem("housefound_usuario");
+      window.dispatchEvent(new Event(EVENTO_SESION_EXPIRADA));
     }
     return Promise.reject(error);
   }

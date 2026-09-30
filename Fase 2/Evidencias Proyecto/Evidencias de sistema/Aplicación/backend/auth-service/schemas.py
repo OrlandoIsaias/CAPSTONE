@@ -4,6 +4,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, EmailStr, field_validator
 
+from rut import parsear_rut
+
 # Celular chileno: acepta con o sin "+56", con o sin espacios
 # (+56 9 1234 5678 / 56912345678 / 912345678, etc.). Se usa tanto para el
 # teléfono del adoptante como el de contacto del refugio — ambos se comparten
@@ -62,6 +64,9 @@ class UsuarioRegistro(BaseModel):
 class UsuarioLogin(BaseModel):
     email: EmailStr
     password: str
+    # Portal desde el que se inicia sesión. Si viene, el login solo emite token
+    # cuando la cuenta tiene ese rol.
+    rol: Optional[Literal["adoptante", "refugio"]] = None
 
     @field_validator("email")
     @classmethod
@@ -69,10 +74,46 @@ class UsuarioLogin(BaseModel):
         return v.strip().lower()
 
 
+class _ConRut(BaseModel):
+    rut: str
+
+    @field_validator("rut")
+    @classmethod
+    def validar_rut(cls, v: str) -> str:
+        numero, dv = parsear_rut(v)
+        return f"{numero}-{dv}"
+
+    @property
+    def rut_numero(self) -> int:
+        return int(self.rut.split("-")[0])
+
+
+class SolicitudCodigoRefugio(_ConRut):
+    pass
+
+
+class CodigoEnviadoOut(BaseModel):
+    correo_enmascarado: str
+    expira_en_segundos: int
+    reenviar_en_segundos: int
+
+
+class VerificacionCodigoRefugio(_ConRut):
+    codigo: str
+
+    @field_validator("codigo")
+    @classmethod
+    def validar_codigo(cls, v: str) -> str:
+        v = v.strip()
+        if not re.fullmatch(r"\d{6}", v):
+            raise ValueError("El código debe tener 6 dígitos")
+        return v
+
+
 class UsuarioOut(BaseModel):
     id: int
     nombre: str
-    email: str
+    email: Optional[str] = None
     rol: str
     fecha_registro: datetime
 

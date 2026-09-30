@@ -2,14 +2,18 @@
 Auth Service — HouseFound
 Endpoints: registro, login, y perfiles de adoptante/refugio (extensión 1-1 de usuarios).
 """
+from datetime import datetime
+
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+import correo
 import models
 import rate_limit
 import schemas
 import security
+import verificacion
 from database import get_db
 
 app = FastAPI(title="HouseFound - Auth Service")
@@ -31,7 +35,13 @@ def health_check():
 
 @app.post("/auth/registro", response_model=schemas.TokenOut, status_code=status.HTTP_201_CREATED)
 def registrar_usuario(datos: schemas.UsuarioRegistro, db: Session = Depends(get_db)):
-    existente = db.query(models.Usuario).filter(models.Usuario.email == datos.email).first()
+    if datos.rol == "refugio":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Los refugios no se registran: se habilitan desde la nómina SII e ingresan con su RUT",
+        )
+
+    existente =db.query(models.Usuario).filter(models.Usuario.email == datos.email).first()
     if existente:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ese email ya está registrado")
 
@@ -52,23 +62,15 @@ def registrar_usuario(datos: schemas.UsuarioRegistro, db: Session = Depends(get_
     db.refresh(nuevo_usuario)
 
     if datos.telefono:
-        if datos.rol == "adoptante":
-            perfil = models.PerfilAdoptante(
-                usuario_id=nuevo_usuario.id,
-                telefono=datos.telefono,
-                espacio_disponible="departamento",
-                tiempo_disponible_horas_dia=4,
-                experiencia_previa="ninguna",
-                nivel_actividad_fisica="medio",
-            )
-            db.add(perfil)
-        elif datos.rol == "refugio":
-            refugio = models.Refugio(
-                usuario_id=nuevo_usuario.id,
-                nombre_refugio=datos.nombre,
-                telefono_contacto=datos.telefono,
-            )
-            db.add(refugio)
+        perfil = models.PerfilAdoptante(
+            usuario_id=nuevo_usuario.id,
+            telefono=datos.telefono,
+            espacio_disponible="departamento",
+            tiempo_disponible_horas_dia=4,
+            experiencia_previa="ninguna",
+            nivel_actividad_fisica="medio",
+        )
+        db.add(perfil)
         db.commit()
 
     token = security.crear_access_token({"sub": str(nuevo_usuario.id), "rol": nuevo_usuario.rol})
@@ -90,16 +92,180 @@ def iniciar_sesion(datos: schemas.UsuarioLogin, db: Session = Depends(get_db)):
 
     # Tiempo constante (ver _HASH_SENUELO arriba): siempre se llama a
     # verificar_password, exista o no el usuario.
-    hash_a_verificar = usuario.password_hash if usuario else _HASH_SENUELO
+    tiene_password = usuario is not None and usuario.password_hash is not None
+    hash_a_verificar = usuario.password_hash if tiene_password else _HASH_SENUELO
     password_valida = security.verificar_password(datos.password, hash_a_verificar)
 
-    if not usuario or not password_valida:
+    if not tiene_password or not password_valida:
         rate_limit.registrar_intento_fallido(datos.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Email o contraseña incorrectos"
         )
 
     rate_limit.limpiar_intentos(datos.email)
+
+    # Los refugios solo entran con RUT + código (/auth/refugio/...).
+    if usuario.rol == "refugio" or (datos.rol is not None and usuario.rol != datos.rol):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta cuenta no corresponde a este portal",
+        )
+
+    token = security.crear_access_token({"sub": str(usuario.id), "rol": usuario.rol})
+    return schemas.TokenOut(access_token=token, usuario=usuario)
+
+
+def _reemplazar_codigo(db: Session, usuario_id: int, codigo: str, ahora: datetime) -> None:
+    # Un solo código válido a la vez: los anteriores quedan inutilizados.
+    db.query(models.CodigoVerificacion).filter(
+        models.CodigoVerificacion.usuario_id == usuario_id,
+        models.CodigoVerificacion.usado.is_(False),
+    ).update({"usado": True})
+    db.add(
+        models.CodigoVerificacion(
+            usuario_id=usuario_id,
+            codigo_hash=verificacion.hashear_codigo(codigo),
+            expira_en=ahora + verificacion.VALIDEZ,
+            creado_en=ahora,
+        )
+    )
+
+
+@app.post("/auth/refugio/solicitar-codigo", response_model=schemas.CodigoEnviadoOut)
+def solicitar_codigo_refugio(datos: schemas.SolicitudCodigoRefugio, db: Session = Depends(get_db)):
+    organizacion = (
+        db.query(models.OrganizacionValidada)
+        .filter(models.OrganizacionValidada.rut == datos.rut_numero)
+        .first()
+    )
+    if organizacion is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Este RUT no está en la nómina de organizaciones habilitadas",
+        )
+
+    refugio = db.query(models.Refugio).filter(models.Refugio.organizacion_id == organizacion.id).first()
+    codigo_fijo = verificacion.CODIGO_PRUEBA if organizacion.es_prueba else None
+
+    if refugio is not None and codigo_fijo is not None:
+        _reemplazar_codigo(db, refugio.usuario_id, codigo_fijo, datetime.utcnow())
+        db.commit()
+        return schemas.CodigoEnviadoOut(
+            correo_enmascarado=correo.enmascarar(organizacion.correo) if organizacion.correo else "cuenta de prueba",
+            expira_en_segundos=int(verificacion.VALIDEZ.total_seconds()),
+            reenviar_en_segundos=0,
+        )
+
+    if refugio is None or not organizacion.correo:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Tu organización aún no tiene un correo registrado en HouseFound. "
+            "Contacta al equipo para habilitar el acceso.",
+        )
+
+    ahora = datetime.utcnow()
+    ultimo = (
+        db.query(models.CodigoVerificacion)
+        .filter(models.CodigoVerificacion.usuario_id == refugio.usuario_id)
+        .order_by(models.CodigoVerificacion.creado_en.desc())
+        .first()
+    )
+    if ultimo is not None:
+        espera = verificacion.segundos_para_reenviar(ultimo.creado_en, ahora)
+        if espera > 0:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Espera {espera} segundos antes de pedir otro código.",
+            )
+    recientes = (
+        db.query(models.CodigoVerificacion)
+        .filter(
+            models.CodigoVerificacion.usuario_id == refugio.usuario_id,
+            models.CodigoVerificacion.creado_en > ahora - verificacion.VENTANA_SOLICITUDES,
+        )
+        .count()
+    )
+    if recientes >= verificacion.MAX_SOLICITUDES_POR_VENTANA:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Pediste demasiados códigos. Intenta de nuevo en una hora.",
+        )
+
+    codigo = verificacion.generar_codigo()
+    _reemplazar_codigo(db, refugio.usuario_id, codigo, ahora)
+
+    try:
+        correo.enviar_codigo(
+            organizacion.correo,
+            codigo,
+            refugio.nombre_refugio,
+            int(verificacion.VALIDEZ.total_seconds() // 60),
+        )
+    except correo.ErrorEnvioCorreo:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No pudimos enviar el código. Intenta de nuevo en unos minutos.",
+        )
+    db.commit()
+
+    return schemas.CodigoEnviadoOut(
+        correo_enmascarado=correo.enmascarar(organizacion.correo),
+        expira_en_segundos=int(verificacion.VALIDEZ.total_seconds()),
+        reenviar_en_segundos=int(verificacion.ESPERA_REENVIO.total_seconds()),
+    )
+
+
+@app.post("/auth/refugio/verificar-codigo", response_model=schemas.TokenOut)
+def verificar_codigo_refugio(datos: schemas.VerificacionCodigoRefugio, db: Session = Depends(get_db)):
+    invalido = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="El código venció o no es válido. Solicita uno nuevo.",
+    )
+
+    refugio = (
+        db.query(models.Refugio)
+        .join(models.OrganizacionValidada, models.OrganizacionValidada.id == models.Refugio.organizacion_id)
+        .filter(models.OrganizacionValidada.rut == datos.rut_numero)
+        .first()
+    )
+    if refugio is None:
+        raise invalido
+
+    registro = (
+        db.query(models.CodigoVerificacion)
+        .filter(
+            models.CodigoVerificacion.usuario_id == refugio.usuario_id,
+            models.CodigoVerificacion.usado.is_(False),
+        )
+        .order_by(models.CodigoVerificacion.creado_en.desc())
+        .with_for_update()
+        .first()
+    )
+    if registro is None or registro.expira_en <= datetime.utcnow():
+        raise invalido
+
+    if not verificacion.codigo_coincide(datos.codigo, registro.codigo_hash):
+        registro.intentos += 1
+        restantes = verificacion.MAX_INTENTOS - registro.intentos
+        if restantes <= 0:
+            registro.usado = True
+        db.commit()
+        if restantes <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Demasiados intentos fallidos. Solicita un código nuevo.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Código incorrecto. Te quedan {restantes} intento{'s' if restantes != 1 else ''}.",
+        )
+
+    registro.usado = True
+    usuario = refugio.usuario
+    usuario.estado = "activo"
+    db.commit()
+
     token = security.crear_access_token({"sub": str(usuario.id), "rol": usuario.rol})
     return schemas.TokenOut(access_token=token, usuario=usuario)
 
@@ -150,13 +316,11 @@ def guardar_perfil_refugio(
     usuario_actual: models.Usuario = Depends(security.requerir_rol("refugio")),
 ):
     refugio = db.query(models.Refugio).filter(models.Refugio.usuario_id == usuario_actual.id).first()
+    if not refugio:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Refugio no encontrado")
 
-    if refugio:
-        for campo, valor in datos.model_dump().items():
-            setattr(refugio, campo, valor)
-    else:
-        refugio = models.Refugio(usuario_id=usuario_actual.id, **datos.model_dump())
-        db.add(refugio)
+    for campo, valor in datos.model_dump().items():
+        setattr(refugio, campo, valor)
 
     db.commit()
     db.refresh(refugio)

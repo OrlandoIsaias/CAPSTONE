@@ -13,7 +13,6 @@ import FichaMascota from "./pages/FichaMascota";
 import Guardados from "./pages/Guardados";
 import InicioRefugio from "./pages/InicioRefugio";
 import Login from "./pages/Login";
-import LoginRefugio from "./pages/LoginRefugio";
 import MascotaRefugio from "./pages/MascotaRefugio";
 import MisMascotas from "./pages/MisMascotas";
 import MisSolicitudes from "./pages/MisSolicitudes";
@@ -22,7 +21,6 @@ import PerfilRefugio from "./pages/PerfilRefugio";
 import PublicarMascota from "./pages/PublicarMascota";
 import Recomendaciones from "./pages/Recomendaciones";
 import Registro from "./pages/Registro";
-import RegistroRefugio from "./pages/RegistroRefugio";
 import Solicitudes from "./pages/Solicitudes";
 
 const CLAVE_SPLASH_VISTO = "housefound_splash_visto";
@@ -49,9 +47,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/registro" element={<Registro />} />
-          <Route path="/registro-refugio" element={<RegistroRefugio />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/refugio/login" element={<LoginRefugio />} />
+          <Route path="/login" element={<Navigate to="/login/refugio" replace />} />
+          <Route path="/login/:portal" element={<Login />} />
 
           {/* Flujo adoptante */}
           <Route
