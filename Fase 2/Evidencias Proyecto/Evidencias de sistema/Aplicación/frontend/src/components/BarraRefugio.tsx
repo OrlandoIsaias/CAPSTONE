@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { CircleUserRound, FileText, Home, MessageCircle, PawPrint } from "lucide-react";
+import { CircleUserRound, FileText, Home, PawPrint } from "lucide-react";
 import type { ReactNode } from "react";
 
 type TabColor = "orange" | "emerald" | "blue" | "purple" | "indigo";
@@ -17,12 +17,6 @@ const PESTANAS: { to: string; etiqueta: string; icono: ReactNode; color: TabColo
     etiqueta: "Solicitudes",
     icono: <FileText size={20} strokeWidth={1.8} />,
     color: "blue",
-  },
-  {
-    to: "/cuestionarios",
-    etiqueta: "Preguntas",
-    icono: <MessageCircle size={20} strokeWidth={1.8} />,
-    color: "purple",
   },
   {
     to: "/perfil-refugio",

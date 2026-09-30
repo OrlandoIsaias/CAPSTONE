@@ -1,11 +1,19 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import { ImagePlus, Trash2, Check, Star } from "lucide-react";
-import { agregarFoto, crearMascota } from "../api/mascotas";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
+import { ImagePlus, Trash2, Check, Star, Undo2 } from "lucide-react";
+import {
+  actualizarMascota,
+  agregarFoto,
+  crearMascota,
+  eliminarFoto,
+  obtenerMascota,
+} from "../api/mascotas";
 import { BotonVolver } from "../components/BotonVolver";
-import { Spinner } from "../components/Spinner";
+import { CargandoVista, Spinner } from "../components/Spinner";
 import { useToast } from "../context/ToastContext";
-import { redimensionarAlCuadrado, leerArchivoComoDataUrl } from "../utils/imagen";
+import { useAjusteFotos } from "../hooks/useAjusteFotos";
+import { leerArchivoComoDataUrl } from "../utils/imagen";
 import {
   EDAD_OPCIONES,
   ESPECIES,
@@ -15,7 +23,12 @@ import {
   TIPOS_FOTO_ACEPTADOS,
   type EspecieMascota,
 } from "../utils/opcionesMascota";
-import type { EspacioMinimo, MascotaInput, NivelEnergiaSocializacion } from "../types/mascotas";
+import type {
+  EspacioMinimo,
+  FotoMascota,
+  MascotaInput,
+  NivelEnergiaSocializacion,
+} from "../types/mascotas";
 
 type Errores = Partial<
   Record<"nombre" | "especie" | "raza" | "edad" | "foto" | "cuidadosEspeciales", string>
@@ -28,9 +41,22 @@ interface FotoItem {
   esPrincipal: boolean;
 }
 
+/* La misma pantalla sirve para publicar (/mascota/nueva) y para editar
+   (/mis-mascotas/:id/editar). Al editar, las fotos existentes solo se pueden
+   quitar (se borran al guardar); agregarlas sigue siendo desde el perfil de
+   la mascota (MascotaRefugio). */
 export default function PublicarMascota() {
   const navigate = useNavigate();
   const mostrarToast = useToast();
+  const { ajustarFotos, editorFotos } = useAjusteFotos();
+  const { id } = useParams<{ id: string }>();
+  const modoEdicion = id !== undefined;
+  const mascotaId = Number(id);
+
+  const [cargandoMascota, setCargandoMascota] = useState(modoEdicion);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const [fotosExistentes, setFotosExistentes] = useState<FotoMascota[]>([]);
+  const [fotosAEliminar, setFotosAEliminar] = useState<number[]>([]);
 
   const [nombre, setNombre] = useState("");
   const [especie, setEspecie] = useState<EspecieMascota | "">("");
@@ -53,7 +79,52 @@ export default function PublicarMascota() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
-  const razasDisponibles = especie ? RAZAS_POR_ESPECIE[especie] : [];
+  useEffect(() => {
+    if (!modoEdicion) return;
+    const controlador = new AbortController();
+
+    obtenerMascota(mascotaId, controlador.signal)
+      .then((m) => {
+        setNombre(m.nombre);
+        // Si la especie guardada no está en el catálogo, queda vacía y la
+        // validación obliga a elegir una antes de guardar.
+        const especieCatalogo = ESPECIES.find(
+          (e) => e.toLowerCase() === (m.especie ?? "").toLowerCase()
+        );
+        setEspecie(especieCatalogo ?? "");
+        setRaza(especieCatalogo ? m.raza ?? "" : "");
+        setEdad(m.edad ?? "");
+        setNivelEnergia(m.nivel_energia ?? "medio");
+        setNivelSocializacion(m.nivel_socializacion ?? "medio");
+        // Un valor vacío (null) puntúa igual que "sí" en el motor de matching
+        // (beneficio de la duda), así que marcarlo no cambia el score.
+        setCompatibleNinos(m.compatible_ninos ?? true);
+        setCompatibleOtras(m.compatible_otras_mascotas ?? true);
+        setExperienciaRequerida(m.nivel_experiencia_requerida ?? "bajo");
+        setEspacioMinimo(m.espacio_minimo_requerido ?? "departamento");
+        setTieneCuidadosEspeciales(Boolean(m.cuidados_especiales));
+        setCuidadosEspeciales(m.cuidados_especiales ?? "");
+        setFotosExistentes(m.fotos ?? []);
+      })
+      .catch((err) => {
+        if (!axios.isCancel(err)) setErrorCarga("No pudimos cargar los datos de esta mascota.");
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) setCargandoMascota(false);
+      });
+
+    return () => controlador.abort();
+  }, [modoEdicion, mascotaId]);
+
+  // Una raza o edad cargada que no esté en el catálogo se agrega como opción
+  // extra, para que el select la muestre y no se pierda al guardar.
+  const razasCatalogo = especie ? RAZAS_POR_ESPECIE[especie] : [];
+  const razasDisponibles =
+    raza && !razasCatalogo.includes(raza) ? [...razasCatalogo, raza] : razasCatalogo;
+  const edadOpciones =
+    edad !== "" && !EDAD_OPCIONES.some((o) => o.valor === edad)
+      ? [...EDAD_OPCIONES, { valor: edad, etiqueta: `${edad} años` }]
+      : EDAD_OPCIONES;
 
   function manejarCambioEspecie(valor: string) {
     setEspecie(valor as EspecieMascota);
@@ -71,6 +142,7 @@ export default function PublicarMascota() {
     let errorMsg: string | undefined;
 
     try {
+      const validos: File[] = [];
       for (const archivo of archivos) {
         if (!TIPOS_FOTO_ACEPTADOS.includes(archivo.type as (typeof TIPOS_FOTO_ACEPTADOS)[number])) {
           errorMsg = "Solo se aceptan imágenes en formato PNG, JPEG o WebP.";
@@ -80,9 +152,13 @@ export default function PublicarMascota() {
           errorMsg = "Cada imagen no puede pesar más de 4 MB.";
           continue;
         }
+        validos.push(archivo);
+      }
 
-        // Redimensionar y centrar automáticamente al formato cuadrado (1:1)
-        const archivoCuadrado = await redimensionarAlCuadrado(archivo);
+      // El usuario encuadra cada foto en formato cuadrado (1:1)
+      const recortadas = await ajustarFotos(validos);
+
+      for (const archivoCuadrado of recortadas) {
         const preview = await leerArchivoComoDataUrl(archivoCuadrado);
 
         nuevasFotos.push({
@@ -131,6 +207,12 @@ export default function PublicarMascota() {
     );
   }
 
+  function alternarEliminarFoto(fotoId: number) {
+    setFotosAEliminar((prev) =>
+      prev.includes(fotoId) ? prev.filter((idFoto) => idFoto !== fotoId) : [...prev, fotoId]
+    );
+  }
+
   function validar(): boolean {
     const nuevosErrores: Errores = {};
     if (!REGEX_SOLO_LETRAS.test(nombre.trim())) {
@@ -175,6 +257,16 @@ export default function PublicarMascota() {
         cuidados_especiales: tieneCuidadosEspeciales ? cuidadosEspeciales.trim() : undefined,
       };
 
+      if (modoEdicion) {
+        await actualizarMascota(mascotaId, payload);
+        for (const fotoId of fotosAEliminar) {
+          await eliminarFoto(mascotaId, fotoId);
+        }
+        mostrarToast("¡Cambios guardados!");
+        navigate(`/mis-mascotas/${mascotaId}`);
+        return;
+      }
+
       const mascotaCreada = await crearMascota(payload);
 
       // Subir fotos en secuencia
@@ -188,7 +280,11 @@ export default function PublicarMascota() {
       mostrarToast("¡Mascota publicada con éxito!");
       navigate(`/mis-mascotas/${mascotaCreada.id}`);
     } catch {
-      setError("No pudimos publicar la mascota. Revisa los datos e intenta de nuevo.");
+      setError(
+        modoEdicion
+          ? "No pudimos guardar los cambios. Revisa los datos e intenta de nuevo."
+          : "No pudimos publicar la mascota. Revisa los datos e intenta de nuevo."
+      );
     } finally {
       setCargando(false);
     }
@@ -204,10 +300,98 @@ export default function PublicarMascota() {
       <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-20">
         <BotonVolver />
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-black text-slate-900 mt-2 mb-6 leading-tight">
-          Publicar Mascota
+          {modoEdicion ? "Editar Mascota" : "Publicar Mascota"}
         </h1>
 
+        {cargandoMascota && <CargandoVista mensaje="Cargando datos de la mascota…" />}
+
+        {errorCarga && (
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium">
+            {errorCarga}
+          </div>
+        )}
+
+        {!cargandoMascota && !errorCarga && (
         <form onSubmit={manejarEnvio} className="space-y-4">
+          {/* Fotos actuales (solo al editar): se marcan para borrar y se
+              eliminan recién al guardar, así el refugio puede arrepentirse. */}
+          {modoEdicion && (
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                    Fotos de la Mascota
+                  </h2>
+                  <p className="text-[11px] font-medium text-slate-400">
+                    Las fotos marcadas se eliminan al guardar los cambios.
+                  </p>
+                </div>
+                <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
+                  {fotosExistentes.length - fotosAEliminar.length}{" "}
+                  {fotosExistentes.length - fotosAEliminar.length === 1 ? "foto" : "fotos"}
+                </span>
+              </div>
+
+              {fotosExistentes.length === 0 ? (
+                <p className="text-xs font-medium text-slate-500 text-center py-3">
+                  Esta mascota no tiene fotos.
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2.5 pt-1">
+                  {fotosExistentes.map((f) => {
+                    const marcada = fotosAEliminar.includes(f.id);
+                    return (
+                      <div
+                        key={f.id}
+                        className={`relative rounded-2xl overflow-hidden aspect-square border-2 transition-all ${
+                          marcada ? "border-rose-400" : "border-slate-200"
+                        }`}
+                      >
+                        <img
+                          src={f.url}
+                          alt="Foto mascota"
+                          className={`w-full h-full object-cover transition-all ${
+                            marcada ? "opacity-30 grayscale" : ""
+                          }`}
+                        />
+
+                        {f.es_principal && !marcada && (
+                          <span className="absolute top-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white shadow-xs">
+                            Principal
+                          </span>
+                        )}
+
+                        {marcada && (
+                          <span className="absolute inset-x-0 bottom-1.5 text-center text-[10px] font-black text-rose-700">
+                            Se eliminará
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => alternarEliminarFoto(f.id)}
+                          className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full text-white flex items-center justify-center backdrop-blur-xs active:scale-90 transition-all ${
+                            marcada
+                              ? "bg-emerald-600 hover:bg-emerald-700"
+                              : "bg-slate-900/70 hover:bg-rose-600"
+                          }`}
+                          title={marcada ? "Conservar esta foto" : "Eliminar esta foto"}
+                          aria-label={marcada ? "Conservar esta foto" : "Eliminar esta foto"}
+                        >
+                          {marcada ? <Undo2 size={12} /> : <Trash2 size={12} />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <p className="text-[11px] font-medium text-slate-400">
+                Para agregar fotos, usa el botón "+ Foto" en el perfil de la mascota.
+              </p>
+            </div>
+          )}
+
           <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-4">
             <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
               Datos Básicos
@@ -268,7 +452,7 @@ export default function PublicarMascota() {
                 className={claseCampo}
               >
                 <option value="">Selecciona...</option>
-                {EDAD_OPCIONES.map((o) => (
+                {edadOpciones.map((o) => (
                   <option key={o.valor} value={o.valor}>
                     {o.etiqueta}
                   </option>
@@ -394,7 +578,8 @@ export default function PublicarMascota() {
             </div>
           </div>
 
-          {/* Sección Fotos Múltiples */}
+          {/* Sección Fotos Múltiples (solo al publicar) */}
+          {!modoEdicion && (
           <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-3.5">
             <div className="flex items-center justify-between">
               <div>
@@ -402,7 +587,7 @@ export default function PublicarMascota() {
                   Fotos de la Mascota
                 </h2>
                 <p className="text-[11px] font-medium text-slate-400">
-                  Las fotos se centran automáticamente al formato cuadrado (1:1).
+                  Al elegir cada foto podrás encuadrarla en formato cuadrado (1:1).
                 </p>
               </div>
               <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
@@ -467,7 +652,7 @@ export default function PublicarMascota() {
                   {procesandoFotos ? (
                     <>
                       <Spinner />
-                      <span className="text-xs font-bold">Procesando y centrando fotos...</span>
+                      <span className="text-xs font-bold">Ajustando fotos...</span>
                     </>
                   ) : (
                     <>
@@ -490,6 +675,7 @@ export default function PublicarMascota() {
             </div>
             {errores.foto && <p className={claseErrorCampo}>{errores.foto}</p>}
           </div>
+          )}
 
           {error && (
             <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
@@ -503,10 +689,18 @@ export default function PublicarMascota() {
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-4 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
           >
             {cargando && <Spinner />}
-            {cargando ? "Publicando mascota..." : "Publicar Mascota"}
+            {cargando
+              ? modoEdicion
+                ? "Guardando cambios..."
+                : "Publicando mascota..."
+              : modoEdicion
+                ? "Guardar Cambios"
+                : "Publicar Mascota"}
           </button>
         </form>
+        )}
       </div>
+      {editorFotos}
     </div>
   );
 }

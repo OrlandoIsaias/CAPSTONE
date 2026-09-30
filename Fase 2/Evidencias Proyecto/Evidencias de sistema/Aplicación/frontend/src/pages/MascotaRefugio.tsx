@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ImagePlus, Trash2, ChevronLeft, Trash, ChevronRight, Users } from "lucide-react";
-import { agregarFoto, eliminarFoto, obtenerMascota } from "../api/mascotas";
+import { ImagePlus, ChevronLeft, ChevronRight, Users, Pencil } from "lucide-react";
+import { agregarFoto, obtenerMascota } from "../api/mascotas";
 import { postulacionesRecibidas } from "../api/postulaciones";
 import {
   AvatarIniciales,
@@ -12,7 +12,7 @@ import { PantallaRefugio } from "../components/BarraRefugio";
 import { Skeleton } from "../components/Skeleton";
 import { Spinner } from "../components/Spinner";
 import { useToast } from "../context/ToastContext";
-import { redimensionarAlCuadrado } from "../utils/imagen";
+import { useAjusteFotos } from "../hooks/useAjusteFotos";
 import { fechaCorta } from "../utils/tiempo";
 import { TAMANO_MAXIMO_FOTO_BYTES, TIPOS_FOTO_ACEPTADOS } from "../utils/opcionesMascota";
 import type { Mascota } from "../types/mascotas";
@@ -29,13 +29,13 @@ export default function MascotaRefugio() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const mostrarToast = useToast();
+  const { ajustarFotos, editorFotos } = useAjusteFotos();
 
   const [mascota, setMascota] = useState<Mascota | null>(null);
   const [postulacionesMascota, setPostulacionesMascota] = useState<Postulacion[]>([]);
   const [fotoActivaIndex, setFotoActivaIndex] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
-  const [eliminandoFotoId, setEliminandoFotoId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const carruselRef = useRef<HTMLDivElement>(null);
@@ -123,46 +123,32 @@ export default function MascotaRefugio() {
       }
     }
 
+    // El usuario encuadra cada foto antes de subirla
+    const recortadas = await ajustarFotos(archivos);
+    if (recortadas.length === 0) return;
+
     setSubiendoFoto(true);
     try {
       const tieneFotos = (mascota.fotos ?? []).length > 0;
-      for (let i = 0; i < archivos.length; i++) {
+      for (let i = 0; i < recortadas.length; i++) {
         const esPrimera = !tieneFotos && i === 0;
-        const archivoCuadrado = await redimensionarAlCuadrado(archivos[i]);
         await agregarFoto(
           mascota.id,
-          archivoCuadrado,
+          recortadas[i],
           esPrimera,
           (mascota.fotos?.length ?? 0) + i + 1
         );
       }
       mostrarToast(
-        archivos.length === 1
+        recortadas.length === 1
           ? "¡Foto agregada exitosamente!"
-          : `¡${archivos.length} fotos agregadas exitosamente!`
+          : `¡${recortadas.length} fotos agregadas exitosamente!`
       );
       await cargarDatos();
     } catch {
       mostrarToast("No pudimos subir las fotos. Intenta de nuevo.");
     } finally {
       setSubiendoFoto(false);
-    }
-  }
-
-  async function manejarEliminarFoto(fotoId: number) {
-    if (!mascota) return;
-    setEliminandoFotoId(fotoId);
-    try {
-      await eliminarFoto(mascota.id, fotoId);
-      mostrarToast("Foto eliminada correctamente.");
-      if (fotoActivaIndex > 0) {
-        setFotoActivaIndex((prev) => Math.max(0, prev - 1));
-      }
-      await cargarDatos();
-    } catch {
-      mostrarToast("No pudimos eliminar la foto. Intenta de nuevo.");
-    } finally {
-      setEliminandoFotoId(null);
     }
   }
 
@@ -192,10 +178,19 @@ export default function MascotaRefugio() {
         >
           <ChevronLeft size={18} strokeWidth={2.5} />
         </button>
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-slate-900">Perfil de Mascota</h1>
           <p className="text-xs text-slate-500">Gestión y solicitudes de la mascota</p>
         </div>
+        {mascota && (
+          <button
+            onClick={() => navigate(`/mis-mascotas/${mascota.id}/editar`)}
+            className="ml-auto shrink-0 flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-2 rounded-xl active:scale-95 transition-all"
+          >
+            <Pencil size={13} strokeWidth={2.5} />
+            Editar
+          </button>
+        )}
       </header>
 
       {cargando && (
@@ -280,30 +275,18 @@ export default function MascotaRefugio() {
             {/* Fila de Miniaturas + Botón Agregar Foto Abajo */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
               {fotos.map((f, i) => (
-                <div key={f.id} className="relative group shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => irAFoto(i)}
-                    className={`w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all block ${
-                      i === fotoActivaIndex
-                        ? "border-emerald-500 shadow-sm ring-2 ring-emerald-200 scale-105"
-                        : "border-slate-200 opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <img src={f.url} alt="" className="w-full h-full object-cover" />
-                  </button>
-
-                  {/* Botón eliminar miniatura */}
-                  <button
-                    type="button"
-                    disabled={eliminandoFotoId === f.id}
-                    onClick={() => manejarEliminarFoto(f.id)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] shadow-xs active:scale-90 transition-all opacity-0 group-hover:opacity-100"
-                    title="Eliminar esta foto"
-                  >
-                    {eliminandoFotoId === f.id ? "..." : <Trash2 size={10} />}
-                  </button>
-                </div>
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => irAFoto(i)}
+                  className={`w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all block shrink-0 ${
+                    i === fotoActivaIndex
+                      ? "border-emerald-500 shadow-sm ring-2 ring-emerald-200 scale-105"
+                      : "border-slate-200 opacity-70 hover:opacity-100"
+                  }`}
+                >
+                  <img src={f.url} alt="" className="w-full h-full object-cover" />
+                </button>
               ))}
 
               {/* Botón miniatura para agregar fotos */}
@@ -326,21 +309,6 @@ export default function MascotaRefugio() {
                 />
               </label>
             </div>
-
-            {/* Botón de acción para eliminar foto activa */}
-            {fotoActual && (
-              <div className="flex justify-end pt-0.5">
-                <button
-                  type="button"
-                  disabled={eliminandoFotoId === fotoActual.id}
-                  onClick={() => manejarEliminarFoto(fotoActual.id)}
-                  className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors active:scale-95 disabled:opacity-60"
-                >
-                  <Trash size={13} />
-                  {eliminandoFotoId === fotoActual.id ? "Eliminando..." : "Eliminar foto mostrada"}
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Información y Datos de la Mascota */}
@@ -444,6 +412,7 @@ export default function MascotaRefugio() {
           </div>
         </div>
       )}
+      {editorFotos}
     </PantallaRefugio>
   );
 }

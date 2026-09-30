@@ -4,7 +4,6 @@ import { ConfirmProvider } from "./components/ConfirmDialog";
 import { RutaProtegida } from "./components/RutaProtegida";
 import SplashScreen from "./components/SplashScreen";
 import { ToastProvider } from "./components/Toast";
-import Cuestionarios from "./pages/Cuestionarios";
 import DetalleSolicitud from "./pages/DetalleSolicitud";
 import EditarPerfilAdoptante from "./pages/EditarPerfilAdoptante";
 import EditarPerfilRefugio from "./pages/EditarPerfilRefugio";
@@ -158,6 +157,14 @@ function App() {
             }
           />
           <Route
+            path="/mis-mascotas/:id/editar"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <PublicarMascota />
+              </RutaProtegida>
+            }
+          />
+          <Route
             path="/solicitudes"
             element={
               <RutaProtegida rolRequerido="refugio">
@@ -173,14 +180,7 @@ function App() {
               </RutaProtegida>
             }
           />
-          <Route
-            path="/cuestionarios"
-            element={
-              <RutaProtegida rolRequerido="refugio">
-                <Cuestionarios />
-              </RutaProtegida>
-            }
-          />
+          <Route path="/cuestionarios" element={<Navigate to="/solicitudes" replace />} />
           <Route path="/postulaciones" element={<Navigate to="/solicitudes" replace />} />
         </Routes>
       </ConfirmProvider>
