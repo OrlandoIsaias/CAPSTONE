@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { ChevronLeft } from "lucide-react";
 import { misPostulaciones } from "../api/postulaciones";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { AvatarIniciales, EstadoPostulacionBadge } from "../components/Badges";
-import { SkeletonFila } from "../components/Skeleton";
+import { CargandoVista } from "../components/Spinner";
 import { fechaCorta } from "../utils/tiempo";
 import { linkWhatsApp } from "../utils/telefono";
 import type { Postulacion } from "../types/postulaciones";
@@ -15,10 +17,18 @@ export default function MisSolicitudes() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    misPostulaciones()
+    const controlador = new AbortController();
+
+    misPostulaciones(controlador.signal)
       .then(setSolicitudes)
-      .catch(() => setError("No pudimos cargar tus solicitudes."))
-      .finally(() => setCargando(false));
+      .catch((err) => {
+        if (!axios.isCancel(err)) setError("No pudimos cargar tus solicitudes.");
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) setCargando(false);
+      });
+
+    return () => controlador.abort();
   }, []);
 
   return (
@@ -29,21 +39,14 @@ export default function MisSolicitudes() {
           aria-label="Volver"
           className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center shrink-0 active:scale-90 transition-transform shadow-2xs"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m15 18-6-6 6-6" />
-          </svg>
+          <ChevronLeft size={18} strokeWidth={2.5} />
         </button>
         <div>
           <h1 className="text-xl font-black text-slate-900 leading-tight">Mis Solicitudes</h1>
         </div>
       </header>
 
-      {cargando && (
-        <div className="space-y-3">
-          <SkeletonFila />
-          <SkeletonFila />
-        </div>
-      )}
+      {cargando && <CargandoVista mensaje="Cargando tus solicitudes…" />}
 
       {error && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium mb-4">

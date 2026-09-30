@@ -1,4 +1,5 @@
 import { useCallback, useState, type ReactNode } from "react";
+import { AlertCircle, Check } from "lucide-react";
 import { ToastContext, type MostrarToast, type TipoToast } from "../context/ToastContext";
 
 interface ToastItem {
@@ -40,30 +41,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     : "var(--color-texto)",
             }}
           >
-            {t.tipo === "exito" && <IconoCheck />}
-            {t.tipo === "error" && <IconoAlerta />}
+            {t.tipo === "exito" && <Check size={18} strokeWidth={2.4} className="shrink-0" />}
+            {t.tipo === "error" && <AlertCircle size={18} strokeWidth={2.2} className="shrink-0" />}
             <span className="flex-1">{t.mensaje}</span>
           </div>
         ))}
       </div>
     </ToastContext.Provider>
-  );
-}
-
-function IconoCheck() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-      <path d="m5 12.5 4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
-
-function IconoAlerta() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v5" />
-      <path d="M12 16h.01" />
-    </svg>
   );
 }

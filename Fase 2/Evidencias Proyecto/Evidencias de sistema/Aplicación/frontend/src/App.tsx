@@ -7,6 +7,7 @@ import { ToastProvider } from "./components/Toast";
 import Cuestionarios from "./pages/Cuestionarios";
 import DetalleSolicitud from "./pages/DetalleSolicitud";
 import EditarPerfilAdoptante from "./pages/EditarPerfilAdoptante";
+import EditarPerfilRefugio from "./pages/EditarPerfilRefugio";
 import ExplorarMascotas from "./pages/ExplorarMascotas";
 import FichaMascota from "./pages/FichaMascota";
 import Guardados from "./pages/Guardados";
@@ -120,6 +121,14 @@ function App() {
             element={
               <RutaProtegida rolRequerido="refugio">
                 <PerfilRefugio />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/perfil-refugio/editar"
+            element={
+              <RutaProtegida rolRequerido="refugio">
+                <EditarPerfilRefugio />
               </RutaProtegida>
             }
           />

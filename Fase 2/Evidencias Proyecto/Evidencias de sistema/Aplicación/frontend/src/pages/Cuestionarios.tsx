@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { detallePostulacion, postulacionesRecibidas } from "../api/postulaciones";
 import { AvatarIniciales } from "../components/Badges";
 import { PantallaRefugio } from "../components/BarraRefugio";
-import { SkeletonFila } from "../components/Skeleton";
+import { CargandoVista } from "../components/Spinner";
 import type { PostulacionDetalle } from "../types/postulaciones";
 
 const ESPACIO: Record<string, string> = {
@@ -25,19 +26,34 @@ export default function Cuestionarios() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    postulacionesRecibidas()
+    // AbortController: acá importa más que en otras vistas — sin cancelar,
+    // StrictMode no solo duplica postulacionesRecibidas, sino también TODA
+    // la cascada de detallePostulacion que sigue (una por cada adoptante).
+    const controlador = new AbortController();
+
+    postulacionesRecibidas(controlador.signal)
       .then(async (lista) => {
         const porAdoptante = new Map<number, number>();
         for (const p of lista) {
           if (!porAdoptante.has(p.adoptante_id)) porAdoptante.set(p.adoptante_id, p.id);
         }
         const detalles = await Promise.all(
-          [...porAdoptante.values()].map((id) => detallePostulacion(id).catch(() => null))
+          [...porAdoptante.values()].map((id) =>
+            detallePostulacion(id, controlador.signal).catch(() => null)
+          )
         );
-        setFichas(detalles.filter((d): d is PostulacionDetalle => d !== null));
+        if (!controlador.signal.aborted) {
+          setFichas(detalles.filter((d): d is PostulacionDetalle => d !== null));
+        }
       })
-      .catch(() => setError("No pudimos cargar los cuestionarios."))
-      .finally(() => setCargando(false));
+      .catch((err) => {
+        if (!axios.isCancel(err)) setError("No pudimos cargar los cuestionarios.");
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) setCargando(false);
+      });
+
+    return () => controlador.abort();
   }, []);
 
   return (
@@ -51,13 +67,7 @@ export default function Cuestionarios() {
         </p>
       </header>
 
-      {cargando && (
-        <div className="space-y-3">
-          <SkeletonFila />
-          <SkeletonFila />
-          <SkeletonFila />
-        </div>
-      )}
+      {cargando && <CargandoVista mensaje="Cargando cuestionarios…" />}
 
       {error && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium mb-4">
