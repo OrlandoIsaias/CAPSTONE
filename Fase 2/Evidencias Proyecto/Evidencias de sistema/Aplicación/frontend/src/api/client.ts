@@ -8,10 +8,10 @@ export const apiClient = axios.create({
   baseURL: API_URL,
 });
 
-// Agrega el token guardado a TODAS las peticiones automáticamente,
+// Agrega el token guardado a TODAS las peticiones automáticamente usando sessionStorage,
 // para no repetir "Authorization: Bearer ..." en cada llamada.
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("housefound_token");
+  const token = sessionStorage.getItem("housefound_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -25,6 +25,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      sessionStorage.removeItem("housefound_token");
+      sessionStorage.removeItem("housefound_usuario");
       localStorage.removeItem("housefound_token");
       localStorage.removeItem("housefound_usuario");
     }
