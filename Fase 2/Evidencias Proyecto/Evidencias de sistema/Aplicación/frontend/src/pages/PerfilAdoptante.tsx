@@ -7,11 +7,6 @@ import { CargandoVista } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import type { PerfilAdoptante as IPerfilAdoptante } from "../types/auth";
 
-// El correo/nombre aparecen al instante porque ya están en localStorage
-// desde el login (AuthContext). El perfil (teléfono incluido) vive en otra
-// tabla y se pide aparte — cachearlo acá logra el mismo efecto: se muestra
-// de inmediato desde la segunda visita en adelante, mientras se refresca
-// en silencio por si cambió en otro dispositivo.
 function claveCache(usuarioId: number) {
   return `housefound_perfil_adoptante_cache_${usuarioId}`;
 }
@@ -50,8 +45,6 @@ export default function PerfilAdoptante() {
   const [perfil, setPerfil] = useState<IPerfilAdoptante | null>(() =>
     usuario ? leerCache(usuario.id) : null
   );
-  // Si ya había algo en caché, se muestra de inmediato — no hace falta
-  // tapar la pantalla con el spinner mientras se refresca por detrás.
   const [cargando, setCargando] = useState(() => (usuario ? leerCache(usuario.id) === null : true));
 
   useEffect(() => {
@@ -62,15 +55,11 @@ export default function PerfilAdoptante() {
           try {
             localStorage.setItem(claveCache(usuario.id), JSON.stringify(p));
           } catch {
-            // localStorage lleno/deshabilitado — no es crítico, simplemente
-            // no se cachea y la próxima visita vuelve a pedirlo.
+            // localStorage fallback
           }
         }
       })
       .catch((err) => {
-        // 404 = el usuario genuinamente no tiene perfil todavía. Cualquier
-        // otro error (red, servidor caído) no debería borrar un dato en
-        // caché que sabemos que es válido.
         if (axios.isAxiosError(err) && err.response?.status === 404) {
           setPerfil(null);
         }
@@ -94,12 +83,11 @@ export default function PerfilAdoptante() {
       <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-4 space-y-4">
         {/* Cabecera del usuario con Avatar */}
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-[family-name:var(--font-display)] text-2xl font-black flex items-center justify-center shadow-md border-2 border-white ring-2 ring-indigo-200">
-              {usuario?.nombre?.charAt(0).toUpperCase() || "U"}
-            </div>
-            <span className="absolute -bottom-1 -right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-white" title="Cuenta activa" />
+          <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-[family-name:var(--font-display)] text-2xl font-black flex items-center justify-center shadow-md border-2 border-white ring-2 ring-indigo-200 shrink-0">
+            {usuario?.nombre?.charAt(0).toUpperCase() || "U"}
+            <span className="absolute -bottom-1 -right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-white shadow-2xs" title="Cuenta activa" />
           </div>
+
           <div className="min-w-0 flex-1">
             <h2 className="font-extrabold text-slate-900 text-lg leading-snug truncate">
               {usuario?.nombre}
@@ -108,9 +96,6 @@ export default function PerfilAdoptante() {
               {usuario?.email}
             </p>
             {cargando ? (
-              // Mientras se espera la respuesta, `perfil` todavía es null —
-              // sin este caso se alcanza a mostrar "Sin teléfono" un
-              // instante antes de que llegue el dato real.
               <p className="h-3.5 w-24 mt-1 rounded bg-slate-100 animate-pulse" />
             ) : perfil?.telefono ? (
               <p className="text-xs font-bold text-indigo-600 mt-0.5">
@@ -148,7 +133,7 @@ export default function PerfilAdoptante() {
             onClick={() => navigate("/perfil-adoptante/editar")}
             className="w-full sm:w-auto shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-sm hover:shadow-md active:scale-95 transition-all"
           >
-            Editar datos →
+            Editar datos
           </button>
         </div>
       </div>
@@ -233,13 +218,20 @@ export default function PerfilAdoptante() {
         )}
       </div>
 
-      {/* Botón de Cerrar Sesión */}
-      <button
-        onClick={cerrarSesion}
-        className="w-full py-3 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 active:scale-95 transition-all"
-      >
-        Cerrar sesión de la cuenta
-      </button>
+      {/* Botón de Cerrar Sesión con degradé rojo */}
+      <div className="bg-gradient-to-r from-rose-500 via-red-500 to-rose-600 rounded-3xl p-[1.5px] shadow-sm">
+        <button
+          onClick={cerrarSesion}
+          className="w-full bg-white hover:bg-rose-50/80 py-3.5 rounded-[22px] text-xs font-black text-rose-600 active:scale-98 transition-all flex items-center justify-center gap-2"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Cerrar sesión de la cuenta
+        </button>
+      </div>
     </PantallaAdoptante>
   );
 }

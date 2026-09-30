@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { InsigniaScore } from "./InsigniaScore";
 
@@ -27,6 +28,7 @@ export function TarjetaMascota({
   onAlternarGuardado?: (mascotaId: number) => void;
 }) {
   const mostrarGuardado = onAlternarGuardado !== undefined;
+  const [imgError, setImgError] = useState(false);
 
   return (
     <Link
@@ -35,10 +37,11 @@ export function TarjetaMascota({
     >
       {/* Marco de fotografía limpio y ajustado */}
       <div className="w-22 h-22 rounded-2xl overflow-hidden shadow-2xs border-2 border-white ring-2 ring-orange-200/80 bg-slate-100 shrink-0 flex items-center justify-center">
-        {urlFoto ? (
+        {urlFoto && !imgError ? (
           <img
             src={urlFoto}
             alt={nombre}
+            onError={() => setImgError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (

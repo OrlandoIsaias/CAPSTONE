@@ -43,5 +43,6 @@ class PerfilAdoptante(Base):
     otras_mascotas = Column(Boolean, default=False)
     nivel_actividad_fisica = Column(String)
     telefono = Column(String)
+    foto_perfil = Column(String)  # URL de Cloudinary; nullable, la columna ya existe en la BD
 
     usuario = relationship("Usuario", back_populates="perfil_adoptante")

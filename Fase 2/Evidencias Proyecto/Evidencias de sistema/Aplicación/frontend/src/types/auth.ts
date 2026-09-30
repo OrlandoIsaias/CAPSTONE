@@ -42,9 +42,8 @@ export interface PerfilAdoptante {
   tiene_ninos: boolean;
   otras_mascotas: boolean;
   nivel_actividad_fisica: NivelActividad;
-  // Optional acá: perfiles guardados antes de que este campo existiera
-  // pueden no tenerlo todavía (ver auth-service/schemas.py).
   telefono?: string;
+  foto_perfil?: string;
 }
 
 export interface PerfilAdoptanteInput {
@@ -57,6 +56,7 @@ export interface PerfilAdoptanteInput {
   // Opcional: EditarPerfilAdoptante.tsx permite guardar sin teléfono (el
   // botón de WhatsApp ya sabe mostrar el estado "sin celular registrado").
   telefono?: string;
+  foto_perfil?: string;
 }
 
 export interface PerfilRefugio {

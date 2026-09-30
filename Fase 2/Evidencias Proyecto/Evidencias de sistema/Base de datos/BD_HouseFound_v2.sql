@@ -40,6 +40,7 @@ CREATE TABLE "perfiles_adoptante" (
   -- Mismo criterio que telefono_contacto en refugios: opcional en la BD,
   -- obligatorio en la API para perfiles nuevos.
   "telefono" varchar,
+  "foto_perfil" varchar,
   CONSTRAINT chk_perfil_espacio CHECK ("espacio_disponible" IN ('departamento', 'casa_patio', 'casa_grande')),
   CONSTRAINT chk_perfil_experiencia CHECK ("experiencia_previa" IN ('ninguna', 'basica', 'alta')),
   CONSTRAINT chk_perfil_actividad CHECK ("nivel_actividad_fisica" IN ('bajo', 'medio', 'alto')),

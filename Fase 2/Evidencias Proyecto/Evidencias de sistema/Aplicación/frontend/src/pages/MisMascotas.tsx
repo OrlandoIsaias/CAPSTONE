@@ -23,6 +23,75 @@ function esGato(especie?: string) {
   return (especie ?? "").toLowerCase().includes("gat");
 }
 
+/** Tarjeta individual con su propio estado de error de imagen */
+function TarjetaMascotaRefugio({
+  m,
+  solicitudes,
+  onClick,
+}: {
+  m: Mascota;
+  solicitudes: number;
+  onClick: () => void;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const foto = m.fotos.find((f) => f.es_principal) ?? m.fotos[0];
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left flex gap-3.5 items-center bg-white rounded-3xl border border-slate-200/90 p-3.5 shadow-xs hover:shadow-md hover:border-emerald-300 active:scale-[0.99] transition-all group"
+    >
+      {/* Marco fotográfico */}
+      <div className="relative w-22 h-22 rounded-2xl overflow-hidden shadow-2xs border-2 border-white ring-2 ring-emerald-300/80 bg-slate-100 shrink-0 flex items-center justify-center">
+        {foto && !imgError ? (
+          <img
+            src={foto.url}
+            alt={m.nombre}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-100 to-teal-200 text-emerald-700">
+            <span className="font-[family-name:var(--font-display)] text-2xl font-black">
+              {m.nombre.charAt(0).toUpperCase()}
+            </span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-800/80">Sin foto</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0 pr-2">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="min-w-0">
+            <p className="font-[family-name:var(--font-display)] text-lg font-extrabold text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
+              {m.nombre}
+            </p>
+          </div>
+          <EstadoMascotaBadge estado={m.estado} />
+        </div>
+
+        <p className="text-xs font-semibold text-slate-500 truncate">
+          {[m.raza || m.especie, m.edad != null ? `${m.edad} ${m.edad === 1 ? "año" : "años"}` : null]
+            .filter(Boolean)
+            .join(" • ") || "Sin datos adicionales"}
+        </p>
+
+        {solicitudes > 0 && (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-orange-700 bg-orange-100 border border-orange-200/80 px-2.5 py-0.5 rounded-full mt-1.5 shadow-2xs">
+            {solicitudes} {solicitudes === 1 ? "solicitud pendiente" : "solicitudes pendientes"}
+          </span>
+        )}
+      </div>
+
+      <span className="text-slate-300 group-hover:text-slate-600 shrink-0 pr-1 transition-colors">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </span>
+    </button>
+  );
+}
+
 export default function MisMascotas() {
   const navigate = useNavigate();
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
@@ -151,65 +220,14 @@ export default function MisMascotas() {
       )}
 
       <div className="space-y-3.5">
-        {visibles.map((m) => {
-          const solicitudes = conteoSolicitudes[m.id] ?? 0;
-          const foto = m.fotos.find((f) => f.es_principal) ?? m.fotos[0];
-
-          return (
-            <button
-              key={m.id}
-              onClick={() => navigate(`/mis-mascotas/${m.id}`)}
-              className="w-full text-left flex gap-3.5 items-center bg-white rounded-3xl border border-slate-200/90 p-3.5 shadow-xs hover:shadow-md hover:border-emerald-300 active:scale-[0.99] transition-all group"
-            >
-              {/* Marco fotográfico limpio */}
-              <div className="relative w-22 h-22 rounded-2xl overflow-hidden shadow-2xs border-2 border-white ring-2 ring-emerald-300/80 bg-slate-100 shrink-0 flex items-center justify-center">
-                {foto ? (
-                  <img
-                    src={foto.url}
-                    alt={m.nombre}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-100 to-teal-200 text-emerald-700">
-                    <span className="font-[family-name:var(--font-display)] text-2xl font-black">
-                      {m.nombre.charAt(0).toUpperCase()}
-                    </span>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-800/80">Sin foto</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0 pr-2">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className="min-w-0">
-                    <p className="font-[family-name:var(--font-display)] text-lg font-extrabold text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
-                      {m.nombre}
-                    </p>
-                  </div>
-                  <EstadoMascotaBadge estado={m.estado} />
-                </div>
-
-                <p className="text-xs font-semibold text-slate-500 truncate">
-                  {[m.raza || m.especie, m.edad != null ? `${m.edad} ${m.edad === 1 ? "año" : "años"}` : null]
-                    .filter(Boolean)
-                    .join(" • ") || "Sin datos adicionales"}
-                </p>
-
-                {solicitudes > 0 && (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-orange-700 bg-orange-100 border border-orange-200/80 px-2.5 py-0.5 rounded-full mt-1.5 shadow-2xs">
-                    {solicitudes} {solicitudes === 1 ? "solicitud pendiente" : "solicitudes pendientes"}
-                  </span>
-                )}
-              </div>
-
-              <span className="text-slate-300 group-hover:text-slate-600 shrink-0 pr-1 transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </span>
-            </button>
-          );
-        })}
+        {visibles.map((m) => (
+          <TarjetaMascotaRefugio
+            key={m.id}
+            m={m}
+            solicitudes={conteoSolicitudes[m.id] ?? 0}
+            onClick={() => navigate(`/mis-mascotas/${m.id}`)}
+          />
+        ))}
       </div>
     </PantallaRefugio>
   );
