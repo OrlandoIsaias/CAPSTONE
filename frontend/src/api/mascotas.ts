@@ -27,7 +27,7 @@ export async function crearMascota(datos: MascotaInput): Promise<Mascota> {
 export async function agregarFoto(
   mascotaId: number, 
   archivoImagen: File, 
-  esPrincipal: boolean = true, 
+  esPrincipal: boolean = false, 
   orden: number = 1
 ): Promise<void> {
   const formData = new FormData();
@@ -40,4 +40,8 @@ export async function agregarFoto(
       "Content-Type": "multipart/form-data",
     },
   });
+}
+
+export async function eliminarFoto(mascotaId: number, fotoId: number): Promise<void> {
+  await apiClient.delete(`/mascotas/${mascotaId}/fotos/${fotoId}`);
 }
