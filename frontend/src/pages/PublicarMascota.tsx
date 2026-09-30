@@ -162,15 +162,19 @@ export default function PublicarMascota() {
   const claseErrorCampo = "text-xs text-[var(--color-rojo)] mt-1";
 
   return (
-    <div className="min-h-screen bg-[var(--color-fondo)] px-6 pt-20 pb-10">
-      <BotonVolver />
-      <div className="max-w-lg mx-auto">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl mb-2">
-          Publicar una mascota
-        </h1>
-        <p className="text-[var(--color-texto-suave)] mb-8">
-          Completa su ficha para que el sistema pueda calcular su compatibilidad con adoptantes.
-        </p>
+    <div className="min-h-screen bg-[var(--color-fondo)]">
+      <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-16">
+        <header className="flex items-center gap-3 mb-6">
+          <BotonVolver />
+          <div>
+            <h1 className="font-[family-name:var(--font-display)] text-2xl font-black text-slate-900 leading-tight">
+              Publicar mascota
+            </h1>
+            <p className="text-xs font-medium text-slate-500">
+              Completa su ficha para calcular su compatibilidad.
+            </p>
+          </div>
+        </header>
 
         <form onSubmit={manejarEnvio} className="space-y-4" noValidate>
           <div>

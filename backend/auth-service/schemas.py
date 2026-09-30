@@ -88,6 +88,7 @@ class PerfilAdoptanteIn(BaseModel):
     otras_mascotas: bool = False
     nivel_actividad_fisica: Literal["bajo", "medio", "alto"]
     telefono: Optional[str] = None
+    foto_perfil: Optional[str] = None
 
     @field_validator("tiempo_disponible_horas_dia")
     @classmethod
@@ -118,6 +119,7 @@ class PerfilAdoptanteOut(BaseModel):
     otras_mascotas: bool = False
     nivel_actividad_fisica: Literal["bajo", "medio", "alto"]
     telefono: Optional[str] = None
+    foto_perfil: Optional[str] = None
 
     class Config:
         from_attributes = True
