@@ -218,20 +218,18 @@ export default function PerfilAdoptante() {
         )}
       </div>
 
-      {/* Botón de Cerrar Sesión con degradé rojo */}
-      <div className="bg-gradient-to-r from-rose-500 via-red-500 to-rose-600 rounded-3xl p-[1.5px] shadow-sm">
-        <button
-          onClick={cerrarSesion}
-          className="w-full bg-white hover:bg-rose-50/80 py-3.5 rounded-[22px] text-xs font-black text-rose-600 active:scale-98 transition-all flex items-center justify-center gap-2"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          Cerrar sesión de la cuenta
-        </button>
-      </div>
+      {/* Botón de Cerrar Sesión con degradé rojo y texto blanco */}
+      <button
+        onClick={cerrarSesion}
+        className="w-full bg-gradient-to-r from-rose-500 via-red-500 to-rose-600 hover:from-rose-600 hover:via-red-600 hover:to-rose-700 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-sm hover:shadow-md active:scale-98 transition-all flex items-center justify-center gap-2"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        Cerrar sesión
+      </button>
     </PantallaAdoptante>
   );
 }

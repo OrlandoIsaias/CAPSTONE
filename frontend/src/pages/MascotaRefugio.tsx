@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ImagePlus, Trash2, ChevronLeft, Trash } from "lucide-react";
+import { ImagePlus, Trash2, ChevronLeft, Trash, ChevronRight, Users } from "lucide-react";
 import { agregarFoto, eliminarFoto, obtenerMascota } from "../api/mascotas";
 import { postulacionesRecibidas } from "../api/postulaciones";
-import { EstadoMascotaBadge } from "../components/Badges";
+import {
+  AvatarIniciales,
+  EstadoMascotaBadge,
+  EstadoPostulacionBadge,
+} from "../components/Badges";
 import { PantallaRefugio } from "../components/BarraRefugio";
 import { Skeleton } from "../components/Skeleton";
 import { Spinner } from "../components/Spinner";
 import { useToast } from "../context/ToastContext";
 import { redimensionarAlCuadrado } from "../utils/imagen";
+import { fechaCorta } from "../utils/tiempo";
 import { TAMANO_MAXIMO_FOTO_BYTES, TIPOS_FOTO_ACEPTADOS } from "../utils/opcionesMascota";
 import type { Mascota } from "../types/mascotas";
+import type { Postulacion } from "../types/postulaciones";
 
 const NIVEL: Record<string, string> = { bajo: "Baja", medio: "Media", alto: "Alta" };
 const ESPACIO: Record<string, string> = {
@@ -25,8 +31,8 @@ export default function MascotaRefugio() {
   const mostrarToast = useToast();
 
   const [mascota, setMascota] = useState<Mascota | null>(null);
+  const [postulacionesMascota, setPostulacionesMascota] = useState<Postulacion[]>([]);
   const [fotoActivaIndex, setFotoActivaIndex] = useState(0);
-  const [solicitudes, setSolicitudes] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [eliminandoFotoId, setEliminandoFotoId] = useState<number | null>(null);
@@ -47,12 +53,11 @@ export default function MascotaRefugio() {
         })
         .catch(() => setError("No pudimos cargar esta mascota.")),
       postulacionesRecibidas()
-        .then((lista) =>
-          setSolicitudes(
-            lista.filter((p) => p.mascota_id === mascotaId && p.estado === "pendiente").length
-          )
-        )
-        .catch(() => setSolicitudes(0)),
+        .then((lista) => {
+          const deEstaMascota = lista.filter((p) => p.mascota_id === mascotaId);
+          setPostulacionesMascota(deEstaMascota);
+        })
+        .catch(() => setPostulacionesMascota([])),
     ]);
   }
 
@@ -123,7 +128,6 @@ export default function MascotaRefugio() {
       const tieneFotos = (mascota.fotos ?? []).length > 0;
       for (let i = 0; i < archivos.length; i++) {
         const esPrimera = !tieneFotos && i === 0;
-        // Redimensionar y centrar al formato cuadrado automáticamente
         const archivoCuadrado = await redimensionarAlCuadrado(archivos[i]);
         await agregarFoto(
           mascota.id,
@@ -190,7 +194,7 @@ export default function MascotaRefugio() {
         </button>
         <div>
           <h1 className="text-xl font-bold text-slate-900">Perfil de Mascota</h1>
-          <p className="text-xs text-slate-500">Gestión de fotos y datos de la mascota</p>
+          <p className="text-xs text-slate-500">Gestión y solicitudes de la mascota</p>
         </div>
       </header>
 
@@ -206,10 +210,10 @@ export default function MascotaRefugio() {
       {error && <p className="text-rose-600 text-sm font-semibold">{error}</p>}
 
       {mascota && (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-8">
           {/* Galería Swipeable de fotos */}
           <div className="space-y-2.5">
-            <div className="w-full h-64 rounded-3xl bg-slate-100 overflow-hidden border-2 border-white ring-2 ring-emerald-300/80 shadow-md relative">
+            <div className="w-full h-64 rounded-3xl bg-slate-100 overflow-hidden flex items-center justify-center border-2 border-white ring-2 ring-emerald-300/80 shadow-md relative">
               {fotos.length > 0 ? (
                 <div
                   ref={carruselRef}
@@ -386,20 +390,57 @@ export default function MascotaRefugio() {
             )}
           </div>
 
-          {/* Solicitudes Activas */}
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Solicitudes Pendientes
-              </p>
-              <p className="text-3xl font-black text-emerald-600 leading-tight">{solicitudes}</p>
+          {/* Sección: Solicitudes para esta Mascota */}
+          <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                <Users size={16} strokeWidth={2.2} />
+              </div>
+              <h2 className="text-sm font-extrabold text-slate-900 leading-snug">
+                Personas interesadas en adoptar a {mascota.nombre}
+              </h2>
             </div>
-            <button
-              onClick={() => navigate("/solicitudes")}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-4 py-3 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all"
-            >
-              Ver Solicitudes
-            </button>
+
+            {postulacionesMascota.length === 0 ? (
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-6 text-center">
+                <p className="font-bold text-slate-700 text-xs">
+                  Aún no hay solicitudes para {mascota.nombre}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Cuando un adoptante postule por ella, aparecerá aquí listado.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
+                {postulacionesMascota.map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => navigate(`/solicitudes/${p.id}`)}
+                    className="w-full flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/70 hover:bg-emerald-50/40 border border-slate-200/80 hover:border-emerald-300 cursor-pointer active:scale-[0.99] transition-all group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <AvatarIniciales nombre={p.adoptante_nombre || "Adoptante"} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
+                          {p.adoptante_nombre || `Solicitud #${p.id}`}
+                        </p>
+                        <p className="text-[11px] font-medium text-slate-400">
+                          Recibida el {fechaCorta(p.fecha_postulacion)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <EstadoPostulacionBadge estado={p.estado} />
+                      <ChevronRight
+                        size={16}
+                        className="text-slate-400 group-hover:text-emerald-600 transition-colors"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
