@@ -249,7 +249,7 @@ export default function DetalleSolicitud() {
                 <a
                   href={linkWhatsApp(
                     solicitud.adoptante_telefono,
-                    `Hola ${nombre}, te escribo por la adopción de ${solicitud.mascota_nombre}. ¿Coordinamos la entrega?`
+                    `Hola ${nombre}, ¡tu solicitud para adoptar a ${solicitud.mascota_nombre} fue aprobada! Nos gustaría coordinar una reunión para que se conozcan. ¿Qué días y horarios te acomodan?`
                   )}
                   target="_blank"
                   rel="noreferrer"
