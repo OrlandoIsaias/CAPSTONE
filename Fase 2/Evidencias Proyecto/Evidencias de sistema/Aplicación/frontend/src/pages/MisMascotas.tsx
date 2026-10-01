@@ -6,6 +6,7 @@ import { PantallaRefugio } from "../components/BarraRefugio";
 import { EstadoMascotaBadge } from "../components/Badges";
 import { SkeletonFila } from "../components/Skeleton";
 import type { Mascota } from "../types/mascotas";
+import { formatearEdad } from "../utils/opcionesMascota";
 
 type Filtro = "todos" | "perros" | "gatos";
 
@@ -71,7 +72,7 @@ function TarjetaMascotaRefugio({
         </div>
 
         <p className="text-xs font-semibold text-slate-500 truncate">
-          {[m.raza || m.especie, m.edad != null ? `${m.edad} ${m.edad === 1 ? "año" : "años"}` : null]
+          {[m.raza || m.especie, m.edad != null ? formatearEdad(m.edad) : null]
             .filter(Boolean)
             .join(" • ") || "Sin datos adicionales"}
         </p>

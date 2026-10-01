@@ -176,11 +176,20 @@ erDiagram
         int id PK
         int usuario_id FK_UK
         string espacio_disponible
-        int tiempo_disponible_horas_dia
+        string restriccion_vivienda
+        string horas_sola
+        string tiempo_actividad
         string experiencia_previa
-        bool tiene_ninos
-        bool otras_mascotas
-        string nivel_actividad_fisica
+        string ambiente_hogar
+        string ninos_hogar
+        bool tiene_perros
+        bool tiene_gatos
+        string alergias
+        string acepta_cuidados
+        string especie_preferida
+        string[] tamanos_preferidos
+        string[] etapas_preferidas
+        string sexo_preferido
         string telefono
         string foto_perfil
     }
@@ -192,13 +201,23 @@ erDiagram
         string especie
         string raza
         int edad
-        string nivel_energia
-        string nivel_socializacion
-        bool compatible_ninos
-        bool compatible_otras_mascotas
-        string nivel_experiencia_requerida
+        string sexo
+        string tamano
         string espacio_minimo_requerido
+        string tolerancia_soledad
+        string nivel_energia
+        string nivel_experiencia_requerida
+        string temperamento
+        string convivencia_ninos
+        bool convive_perros
+        bool convive_gatos
+        string nivel_cuidados
         text cuidados_especiales
+        bool esterilizado
+        bool vacunas_al_dia
+        bool desparasitado
+        bool microchip
+        text notas_salud
         string estado
         datetime fecha_publicacion
     }
@@ -216,6 +235,7 @@ erDiagram
         int adoptante_id FK
         int mascota_id FK
         numeric score_compatibilidad
+        jsonb desglose
         datetime fecha_calculo
     }
 
@@ -243,49 +263,78 @@ erDiagram
 | --- | --- |
 | `usuarios.rol` | `adoptante`, `refugio` |
 | `perfiles_adoptante.espacio_disponible` | `departamento`, `casa_patio`, `casa_grande` |
+| `perfiles_adoptante.restriccion_vivienda` | `ninguna`, `solo_pequenas`, `solo_gatos`, `no_se` |
+| `perfiles_adoptante.horas_sola` | `menos_2h`, `2_4h`, `4_8h`, `mas_8h` |
+| `perfiles_adoptante.tiempo_actividad` | `menos_30m`, `30_60m`, `mas_60m` |
 | `perfiles_adoptante.experiencia_previa` | `ninguna`, `basica`, `alta` |
-| `perfiles_adoptante.nivel_actividad_fisica` | `bajo`, `medio`, `alto` |
+| `perfiles_adoptante.ambiente_hogar` | `tranquilo`, `moderado`, `movido` |
+| `perfiles_adoptante.ninos_hogar` | `no`, `mayores` (6+), `pequenos` (menores de 6) |
+| `perfiles_adoptante.alergias` | `ninguna`, `perros`, `gatos`, `ambos` |
+| `perfiles_adoptante.acepta_cuidados` | `no`, `leves`, `complejos` |
+| `perfiles_adoptante.especie_preferida` | `Perro`, `Gato`, `NULL` (me da igual) |
+| `perfiles_adoptante.tamanos_preferidos` | lista de `pequeno`, `mediano`, `grande`; `NULL` = me da igual |
+| `perfiles_adoptante.etapas_preferidas` | lista de `cachorro`, `joven`, `adulto`, `senior`; `NULL` = me da igual |
+| `perfiles_adoptante.sexo_preferido` | `macho`, `hembra`, `NULL` (me da igual) |
 | `mascotas.estado` | `disponible`, `en_proceso`, `adoptada` |
-| `mascotas.nivel_energia` | `bajo`, `medio`, `alto` |
-| `mascotas.nivel_socializacion` | `bajo`, `medio`, `alto` |
-| `mascotas.nivel_experiencia_requerida` | `bajo`, `medio`, `alto` |
+| `mascotas.sexo` | `macho`, `hembra` |
+| `mascotas.tamano` | `pequeno` (hasta 10 kg), `mediano` (10–25 kg), `grande` (más de 25 kg); solo perros |
 | `mascotas.espacio_minimo_requerido` | `departamento`, `casa_patio`, `casa_grande` |
+| `mascotas.tolerancia_soledad` | `menos_2h`, `2_4h`, `4_8h`, `mas_8h` |
+| `mascotas.nivel_energia` | `bajo`, `medio`, `alto` (actividad diaria que necesita) |
+| `mascotas.nivel_experiencia_requerida` | `bajo`, `medio`, `alto` |
+| `mascotas.temperamento` | `sociable`, `reservado`, `timido` |
+| `mascotas.convivencia_ninos` | `todos`, `mayores`, `no`, `NULL` (no evaluado) |
+| `mascotas.convive_perros` / `convive_gatos` | `true`, `false`, `NULL` (no evaluado) |
+| `mascotas.nivel_cuidados` | `ninguno`, `leves`, `complejos` |
 | `postulaciones.estado` | `pendiente`, `aprobada`, `rechazada` |
 | `seguimientos.resultado` | `exitosa`, `en_proceso`, `devuelta` |
 | `seguimientos.dias_transcurridos` | `30`, `90` |
 
 ---
 
-## 6. Motor de Scoring (Matching)
+## 6. Motor de Matching (v2, 3 capas)
 
-### 6.1 Pesos por criterio (suman 1.0)
+Implementado en `backend/matching-service/scoring.py` (pruebas en `test_scoring.py`). Cada pregunta del adoptante tiene su espejo en la ficha de la mascota.
 
-| Criterio | Peso | Tipo de comparación |
+### 6.1 Capa 1 — Exclusión (¿es seguro?)
+
+Una mascota excluida no aparece en Recomendaciones; en Explorar (`?explorar=true`) y en su ficha se muestra como "No compatible" con el motivo. La exclusión no cambia el %.
+
+| Adoptante | Mascota | Se excluye si |
 | --- | --- | --- |
-| Espacio (adoptante vs. requerido) | 20% | Cumple o supera |
-| Actividad física vs. energía mascota | 20% | Cercanía |
-| Experiencia (adoptante vs. requerida) | 20% | Cumple o supera |
-| Tiempo disponible vs. socialización | 20% | Cercanía |
-| Compatibilidad con niños | 10% | Restricción dura (0 o 1) |
-| Compatibilidad con otras mascotas | 10% | Restricción dura (0 o 1) |
+| `restriccion_vivienda` | `especie`, `tamano` | `solo_gatos` y es perro; `solo_pequenas` y es perro mediano o grande |
+| `alergias` | `especie` | hay alergia a esa especie (o a ambas) |
+| `ninos_hogar` | `convivencia_ninos` | `pequenos` y la mascota es `mayores` o `no`; `mayores` y la mascota es `no` |
+| `tiene_perros` / `tiene_gatos` | `convive_perros` / `convive_gatos` | vive esa especie en el hogar y la mascota no convive con ella |
+| `acepta_cuidados` | `nivel_cuidados` | la mascota necesita más cuidados de los que el adoptante acepta |
 
-### 6.2 Tipos de comparación
+"No evaluado" (`NULL`) nunca excluye: genera una alerta. `restriccion_vivienda = no_se` también genera una alerta ("confirma con tu arrendador").
 
-- **Cumple o supera**: el adoptante tiene un recurso (espacio, experiencia) que la mascota exige como mínimo. Tener de más no penaliza. Score: `1.0` (cumple), `0.5` (1 nivel bajo), `0.0` (2+ niveles bajo).
-- **Cercanía**: ambos valores son preferencia/ritmo de vida. Un desajuste en cualquier dirección es malo. Score: `1.0` (coinciden), `0.5` (1 nivel de diferencia), `0.0` (2+ niveles).
-- **Restricción dura**: si el adoptante tiene niños/otras mascotas y la mascota no es compatible → `0.0`. En cualquier otro caso → `1.0`.
+### 6.2 Capa 2 — Compatibilidad (% de afinidad)
 
-### 6.3 Conversión de horas a nivel
+Todos los criterios comparan un **recurso del hogar** con una **necesidad de la mascota** ("cumple o supera"): `1.0` si la cubre, `0.5` si le falta un nivel, `0.0` si le faltan dos o más. Tener de más nunca resta.
 
-| Horas/día del adoptante | Nivel equivalente |
-| --- | --- |
-| 0 – 2 horas | bajo (1) |
-| 3 – 5 horas | medio (2) |
-| 6+ horas | alto (3) |
+| Criterio | Adoptante | Mascota | Peso |
+| --- | --- | --- | --- |
+| Soledad | `horas_sola` | `tolerancia_soledad` | 30% |
+| Actividad | `tiempo_actividad` | `nivel_energia` | 25% |
+| Experiencia | `experiencia_previa` | `nivel_experiencia_requerida` | 20% |
+| Ambiente | `ambiente_hogar` | `temperamento` (tímida necesita hogar tranquilo) | 15% |
+| Espacio | `espacio_disponible` | `espacio_minimo_requerido` | 10% |
 
-### 6.4 Valores nulos
+**Tope:** si un criterio queda en `0.0`, el total no supera `0.5`.
 
-Si un campo de la mascota es `None`, ese criterio puntúa `1.0` (beneficio de la duda). Decisión de producto: refugios con fichas incompletas no quedan injustamente mal rankeados.
+**Por qué estos pesos:** siguen el orden de las causas más citadas de devolución tras la adopción. Los problemas de conducta (separación, exceso de energía, manejo difícil) pesan más que el espacio, que casi no aparece como motivo por sí solo (Powell et al. 2021, *Scientific Reports*; Mundschau y Suchak 2023, *Animals*). La incompatibilidad con otras mascotas, que es la primera o segunda causa de devolución, se trata como exclusión y no como peso. Los pesos son un punto de partida para recalibrar con los resultados de `seguimiento-service`.
+
+### 6.3 Capa 3 — Preferencias
+
+- `especie_preferida` filtra Recomendaciones.
+- `tamanos_preferidos` (solo perros), `etapas_preferidas` y `sexo_preferido` solo ordenan: primero las mascotas que cumplen más preferencias y, a igualdad, las de mayor %.
+- Etapa de vida según `edad`: cachorro (< 1 año), joven (1–2), adulto (3–7), senior (8+).
+
+### 6.4 Detalle del score
+
+Cada match guarda en `matches.desglose` el puntaje por criterio, las exclusiones, las alertas, las preferencias no cumplidas y si se aplicó el tope. La API de matching lo devuelve al adoptante y `GET /postulaciones/{id}` se lo muestra al refugio.
 
 ---
 
@@ -322,8 +371,8 @@ Si un campo de la mascota es `None`, ese criterio puntúa `1.0` (beneficio de la
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
 | `GET` | `/` | público | Health check |
-| `GET` | `/matching/recomendaciones` | adoptante | Lista de mascotas ordenada por score |
-| `GET` | `/matching/mascota/{id}` | adoptante | Score individual para una mascota |
+| `GET` | `/matching/recomendaciones` | adoptante | Mascotas compatibles de la especie preferida, ordenadas por preferencias y %. Con `?explorar=true`: todas, con las no compatibles marcadas |
+| `GET` | `/matching/mascota/{id}` | adoptante | Compatibilidad de una mascota, con detalle, motivos de exclusión y alertas |
 
 ### Postulaciones Service (`:8003`)
 
@@ -472,11 +521,14 @@ CAPSTONE/
 │           │       │   │   └── ToastContext.ts
 │           │       │   │
 │           │       │   ├── components/        # Componentes reutilizables
-│           │       │   │   ├── AuthLayout.tsx
+│           │       │   │   ├── login/             # Formularios de login adoptante y refugio
 │           │       │   │   ├── BarraAdoptante.tsx
 │           │       │   │   ├── BarraRefugio.tsx
 │           │       │   │   ├── TarjetaMascota.tsx
 │           │       │   │   ├── InsigniaScore.tsx
+│           │       │   │   ├── DesgloseCompatibilidad.tsx # Explica el % de afinidad
+│           │       │   │   ├── Preguntas.tsx      # Piezas de los cuestionarios por pasos
+│           │       │   │   ├── AjustarFoto.tsx
 │           │       │   │   ├── RutaProtegida.tsx
 │           │       │   │   ├── Spinner.tsx
 │           │       │   │   ├── Skeleton.tsx
@@ -487,14 +539,11 @@ CAPSTONE/
 │           │       │   │   └── BotonVolver.tsx
 │           │       │   │
 │           │       │   ├── pages/             # Pantallas
-│           │       │   │   ├── Login.tsx          # Portal Adoptantes (Login)
-│           │       │   │   ├── Registro.tsx       # Portal Adoptantes (Registro)
-│           │       │   │   ├── LoginRefugio.tsx   # Portal Organizaciones (Login)
-│           │       │   │   ├── RegistroRefugio.tsx # Portal Organizaciones (Registro)
+│           │       │   │   ├── Login.tsx          # Login con pestañas Adoptante / Refugio (RUT + código)
+│           │       │   │   ├── Registro.tsx       # Registro de adoptantes
 │           │       │   │   ├── Recomendaciones.tsx
 │           │       │   │   ├── ExplorarMascotas.tsx
 │           │       │   │   ├── FichaMascota.tsx
-│           │       │   │   ├── Cuestionarios.tsx
 │           │       │   │   ├── PerfilAdoptante.tsx
 │           │       │   │   ├── EditarPerfilAdoptante.tsx
 │           │       │   │   ├── PerfilRefugio.tsx
@@ -508,8 +557,9 @@ CAPSTONE/
 │           │       │   │   ├── Solicitudes.tsx
 │           │       │   │   └── DetalleSolicitud.tsx
 │           │       │   │
+│           │       │   ├── hooks/             # Hooks propios (ajuste de fotos)
 │           │       │   ├── types/             # Tipos TypeScript
-│           │       │   ├── utils/             # Utilidades
+│           │       │   ├── utils/             # Utilidades y opciones de los cuestionarios
 │           │       │   ├── App.tsx            # Router principal
 │           │       │   ├── main.tsx           # Entry point
 │           │       │   └── index.css          # Estilos base
@@ -668,7 +718,7 @@ sequenceDiagram
     Note over A, Match: 3. Ver recomendaciones
     A->>GW: GET /matching/recomendaciones
     GW->>Match: proxy (con JWT)
-    Match->>Match: calcular_score() para cada mascota
+    Match->>Match: evaluar() para cada mascota (exclusión, compatibilidad, preferencias)
     Match-->>A: lista ordenada por score
 
     Note over A, Post: 4. Postular a mascota

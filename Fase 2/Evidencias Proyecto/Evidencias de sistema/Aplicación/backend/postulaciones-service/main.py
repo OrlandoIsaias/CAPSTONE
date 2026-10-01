@@ -461,13 +461,32 @@ def detalle_postulacion(
         .first()
     )
 
+    desglose = (
+        db.query(models.Match.desglose)
+        .filter(
+            models.Match.adoptante_id == postulacion.adoptante_id,
+            models.Match.mascota_id == postulacion.mascota_id,
+        )
+        .scalar()
+    )
+
     base = _a_postulacion_out(postulacion, mascota, db)
+    respuestas = {
+        campo: getattr(perfil, campo) if perfil else None
+        for campo in (
+            "espacio_disponible",
+            "restriccion_vivienda",
+            "horas_sola",
+            "tiempo_actividad",
+            "experiencia_previa",
+            "ambiente_hogar",
+            "ninos_hogar",
+            "tiene_perros",
+            "tiene_gatos",
+            "alergias",
+            "acepta_cuidados",
+        )
+    }
     return schemas.PostulacionDetalleOut(
-        **base.model_dump(),
-        espacio_disponible=perfil.espacio_disponible if perfil else None,
-        tiempo_disponible_horas_dia=perfil.tiempo_disponible_horas_dia if perfil else None,
-        experiencia_previa=perfil.experiencia_previa if perfil else None,
-        tiene_ninos=perfil.tiene_ninos if perfil else None,
-        otras_mascotas=perfil.otras_mascotas if perfil else None,
-        nivel_actividad_fisica=perfil.nivel_actividad_fisica if perfil else None,
+        **base.model_dump(), **respuestas, detalle_compatibilidad=desglose
     )

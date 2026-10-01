@@ -12,6 +12,7 @@ Matching Service es DUEÑO de la tabla matches (la escribe); las otras dos
 las trata como solo lectura.
 """
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -24,11 +25,20 @@ class PerfilAdoptante(Base):
     id = Column(Integer, primary_key=True)
     usuario_id = Column(Integer, unique=True, nullable=False)
     espacio_disponible = Column(String)
-    tiempo_disponible_horas_dia = Column(Integer)
+    restriccion_vivienda = Column(String)
+    horas_sola = Column(String)
+    tiempo_actividad = Column(String)
     experiencia_previa = Column(String)
-    tiene_ninos = Column(Boolean, default=False)
-    otras_mascotas = Column(Boolean, default=False)
-    nivel_actividad_fisica = Column(String)
+    ambiente_hogar = Column(String)
+    ninos_hogar = Column(String)
+    tiene_perros = Column(Boolean, default=False)
+    tiene_gatos = Column(Boolean, default=False)
+    alergias = Column(String)
+    acepta_cuidados = Column(String)
+    especie_preferida = Column(String)  # Perro | Gato | NULL = sin preferencia
+    tamanos_preferidos = Column(ARRAY(String))
+    etapas_preferidas = Column(ARRAY(String))
+    sexo_preferido = Column(String)
 
 
 class Mascota(Base):
@@ -37,15 +47,20 @@ class Mascota(Base):
     id = Column(Integer, primary_key=True)
     refugio_id = Column(Integer, nullable=False)
     nombre = Column(String, nullable=False)
-    especie = Column(String)
+    especie = Column(String, nullable=False)
     raza = Column(String)
-    edad = Column(Integer)
-    nivel_energia = Column(String)
-    nivel_socializacion = Column(String)
-    compatible_ninos = Column(Boolean)
-    compatible_otras_mascotas = Column(Boolean)
-    nivel_experiencia_requerida = Column(String)
-    espacio_minimo_requerido = Column(String)
+    edad = Column(Integer, nullable=False)
+    sexo = Column(String, nullable=False)
+    tamano = Column(String)  # solo perros
+    nivel_energia = Column(String, nullable=False)
+    tolerancia_soledad = Column(String, nullable=False)
+    temperamento = Column(String, nullable=False)
+    convivencia_ninos = Column(String)  # NULL = no evaluado
+    convive_perros = Column(Boolean)
+    convive_gatos = Column(Boolean)
+    nivel_experiencia_requerida = Column(String, nullable=False)
+    espacio_minimo_requerido = Column(String, nullable=False)
+    nivel_cuidados = Column(String, nullable=False)
     estado = Column(String, nullable=False, default="disponible")
     fecha_publicacion = Column(DateTime, server_default=func.now())
 
@@ -71,4 +86,5 @@ class Match(Base):
     adoptante_id = Column(Integer, ForeignKey("perfiles_adoptante.id"), nullable=False)
     mascota_id = Column(Integer, ForeignKey("mascotas.id"), nullable=False)
     score_compatibilidad = Column(Numeric(4, 3))
+    desglose = Column(JSONB)  # Evaluacion.a_json() de scoring.py
     fecha_calculo = Column(DateTime, server_default=func.now())

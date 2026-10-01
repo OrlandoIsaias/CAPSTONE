@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -41,12 +42,24 @@ class PerfilAdoptante(Base):
 
     id = Column(Integer, primary_key=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), unique=True, nullable=False)
+    # Cuestionario (NULL hasta que el adoptante lo responde; valores en los
+    # CHECK de la migración 006).
     espacio_disponible = Column(String)
-    tiempo_disponible_horas_dia = Column(Integer)
+    restriccion_vivienda = Column(String)
+    horas_sola = Column(String)
+    tiempo_actividad = Column(String)
     experiencia_previa = Column(String)
-    tiene_ninos = Column(Boolean, default=False)
-    otras_mascotas = Column(Boolean, default=False)
-    nivel_actividad_fisica = Column(String)
+    ambiente_hogar = Column(String)
+    ninos_hogar = Column(String)
+    tiene_perros = Column(Boolean, nullable=False, default=False)
+    tiene_gatos = Column(Boolean, nullable=False, default=False)
+    alergias = Column(String)
+    acepta_cuidados = Column(String)
+    # Preferencias: NULL = me da igual.
+    especie_preferida = Column(String)  # Perro | Gato
+    tamanos_preferidos = Column(ARRAY(String))
+    etapas_preferidas = Column(ARRAY(String))
+    sexo_preferido = Column(String)
     telefono = Column(String)
     foto_perfil = Column(String)  # URL de Cloudinary; nullable, la columna ya existe en la BD
 

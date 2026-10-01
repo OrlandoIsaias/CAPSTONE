@@ -30,7 +30,3 @@ def parsear_rut(texto: str) -> tuple[int, str]:
     if numero <= 0 or calcular_dv(numero) != dv:
         raise ValueError("RUT inválido: el dígito verificador no corresponde")
     return numero, dv
-
-
-def formatear_rut(numero: int, dv: str) -> str:
-    return f"{numero:,}".replace(",", ".") + f"-{dv}"

@@ -1,8 +1,8 @@
 import re
 from datetime import datetime
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, computed_field, field_validator, model_validator
 
 from rut import parsear_rut
 
@@ -127,27 +127,89 @@ class TokenOut(BaseModel):
     usuario: UsuarioOut
 
 
+# Valores del cuestionario del adoptante: espejo de los CHECK de la migración
+# 006. Cómo se usa cada respuesta: backend/matching-service/scoring.py.
+EspacioDisponible = Literal["departamento", "casa_patio", "casa_grande"]
+RestriccionVivienda = Literal["ninguna", "solo_pequenas", "solo_gatos", "no_se"]
+HorasSola = Literal["menos_2h", "2_4h", "4_8h", "mas_8h"]
+TiempoActividad = Literal["menos_30m", "30_60m", "mas_60m"]
+ExperienciaPrevia = Literal["ninguna", "basica", "alta"]
+AmbienteHogar = Literal["tranquilo", "moderado", "movido"]
+NinosHogar = Literal["no", "mayores", "pequenos"]
+Alergias = Literal["ninguna", "perros", "gatos", "ambos"]
+AceptaCuidados = Literal["no", "leves", "complejos"]
+Especie = Literal["Perro", "Gato"]
+Tamano = Literal["pequeno", "mediano", "grande"]
+EtapaVida = Literal["cachorro", "joven", "adulto", "senior"]
+Sexo = Literal["macho", "hembra"]
+
+# Respuestas sin las que matching-service no calcula recomendaciones; misma
+# lista que CAMPOS_CUESTIONARIO en matching-service/scoring.py.
+_CAMPOS_CUESTIONARIO = (
+    "espacio_disponible",
+    "restriccion_vivienda",
+    "horas_sola",
+    "tiempo_actividad",
+    "experiencia_previa",
+    "ambiente_hogar",
+    "ninos_hogar",
+    "alergias",
+    "acepta_cuidados",
+)
+
+
 class PerfilAdoptanteIn(BaseModel):
-    espacio_disponible: Literal["departamento", "casa_patio", "casa_grande"]
-    tiempo_disponible_horas_dia: int
-    experiencia_previa: Literal["ninguna", "basica", "alta"]
-    tiene_ninos: bool = False
-    otras_mascotas: bool = False
-    nivel_actividad_fisica: Literal["bajo", "medio", "alto"]
+    espacio_disponible: EspacioDisponible
+    restriccion_vivienda: RestriccionVivienda
+    # Horas seguidas que la mascota quedaría sola en un día normal.
+    horas_sola: HorasSola
+    # Tiempo diario para pasearla o jugar con ella.
+    tiempo_actividad: TiempoActividad
+    experiencia_previa: ExperienciaPrevia
+    ambiente_hogar: AmbienteHogar
+    # Niños que viven o visitan seguido: "mayores" = 6 años o más.
+    ninos_hogar: NinosHogar
+    tiene_perros: bool = False
+    tiene_gatos: bool = False
+    alergias: Alergias
+    acepta_cuidados: AceptaCuidados
+    # Preferencias, None = me da igual: la especie filtra las recomendaciones;
+    # tamaño, etapa de vida y sexo solo las ordenan.
+    especie_preferida: Optional[Especie] = None
+    tamanos_preferidos: Optional[List[Tamano]] = None
+    etapas_preferidas: Optional[List[EtapaVida]] = None
+    sexo_preferido: Optional[Sexo] = None
     telefono: Optional[str] = None
     foto_perfil: Optional[str] = None
 
-    @field_validator("tiempo_disponible_horas_dia")
+    @field_validator("tamanos_preferidos", "etapas_preferidas")
     @classmethod
-    def validar_horas(cls, v: int) -> int:
-        if not (0 <= v <= 24):
-            raise ValueError("tiempo_disponible_horas_dia debe estar entre 0 y 24")
-        return v
+    def normalizar_lista(cls, v: Optional[list]) -> Optional[list]:
+        # Sin repetidos; una lista vacía también significa "me da igual".
+        if not v:
+            return None
+        return list(dict.fromkeys(v))
 
     @field_validator("telefono")
     @classmethod
     def validar_telefono(cls, v: Optional[str]) -> Optional[str]:
         return _validar_y_normalizar_telefono_opcional(v)
+
+    @model_validator(mode="after")
+    def validar_especie_posible(self):
+        # Preferir una especie que las propias respuestas vuelven imposible
+        # dejaría las recomendaciones vacías sin explicación.
+        imposibles = set()
+        if self.alergias in ("perros", "ambos") or self.restriccion_vivienda == "solo_gatos":
+            imposibles.add("Perro")
+        if self.alergias in ("gatos", "ambos"):
+            imposibles.add("Gato")
+        if self.especie_preferida in imposibles:
+            raise ValueError(
+                f"Según tus respuestas, en tu hogar no es posible tener un {self.especie_preferida.lower()}: "
+                "elige otra especie o 'Me da igual'."
+            )
+        return self
 
 
 class PerfilAdoptanteOut(BaseModel):
@@ -157,16 +219,32 @@ class PerfilAdoptanteOut(BaseModel):
     # perfiles guardados antes de que este campo existiera —o con un valor
     # en un formato viejo— deben poder leerse tal cual, sin que
     # GET /auth/perfil-adoptante explote.
+    # Las respuestas del cuestionario son Optional: el registro crea el perfil
+    # solo con el teléfono y quedan en NULL hasta que el adoptante responde.
     id: int
     usuario_id: int
-    espacio_disponible: Literal["departamento", "casa_patio", "casa_grande"]
-    tiempo_disponible_horas_dia: int
-    experiencia_previa: Literal["ninguna", "basica", "alta"]
-    tiene_ninos: bool = False
-    otras_mascotas: bool = False
-    nivel_actividad_fisica: Literal["bajo", "medio", "alto"]
+    espacio_disponible: Optional[EspacioDisponible] = None
+    restriccion_vivienda: Optional[RestriccionVivienda] = None
+    horas_sola: Optional[HorasSola] = None
+    tiempo_actividad: Optional[TiempoActividad] = None
+    experiencia_previa: Optional[ExperienciaPrevia] = None
+    ambiente_hogar: Optional[AmbienteHogar] = None
+    ninos_hogar: Optional[NinosHogar] = None
+    tiene_perros: bool = False
+    tiene_gatos: bool = False
+    alergias: Optional[Alergias] = None
+    acepta_cuidados: Optional[AceptaCuidados] = None
+    especie_preferida: Optional[Especie] = None
+    tamanos_preferidos: Optional[List[Tamano]] = None
+    etapas_preferidas: Optional[List[EtapaVida]] = None
+    sexo_preferido: Optional[Sexo] = None
     telefono: Optional[str] = None
     foto_perfil: Optional[str] = None
+
+    @computed_field
+    @property
+    def cuestionario_completo(self) -> bool:
+        return all(getattr(self, campo) is not None for campo in _CAMPOS_CUESTIONARIO)
 
     class Config:
         from_attributes = True

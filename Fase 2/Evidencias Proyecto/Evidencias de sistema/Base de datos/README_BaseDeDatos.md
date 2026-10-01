@@ -1,16 +1,16 @@
 # Base de Datos — HouseFound
 
-Esta carpeta contiene el esquema completo de la base de datos del proyecto, la evidencia visual del modelo relacional, y (cuando esté disponible) el script de datos de prueba.
+Esta carpeta contiene el esquema completo de la base de datos del proyecto, su historial de cambios (migraciones) y la evidencia visual del modelo relacional. Los datos de ejemplo (mascotas sintéticas de los refugios de la nómina) se generan con los scripts de `Aplicación/seed/` (ver su README).
 
 ## Contenido de esta carpeta
 
 | Archivo | Descripción |
 |---|---|
-| `BD_HouseFound_v2.sql` | Script SQL completo: crea las 10 tablas, sus relaciones, restricciones de negocio (`CHECK`), índices, y políticas de borrado. Es el script real usado para crear la base de datos en Neon. |
-| `migraciones/` | Cambios de esquema numerados (`001_...sql`) para aplicar sobre una BD que ya existe. Son idempotentes. |
+| `BD_HouseFound_v2.sql` | Script SQL completo: crea las 10 tablas, sus relaciones, restricciones de negocio (`CHECK`), índices, y políticas de borrado. Ya incluye todos los cambios de las migraciones 001 a 006: para una BD nueva basta con este archivo. |
+| `migraciones/` | Historial de cambios de esquema numerados (`001_...sql`), todos **ya aplicados en Neon**. Documentan cómo y por qué evolucionó el esquema; no se vuelven a ejecutar (la 005 fallaría después de la 006, que elimina columnas que ella comenta). Ver [Historial de migraciones](#historial-de-migraciones). |
+| `datos/organizacion_prueba.sql` | Organización ficticia del equipo (RUT 11.111.111-1) para pruebas y demo del login de refugios. |
 | `NOMINA_FINAL_FILTRADA_CON_REGION.xlsx` | Nómina SII de organizaciones de rescate animal. Es la fuente de la carga inicial de `organizaciones_validadas`; después de importada, la tabla es la fuente de verdad. |
-| `BD_HouseFoundimg.png` | Diagrama entidad-relación (ER), generado con dbdiagram.io, mostrando visualmente las 8 tablas y sus relaciones. |
-| `seed_data.sql` *(pendiente)* | Script de datos de prueba (refugios, mascotas y adoptantes ficticios pero realistas), para poblar la base de datos y poder probar el frontend con datos de ejemplo. |
+| `BD_HouseFoundimg.png` | Diagrama entidad-relación (ER), generado con dbdiagram.io. **Desactualizado**: es anterior a las migraciones (muestra 8 tablas y las columnas del cuestionario antiguo); hay que regenerarlo desde `BD_HouseFound_v2.sql`. |
 
 ## Motor de base de datos
 
@@ -31,7 +31,20 @@ Esta carpeta contiene el esquema completo de la base de datos del proyecto, la e
 | `organizaciones_validadas` | Nómina SII de organizaciones habilitadas como refugio (RUT, razón social, dirección, región y el correo al que se envía el código de verificación del login institucional). |
 | `codigos_verificacion` | Códigos de 6 dígitos del login institucional, guardados hasheados, con vencimiento, contador de intentos y marca de uso único. |
 
+## Historial de migraciones
+
+| Migración | Qué cambió |
+|---|---|
+| `001_organizaciones_validadas` | Crea la tabla con la nómina SII de organizaciones de rescate animal: solo una organización real puede operar como refugio. |
+| `002_refugios_nomina_y_verificacion` | Login de refugios con RUT + código enviado al correo de la nómina (sin contraseña): liga cada refugio a una organización y crea `codigos_verificacion`. |
+| `003_refugio_requiere_organizacion` | Hace obligatorio el vínculo refugio → organización, una vez ligados los refugios antiguos. |
+| `004_mascotas_origen_seed` | Marca las mascotas de ejemplo (`origen = 'seed'`, `clave_seed`) para recargarlas sin duplicar y borrarlas en bloque. |
+| `005_cuestionarios_matching` | Paso intermedio: especie preferida del adoptante y especie de la mascota de catálogo cerrado. |
+| `006_cuestionarios_v2` | Cuestionarios nuevos del adoptante y la mascota para el matching en 3 capas, ficha de salud y desglose del score en `matches`. |
+
 ## Carga de la nómina SII y creación de refugios
+
+Estos son los pasos con que se migró la BD de Neon (ya ejecutados; se conservan como registro). En una BD nueva creada con `BD_HouseFound_v2.sql` solo hacen falta `importar_nomina.py` y, si se quiere la organización de prueba, `datos/organizacion_prueba.sql`.
 
 Desde `Aplicación/backend/auth-service`, con su venv activo:
 
@@ -51,12 +64,22 @@ python scripts/aplicar_migracion.py "../../../Base de datos/migraciones/003_refu
 
 El importador valida el dígito verificador de cada RUT (módulo 11) y es todo o nada: si una fila es inválida, no escribe ninguna. Se puede volver a ejecutar sin duplicar (actualiza por RUT) y nunca borra un correo ya cargado en la BD.
 
+## Cuestionarios v2 (migración 006)
+
+Reemplaza las preguntas del cuestionario del adoptante y de la ficha de la mascota por las del matching en 3 capas (exclusión, compatibilidad y preferencias; ver `Aplicación/backend/matching-service/scoring.py`), agrega la ficha de salud de la mascota y el desglose del score en `matches`. **Rompe compatibilidad**: elimina columnas que usa el código anterior, así que se aplica junto con el backend actualizado. Requiere la tabla `mascotas` vacía y se detiene sin cambiar nada si no lo está.
+
+Ya aplicada en Neon el 2026-10-01, con respaldo previo de las filas eliminadas. Los adoptantes registrados antes deben volver a responder su cuestionario.
+
+```
+python scripts/aplicar_migracion.py "../../../Base de datos/migraciones/006_cuestionarios_v2.sql"
+```
+
 ## Reglas de negocio reforzadas a nivel de base de datos
 
 No solo se validan en el backend — están reforzadas directamente en el esquema, como última línea de defensa:
 
 - **Valores permitidos por `CHECK`**: campos como `rol`, `estado`, `espacio_disponible`, `nivel_energia`, etc. solo aceptan los valores exactos definidos (ej. `rol` solo puede ser `'adoptante'` o `'refugio'`), nunca texto libre.
-- **Rangos válidos**: `tiempo_disponible_horas_dia` entre 0 y 24, `edad` de mascota nunca negativa, `score_compatibilidad` entre 0 y 1.
+- **Rangos y coherencia**: `edad` de mascota nunca negativa, `score_compatibilidad` entre 0 y 1, el tamaño adulto se exige solo en perros y una mascota con cuidados especiales debe tenerlos descritos.
 - **Sin duplicados donde no deben existir**: una mascota no puede tener dos fotos marcadas como principal a la vez; un match no se calcula dos veces para el mismo par adoptante-mascota (se actualiza); un adoptante no puede tener dos postulaciones *pendientes* a la misma mascota al mismo tiempo (pero sí puede volver a postular después de un rechazo).
 - **Políticas de borrado explícitas (`ON DELETE`)**: los datos que representan historial de negocio (`matches`, `postulaciones`, `seguimientos_post_adopcion`) están protegidos con `RESTRICT`, para que nunca desaparezcan como efecto secundario de borrar otra fila. Los datos que son extensión directa de una cuenta (perfil de refugio, perfil de adoptante, fotos) sí se eliminan en cascada (`CASCADE`) si se borra su dueño.
 
@@ -67,6 +90,9 @@ No solo se validan en el backend — están reforzadas directamente en el esquem
 3. Abre el **SQL Editor** de Neon (o conéctate con `psql`).
 4. Pega el contenido completo de `BD_HouseFound_v2.sql` y ejecútalo.
 5. Verifica que se crearon las 10 tablas: `SELECT table_name FROM information_schema.tables WHERE table_schema='public';`
+6. Carga la nómina SII con `importar_nomina.py` (ver arriba) y, si quieres datos de ejemplo, las mascotas con `Aplicación/seed/` (ver su README).
+
+No hace falta aplicar las migraciones: el esquema ya las incluye.
 
 Este script fue probado ejecutándolo contra una instancia real de PostgreSQL, incluyendo pruebas deliberadas de violación de cada regla de negocio (valores inválidos, duplicados, borrados restringidos), confirmando que la base de datos las rechaza correctamente.
 

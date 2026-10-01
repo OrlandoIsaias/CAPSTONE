@@ -1,51 +1,146 @@
 """
-Motor de scoring por reglas ponderadas — v1 (MVP).
+Motor de matching por reglas — v2 (3 capas).
 
-Diseño documentado para la defensa del proyecto:
+Diseño documentado para la defensa del proyecto. Cada pregunta del
+cuestionario del adoptante tiene su espejo en la ficha de la mascota, y el
+resultado se arma en 3 capas:
 
-Pesos de cada criterio sobre el score final (deben sumar 1.0):
-    espacio             20%   — "cumple o supera" (tener de más no resta)
-    actividad/energía   20%   — cercanía (buscamos coincidencia, no un mínimo)
-    experiencia         20%   — "cumple o supera"
-    tiempo/socialización 20%  — cercanía (tiempo en horas se traduce a nivel)
-    compatible_ninos    10%   — restricción dura (0 o 1, tema de seguridad)
-    compatible_otras_mascotas 10% — restricción dura (0 o 1)
+1. Exclusión (¿es seguro?): incompatibilidades que hacen fracasar una
+   adopción — niños, perros o gatos en casa, alergias, cuidados que el
+   adoptante no puede asumir y condiciones de la vivienda. Una mascota
+   excluida no aparece en Recomendaciones; en Explorar se muestra como
+   "No compatible" con el motivo. "No lo sabemos" (NULL) nunca excluye:
+   genera una alerta.
 
-Estas dos familias de comparación reflejan una decisión de diseño real:
-- "Cumple o supera" se usa donde el valor del adoptante es un RECURSO
-  (espacio, experiencia) que la mascota exige como mínimo. Tener más de lo
-  necesario no debe penalizar.
-- "Cercanía" se usa donde ambos valores son una PREFERENCIA/RITMO DE VIDA
-  (energía, tiempo disponible) — un desajuste en cualquier dirección es malo:
-  tanto un perro muy activo con un dueño sedentario, como uno muy tranquilo
-  con un dueño hiperactivo, son peores matches que una coincidencia exacta.
+2. Compatibilidad (¿puede cuidarla bien?): el % de afinidad. Todos los
+   criterios comparan un RECURSO del hogar con una NECESIDAD de la mascota
+   ("cumple o supera"): 1.0 si la cubre, 0.5 si le falta un nivel, 0.0 si
+   le faltan dos o más. Tener de más nunca resta: una persona muy activa
+   puede adoptar un perro senior tranquilo.
 
-Nota sobre valores None/nulos: si un campo de la mascota no fue especificado
-(por ejemplo compatible_ninos=None), se asume que NO hay información
-suficiente para penalizar, y ese criterio puntúa 1.0 (beneficio de la duda).
-Esto es una decisión de producto, no un accidente — está pensado para que
-refugios con fichas incompletas no queden injustamente mal rankeados.
+       soledad      30%  horas que quedaría sola  ↔ horas que tolera
+       actividad    25%  tiempo para pasear/jugar ↔ actividad que necesita
+       experiencia  20%  experiencia previa       ↔ experiencia requerida
+       ambiente     15%  calma del hogar          ↔ temperamento
+       espacio      10%  vivienda                 ↔ espacio mínimo
+
+   Los pesos siguen el orden de las causas más citadas de devolución tras la
+   adopción: problemas de conducta (separación, exceso de energía, manejo
+   difícil) por sobre el espacio, que casi no aparece como motivo por sí
+   solo (Powell et al. 2021, Scientific Reports; Mundschau y Suchak 2023,
+   Animals). Son un punto de partida para recalibrar con los resultados de
+   seguimiento-service.
+
+   Tope: si un criterio queda en 0.0, el total no supera 0.5. Una brecha
+   crítica (por ejemplo, no tolera estar sola y quedaría más de 8 h) no se
+   compensa con los demás criterios.
+
+3. Preferencias (¿es lo que busca?): la especie filtra la lista de
+   Recomendaciones (ver main.py); tamaño, etapa de vida y sexo solo ordenan.
+   Ninguna preferencia cambia el %.
 """
-from typing import Optional
+from dataclasses import dataclass
+from typing import List, Optional
+
+VERSION_DESGLOSE = 2
 
 PESOS = {
-    "espacio": 0.20,
-    "actividad": 0.20,
+    "soledad": 0.30,
+    "actividad": 0.25,
     "experiencia": 0.20,
-    "tiempo_socializacion": 0.20,
-    "ninos": 0.10,
-    "otras_mascotas": 0.10,
+    "ambiente": 0.15,
+    "espacio": 0.10,
 }
+TOPE_BRECHA_CRITICA = 0.5
 
-_ESCALA_ESPACIO = {"departamento": 1, "casa_patio": 2, "casa_grande": 3}
-_ESCALA_NIVEL = {"bajo": 1, "medio": 2, "alto": 3}
-_MAPA_EXPERIENCIA_ADOPTANTE = {"ninguna": "bajo", "basica": "medio", "alta": "alto"}
+# Sin estas respuestas no hay nada que comparar (perfil recién registrado).
+CAMPOS_CUESTIONARIO = (
+    "espacio_disponible",
+    "restriccion_vivienda",
+    "horas_sola",
+    "tiempo_actividad",
+    "experiencia_previa",
+    "ambiente_hogar",
+    "ninos_hogar",
+    "alergias",
+    "acepta_cuidados",
+)
+
+# Escalas de la capa de compatibilidad: recurso del adoptante y necesidad de
+# la mascota en niveles comparables (más alto = más recurso / más necesidad).
+_RECURSO_ACTIVIDAD = {"menos_30m": 1, "30_60m": 2, "mas_60m": 3}
+_RECURSO_EXPERIENCIA = {"ninguna": 1, "basica": 2, "alta": 3}
+_RECURSO_CALMA = {"movido": 1, "moderado": 2, "tranquilo": 3}
+_NECESIDAD_CALMA = {"sociable": 1, "reservado": 2, "timido": 3}
+_ESPACIO = {"departamento": 1, "casa_patio": 2, "casa_grande": 3}
+_NIVEL = {"bajo": 1, "medio": 2, "alto": 3}
+# Horas sola (adoptante) y tolerancia a la soledad (mascota) usan los mismos
+# tramos: falta recurso cuando quedaría sola más tramos de los que tolera.
+_TRAMO_HORAS = {"menos_2h": 1, "2_4h": 2, "4_8h": 3, "mas_8h": 4}
+
+_CUIDADOS = {"ninguno": 0, "no": 0, "leves": 1, "complejos": 2}
 
 
-def _cumple_o_supera(nivel_adoptante: int, nivel_requerido: int) -> float:
-    """1.0 si el adoptante iguala o supera el requisito; penaliza por cada
-    nivel de diferencia si le falta."""
-    brecha = nivel_requerido - nivel_adoptante
+@dataclass
+class Motivo:
+    codigo: str
+    mensaje: str
+
+
+@dataclass
+class Criterio:
+    criterio: str
+    peso: float
+    puntaje: float
+    adoptante: str
+    mascota: str
+
+
+@dataclass
+class Evaluacion:
+    score: float
+    desglose: List[Criterio]
+    exclusiones: List[Motivo]
+    alertas: List[Motivo]
+    # Preferencias de orden (tamano, etapa, sexo) que la mascota no cumple.
+    discrepancias: List[str]
+    coincide_especie: bool
+    tope_aplicado: bool = False
+    etapa: Optional[str] = None
+
+    @property
+    def excluida(self) -> bool:
+        return bool(self.exclusiones)
+
+    def a_json(self) -> dict:
+        """Forma en que se guarda en matches.desglose."""
+        return {
+            "version": VERSION_DESGLOSE,
+            "criterios": [vars(c) for c in self.desglose],
+            "exclusiones": [vars(m) for m in self.exclusiones],
+            "alertas": [vars(m) for m in self.alertas],
+            "discrepancias": self.discrepancias,
+            "tope_aplicado": self.tope_aplicado,
+        }
+
+
+def cuestionario_completo(perfil) -> bool:
+    return all(getattr(perfil, campo) is not None for campo in CAMPOS_CUESTIONARIO)
+
+
+def etapa_de_vida(edad: Optional[int]) -> Optional[str]:
+    if edad is None:
+        return None
+    if edad < 1:
+        return "cachorro"
+    if edad <= 2:
+        return "joven"
+    if edad <= 7:
+        return "adulto"
+    return "senior"
+
+
+def _puntaje(brecha: int) -> float:
     if brecha <= 0:
         return 1.0
     if brecha == 1:
@@ -53,73 +148,115 @@ def _cumple_o_supera(nivel_adoptante: int, nivel_requerido: int) -> float:
     return 0.0
 
 
-def _cercania(nivel_a: int, nivel_b: int) -> float:
-    """1.0 si coinciden exactamente; penaliza por cada nivel de distancia,
-    en cualquier dirección."""
-    diferencia = abs(nivel_a - nivel_b)
-    if diferencia == 0:
-        return 1.0
-    if diferencia == 1:
-        return 0.5
-    return 0.0
+# ---------- Capa 1: exclusiones y alertas ----------
+
+def _exclusiones(perfil, mascota) -> List[Motivo]:
+    motivos = []
+    es_perro = mascota.especie == "Perro"
+
+    if es_perro and perfil.restriccion_vivienda == "solo_gatos":
+        motivos.append(Motivo("vivienda_solo_gatos", "Tu vivienda solo permite gatos."))
+    if es_perro and perfil.restriccion_vivienda == "solo_pequenas" and mascota.tamano != "pequeno":
+        motivos.append(Motivo("vivienda_solo_pequenas", "Tu vivienda solo permite mascotas pequeñas."))
+
+    if perfil.alergias in ("ambos", "perros" if es_perro else "gatos"):
+        especie = "perros" if es_perro else "gatos"
+        motivos.append(Motivo("alergia", f"Alguien en tu hogar tiene alergia a los {especie}."))
+
+    if perfil.ninos_hogar == "pequenos" and mascota.convivencia_ninos in ("mayores", "no"):
+        motivos.append(Motivo("ninos_pequenos", "No es apta para convivir con niños menores de 6 años."))
+    elif perfil.ninos_hogar == "mayores" and mascota.convivencia_ninos == "no":
+        motivos.append(Motivo("ninos", "No convive bien con niños."))
+
+    if perfil.tiene_perros and mascota.convive_perros is False:
+        motivos.append(Motivo("convive_perros", "No convive bien con perros."))
+    if perfil.tiene_gatos and mascota.convive_gatos is False:
+        motivos.append(Motivo("convive_gatos", "No convive bien con gatos."))
+
+    if _CUIDADOS[mascota.nivel_cuidados] > _CUIDADOS[perfil.acepta_cuidados]:
+        motivos.append(Motivo("cuidados", "Necesita cuidados especiales que indicaste no poder asumir."))
+
+    return motivos
 
 
-def _horas_a_nivel(horas: Optional[int]) -> int:
-    """Convierte tiempo_disponible_horas_dia (0-24) a la misma escala
-    bajo/medio/alto que usa nivel_socializacion de la mascota."""
-    if horas is None:
-        horas = 0
-    if horas <= 2:
-        return 1  # bajo
-    if horas <= 5:
-        return 2  # medio
-    return 3  # alto
+def _alertas(perfil, mascota) -> List[Motivo]:
+    alertas = []
+    if perfil.ninos_hogar != "no" and mascota.convivencia_ninos is None:
+        alertas.append(Motivo("ninos_sin_evaluar", "El refugio aún no evaluó cómo convive con niños."))
+    if perfil.tiene_perros and mascota.convive_perros is None:
+        alertas.append(Motivo("perros_sin_evaluar", "El refugio aún no evaluó cómo convive con perros."))
+    if perfil.tiene_gatos and mascota.convive_gatos is None:
+        alertas.append(Motivo("gatos_sin_evaluar", "El refugio aún no evaluó cómo convive con gatos."))
+    if perfil.restriccion_vivienda == "no_se":
+        alertas.append(Motivo(
+            "vivienda_por_confirmar",
+            "Confirma con tu arrendador o la administración que puedes tener mascotas.",
+        ))
+    return alertas
 
 
-def calcular_score(perfil, mascota) -> float:
-    """Recibe un PerfilAdoptante y una Mascota (modelos ORM) y devuelve
-    un score entre 0.0 y 1.0."""
+# ---------- Capa 2: compatibilidad ----------
 
-    # 1. Espacio — cumple o supera
-    nivel_espacio_adoptante = _ESCALA_ESPACIO.get(perfil.espacio_disponible, 1)
-    nivel_espacio_requerido = _ESCALA_ESPACIO.get(mascota.espacio_minimo_requerido, 1)
-    score_espacio = _cumple_o_supera(nivel_espacio_adoptante, nivel_espacio_requerido)
+def _criterios(perfil, mascota) -> List[Criterio]:
+    brechas = {
+        "soledad": (
+            _TRAMO_HORAS[perfil.horas_sola] - _TRAMO_HORAS[mascota.tolerancia_soledad],
+            perfil.horas_sola, mascota.tolerancia_soledad,
+        ),
+        "actividad": (
+            _NIVEL[mascota.nivel_energia] - _RECURSO_ACTIVIDAD[perfil.tiempo_actividad],
+            perfil.tiempo_actividad, mascota.nivel_energia,
+        ),
+        "experiencia": (
+            _NIVEL[mascota.nivel_experiencia_requerida] - _RECURSO_EXPERIENCIA[perfil.experiencia_previa],
+            perfil.experiencia_previa, mascota.nivel_experiencia_requerida,
+        ),
+        "ambiente": (
+            _NECESIDAD_CALMA[mascota.temperamento] - _RECURSO_CALMA[perfil.ambiente_hogar],
+            perfil.ambiente_hogar, mascota.temperamento,
+        ),
+        "espacio": (
+            _ESPACIO[mascota.espacio_minimo_requerido] - _ESPACIO[perfil.espacio_disponible],
+            perfil.espacio_disponible, mascota.espacio_minimo_requerido,
+        ),
+    }
+    return [
+        Criterio(nombre, PESOS[nombre], _puntaje(brecha), adoptante, valor_mascota)
+        for nombre, (brecha, adoptante, valor_mascota) in brechas.items()
+    ]
 
-    # 2. Actividad física vs. energía de la mascota — cercanía
-    nivel_actividad = _ESCALA_NIVEL.get(perfil.nivel_actividad_fisica, 2)
-    nivel_energia = _ESCALA_NIVEL.get(mascota.nivel_energia, 2)
-    score_actividad = _cercania(nivel_actividad, nivel_energia)
 
-    # 3. Experiencia — cumple o supera (con traducción de escala)
-    experiencia_adoptante_traducida = _MAPA_EXPERIENCIA_ADOPTANTE.get(perfil.experiencia_previa, "bajo")
-    nivel_experiencia_adoptante = _ESCALA_NIVEL.get(experiencia_adoptante_traducida, 1)
-    nivel_experiencia_requerida = _ESCALA_NIVEL.get(mascota.nivel_experiencia_requerida, 1)
-    score_experiencia = _cumple_o_supera(nivel_experiencia_adoptante, nivel_experiencia_requerida)
+# ---------- Capa 3: preferencias ----------
 
-    # 4. Tiempo disponible vs. socialización requerida — cercanía (con conversión)
-    nivel_tiempo = _horas_a_nivel(perfil.tiempo_disponible_horas_dia)
-    nivel_socializacion = _ESCALA_NIVEL.get(mascota.nivel_socializacion, 2)
-    score_tiempo = _cercania(nivel_tiempo, nivel_socializacion)
+def _discrepancias(perfil, mascota, etapa: Optional[str]) -> List[str]:
+    discrepancias = []
+    # El tamaño solo aplica a perros: un gato no contradice esa preferencia.
+    if perfil.tamanos_preferidos and mascota.especie == "Perro" and mascota.tamano not in perfil.tamanos_preferidos:
+        discrepancias.append("tamano")
+    if perfil.etapas_preferidas and etapa not in perfil.etapas_preferidas:
+        discrepancias.append("etapa")
+    if perfil.sexo_preferido and mascota.sexo != perfil.sexo_preferido:
+        discrepancias.append("sexo")
+    return discrepancias
 
-    # 5. Compatibilidad con niños — restricción dura
-    if perfil.tiene_ninos and mascota.compatible_ninos is False:
-        score_ninos = 0.0
-    else:
-        score_ninos = 1.0
 
-    # 6. Compatibilidad con otras mascotas — restricción dura
-    if perfil.otras_mascotas and mascota.compatible_otras_mascotas is False:
-        score_otras_mascotas = 0.0
-    else:
-        score_otras_mascotas = 1.0
+def evaluar(perfil, mascota) -> Evaluacion:
+    """Recibe un PerfilAdoptante con el cuestionario completo y una Mascota
+    (modelos ORM o cualquier objeto con los mismos atributos)."""
+    criterios = _criterios(perfil, mascota)
+    score = sum(c.puntaje * c.peso for c in criterios)
+    tope_aplicado = any(c.puntaje == 0.0 for c in criterios) and score > TOPE_BRECHA_CRITICA
+    if tope_aplicado:
+        score = TOPE_BRECHA_CRITICA
 
-    score_final = (
-        score_espacio * PESOS["espacio"]
-        + score_actividad * PESOS["actividad"]
-        + score_experiencia * PESOS["experiencia"]
-        + score_tiempo * PESOS["tiempo_socializacion"]
-        + score_ninos * PESOS["ninos"]
-        + score_otras_mascotas * PESOS["otras_mascotas"]
+    etapa = etapa_de_vida(mascota.edad)
+    return Evaluacion(
+        score=round(score, 3),
+        desglose=criterios,
+        exclusiones=_exclusiones(perfil, mascota),
+        alertas=_alertas(perfil, mascota),
+        discrepancias=_discrepancias(perfil, mascota, etapa),
+        coincide_especie=not perfil.especie_preferida or mascota.especie == perfil.especie_preferida,
+        tope_aplicado=tope_aplicado,
+        etapa=etapa,
     )
-
-    return round(score_final, 3)
