@@ -4,8 +4,8 @@ import FormularioLoginRefugio from "../components/login/FormularioLoginRefugio";
 import { useAuth } from "../context/AuthContext";
 
 const PORTALES = [
-  { id: "refugio", etiqueta: "Refugio", Formulario: FormularioLoginRefugio },
   { id: "adoptante", etiqueta: "Adoptante", Formulario: FormularioLoginAdoptante },
+  { id: "refugio", etiqueta: "Refugio", Formulario: FormularioLoginRefugio },
 ] as const;
 
 export default function Login() {
@@ -16,7 +16,7 @@ export default function Login() {
     return <Navigate to={usuario.rol === "refugio" ? "/inicio" : "/explorar"} replace />;
   }
   if (!PORTALES.some((p) => p.id === portal)) {
-    return <Navigate to="/login/refugio" replace />;
+    return <Navigate to="/login/adoptante" replace />;
   }
 
   return (

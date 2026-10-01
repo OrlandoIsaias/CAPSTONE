@@ -221,7 +221,7 @@ export default function Guardados() {
                             <a
                               href={linkWhatsApp(
                                 s.refugio_telefono,
-                                `Hola, te escribo por la adopción de ${s.mascota_nombre}. ¿Coordinamos la entrega?`
+                                `Hola${s.refugio_nombre ? ` ${s.refugio_nombre}` : ""}, mi solicitud para adoptar a ${s.mascota_nombre} fue aprobada. Me gustaría coordinar una reunión para conocerlo. ¿Qué días y horarios les acomodan?`
                               )}
                               target="_blank"
                               rel="noreferrer"

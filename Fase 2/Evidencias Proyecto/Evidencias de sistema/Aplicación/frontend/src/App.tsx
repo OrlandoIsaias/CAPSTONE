@@ -46,7 +46,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/registro" element={<Registro />} />
-          <Route path="/login" element={<Navigate to="/login/refugio" replace />} />
+          <Route path="/login" element={<Navigate to="/login/adoptante" replace />} />
           <Route path="/login/:portal" element={<Login />} />
 
           {/* Flujo adoptante */}
