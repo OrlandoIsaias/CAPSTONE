@@ -22,10 +22,6 @@ function escribir(lista: number[]) {
   window.dispatchEvent(new CustomEvent(EVENTO));
 }
 
-export function estaGuardado(mascotaId: number): boolean {
-  return leer().includes(mascotaId);
-}
-
 export function alternarGuardado(mascotaId: number): boolean {
   const actuales = leer();
   const yaEstaba = actuales.includes(mascotaId);

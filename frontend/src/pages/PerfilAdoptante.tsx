@@ -6,6 +6,29 @@ import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { CargandoVista } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import type { PerfilAdoptante as IPerfilAdoptante } from "../types/auth";
+import {
+  etiquetaEspeciePreferida,
+  OPCIONES_ACEPTA_CUIDADOS,
+  OPCIONES_ALERGIAS,
+  OPCIONES_AMBIENTE_HOGAR,
+  OPCIONES_ESPACIO_DISPONIBLE,
+  OPCIONES_ETAPA,
+  OPCIONES_EXPERIENCIA_PREVIA,
+  OPCIONES_HORAS_SOLA,
+  OPCIONES_NINOS_HOGAR,
+  OPCIONES_RESTRICCION_VIVIENDA,
+  OPCIONES_TIEMPO_ACTIVIDAD,
+  resumenAnimales,
+} from "../utils/opcionesAdoptante";
+import { etiquetaOpcion, OPCIONES_SEXO, OPCIONES_TAMANO, resumenOpcion, type Opcion } from "../utils/opcionesMascota";
+
+// "Pequeño o mediano"; una lista vacía o null significa "me da igual".
+function listaPreferida<V extends string>(opciones: Opcion<V>[], valores: V[] | null | undefined): string {
+  if (!valores || valores.length === 0) return "Me da igual";
+  const etiquetas = valores.map((v) => etiquetaOpcion(opciones, v).toLowerCase());
+  const texto = etiquetas.length > 1 ? `${etiquetas.slice(0, -1).join(", ")} o ${etiquetas.at(-1)}` : etiquetas[0];
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
 
 function claveCache(usuarioId: number) {
   return `housefound_perfil_adoptante_cache_${usuarioId}`;
@@ -20,23 +43,6 @@ function leerCache(usuarioId: number): IPerfilAdoptante | null {
   }
 }
 
-const ETIQUETAS_ESPACIO: Record<string, string> = {
-  departamento: "Departamento",
-  casa_patio: "Casa con patio",
-  casa_grande: "Casa grande / Parcela",
-};
-
-const ETIQUETAS_EXPERIENCIA: Record<string, string> = {
-  ninguna: "Primera vez (Ninguna)",
-  basica: "Básica",
-  alta: "Alta / Experto",
-};
-
-const ETIQUETAS_ACTIVIDAD: Record<string, string> = {
-  bajo: "Tranquilo / Bajo",
-  medio: "Moderado / Medio",
-  alto: "Deportista / Alto",
-};
 
 export default function PerfilAdoptante() {
   const { usuario, cerrarSesion } = useAuth();
@@ -46,6 +52,9 @@ export default function PerfilAdoptante() {
     usuario ? leerCache(usuario.id) : null
   );
   const [cargando, setCargando] = useState(() => (usuario ? leerCache(usuario.id) === null : true));
+  // Un perfil sin respuestas (creado en el registro) cuenta como cuestionario pendiente.
+  // "!== false": una caché guardada antes de existir este campo corresponde a un perfil completo.
+  const cuestionarioCompleto = perfil !== null && perfil.cuestionario_completo !== false;
 
   useEffect(() => {
     obtenerPerfilAdoptante()
@@ -154,53 +163,29 @@ export default function PerfilAdoptante() {
 
         {cargando && <CargandoVista mensaje="Cargando tu perfil…" className="text-slate-400 py-8" />}
 
-        {!cargando && perfil && (
+        {!cargando && perfil && cuestionarioCompleto && (
           <div className="grid grid-cols-2 gap-2.5">
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vivienda</p>
-              <p className="text-xs font-black text-slate-800 mt-0.5">
-                {ETIQUETAS_ESPACIO[perfil.espacio_disponible] ?? perfil.espacio_disponible}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tiempo Diario</p>
-              <p className="text-xs font-black text-slate-800 mt-0.5">
-                {perfil.tiempo_disponible_horas_dia} {perfil.tiempo_disponible_horas_dia === 1 ? "hora" : "horas"}/día
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Experiencia</p>
-              <p className="text-xs font-black text-slate-800 mt-0.5">
-                {ETIQUETAS_EXPERIENCIA[perfil.experiencia_previa] ?? perfil.experiencia_previa}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Actividad Física</p>
-              <p className="text-xs font-black text-slate-800 mt-0.5">
-                {ETIQUETAS_ACTIVIDAD[perfil.nivel_actividad_fisica] ?? perfil.nivel_actividad_fisica}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Niños en Casa</p>
-              <p className="text-xs font-black text-slate-800 mt-0.5">
-                {perfil.tiene_ninos ? "Sí tiene niños" : "Sin niños"}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Otras Mascotas</p>
-              <p className="text-xs font-black text-slate-800 mt-0.5">
-                {perfil.otras_mascotas ? "Sí tiene mascotas" : "Sin mascotas"}
-              </p>
-            </div>
+            {[
+              { etiqueta: "Vivienda", valor: resumenOpcion(OPCIONES_ESPACIO_DISPONIBLE, perfil.espacio_disponible) },
+              { etiqueta: "Condiciones", valor: resumenOpcion(OPCIONES_RESTRICCION_VIVIENDA, perfil.restriccion_vivienda) },
+              { etiqueta: "Tiempo sola", valor: resumenOpcion(OPCIONES_HORAS_SOLA, perfil.horas_sola) },
+              { etiqueta: "Para pasear o jugar", valor: resumenOpcion(OPCIONES_TIEMPO_ACTIVIDAD, perfil.tiempo_actividad) },
+              { etiqueta: "Ambiente", valor: resumenOpcion(OPCIONES_AMBIENTE_HOGAR, perfil.ambiente_hogar) },
+              { etiqueta: "Niños", valor: resumenOpcion(OPCIONES_NINOS_HOGAR, perfil.ninos_hogar) },
+              { etiqueta: "Otras mascotas", valor: resumenAnimales(perfil.tiene_perros, perfil.tiene_gatos) },
+              { etiqueta: "Alergias", valor: resumenOpcion(OPCIONES_ALERGIAS, perfil.alergias) },
+              { etiqueta: "Experiencia", valor: resumenOpcion(OPCIONES_EXPERIENCIA_PREVIA, perfil.experiencia_previa) },
+              { etiqueta: "Cuidados especiales", valor: resumenOpcion(OPCIONES_ACEPTA_CUIDADOS, perfil.acepta_cuidados) },
+            ].map(({ etiqueta, valor }) => (
+              <div key={etiqueta} className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{etiqueta}</p>
+                <p className="text-xs font-black text-slate-800 mt-0.5">{valor}</p>
+              </div>
+            ))}
           </div>
         )}
 
-        {!cargando && !perfil && (
+        {!cargando && !cuestionarioCompleto && (
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center">
             <p className="text-xs font-extrabold text-amber-900">
               Aún no has completado tu cuestionario de afinidad.
@@ -217,6 +202,39 @@ export default function PerfilAdoptante() {
           </div>
         )}
       </div>
+
+      {/* Preferencias: solo ordenan las recomendaciones (la especie filtra) */}
+      {!cargando && perfil && cuestionarioCompleto && (
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-4">
+          <p className="text-[10px] font-extrabold uppercase tracking-wider text-teal-700">Preferencias</p>
+          <h2 className="font-[family-name:var(--font-display)] text-xl font-black text-slate-900 mt-0.5 mb-2">
+            Tu búsqueda ideal
+          </h2>
+          <dl>
+            {[
+              { etiqueta: "Tipo de mascota", valor: etiquetaEspeciePreferida(perfil.especie_preferida) },
+              ...(perfil.especie_preferida !== "Gato"
+                ? [{ etiqueta: "Tamaño", valor: listaPreferida(OPCIONES_TAMANO, perfil.tamanos_preferidos) }]
+                : []),
+              { etiqueta: "Edad", valor: listaPreferida(OPCIONES_ETAPA, perfil.etapas_preferidas) },
+              {
+                etiqueta: "Sexo",
+                valor: perfil.sexo_preferido ? etiquetaOpcion(OPCIONES_SEXO, perfil.sexo_preferido) : "Me da igual",
+              },
+            ].map(({ etiqueta, valor }, i, filas) => (
+              <div
+                key={etiqueta}
+                className={`flex items-baseline justify-between gap-4 py-2.5 ${
+                  i < filas.length - 1 ? "border-b border-slate-100" : ""
+                }`}
+              >
+                <dt className="text-xs font-medium text-slate-500">{etiqueta}</dt>
+                <dd className="text-xs font-black text-slate-800 text-right">{valor}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
 
       {/* Botón de Cerrar Sesión con degradé rojo y texto blanco */}
       <button

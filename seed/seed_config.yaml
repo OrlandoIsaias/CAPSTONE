@@ -1,0 +1,151 @@
+# Configuración del generador de mascotas de ejemplo (seed).
+# Cada proporción es un SUPUESTO DE TRABAJO: el campo "fuente" debe citar el
+# documento que lo respalda antes de presentar los datos como evidencia.
+# Razas y especies usan exactamente los valores de
+# frontend/src/utils/opcionesMascota.ts.
+
+semilla: 42
+
+# Las mascotas se publican con fechas repartidas en este rango hacia atrás,
+# para que el listado no las muestre todas "publicadas hace un minuto".
+publicacion:
+  dias_maximo: 90
+
+cantidad_por_refugio:
+  minimo: 3
+  maximo: 12
+  # Organizaciones cuya actividad sugiere más animales a cargo.
+  ajustes_por_actividad:
+    - palabras: [albergue, refugio, rescate, rehabilitacion, rehabilitación]
+      minimo: 6
+      maximo: 12
+    - palabras: [esterilizacion, esterilización, tenencia responsable, educacion, educación]
+      minimo: 3
+      maximo: 6
+
+especies:
+  fuente: "POR CITAR"
+  Perro: 0.70
+  Gato: 0.30
+
+edad:
+  fuente: "POR CITAR"
+  # etapa: [peso, edad_min, edad_max] en años (0 = menos de 1 año)
+  cachorro: [0.20, 0, 0]
+  joven:    [0.30, 1, 2]
+  adulto:   [0.38, 3, 7]
+  senior:   [0.12, 8, 14]
+
+perros:
+  fuente: "POR CITAR"
+  proporcion_mestizos: 0.60
+  raza_mestizo: "Quiltro (mestizo)"
+  tamanos_mestizo: {pequeno: 0.30, mediano: 0.45, grande: 0.25}
+  # raza: [peso, tamaño, energía base, experiencia base]
+  razas:
+    "Labrador Retriever":   [8, grande,  alto,  bajo]
+    "Pastor Alemán":        [8, grande,  alto,  medio]
+    "Caniche (Poodle)":     [6, pequeno, medio, bajo]
+    "Chihuahua":            [6, pequeno, medio, bajo]
+    "Salchicha (Dachshund)": [5, pequeno, medio, bajo]
+    "Pitbull":              [5, mediano, alto,  alto]
+    "Golden Retriever":     [4, grande,  medio, bajo]
+    "Beagle":               [4, mediano, alto,  medio]
+    "Boxer":                [4, grande,  alto,  medio]
+    "Yorkshire Terrier":    [4, pequeno, medio, bajo]
+    "Shih Tzu":             [4, pequeno, bajo,  bajo]
+    "Husky Siberiano":      [4, grande,  alto,  alto]
+    "Schnauzer":            [4, mediano, medio, bajo]
+    "Rottweiler":           [3, grande,  medio, alto]
+    "Cocker Spaniel":       [3, mediano, medio, bajo]
+    "Maltés":               [3, pequeno, bajo,  bajo]
+    "Border Collie":        [2, mediano, alto,  alto]
+    "Galgo":                [2, grande,  medio, medio]
+    "Doberman":             [2, grande,  alto,  alto]
+    "Pug (Carlino)":        [2, pequeno, bajo,  bajo]
+
+gatos:
+  fuente: "POR CITAR"
+  proporcion_mestizos: 0.80
+  raza_mestizo: "Doméstico / criollo"
+  # raza: [peso, energía base, experiencia base]
+  razas:
+    "Siamés":          [4, alto,  medio]
+    "Persa":           [3, bajo,  medio]
+    "Angora":          [3, medio, bajo]
+    "Maine Coon":      [2, medio, bajo]
+    "Bengalí":         [2, alto,  medio]
+    "Azul Ruso":       [2, medio, bajo]
+    "Himalayo":        [1, bajo,  medio]
+
+sexo:
+  fuente: "POR CITAR"
+  macho: 0.50
+  hembra: 0.50
+
+# Horas seguidas que puede quedarse sola tranquila (columna tolerancia_soledad):
+# los cachorros toleran poco tiempo solos; los gatos adultos, mucho.
+tolerancia_soledad:
+  fuente: "POR CITAR"
+  cachorro:     {menos_2h: 0.60, 2_4h: 0.40, 4_8h: 0.00, mas_8h: 0.00}
+  senior:       {menos_2h: 0.20, 2_4h: 0.40, 4_8h: 0.35, mas_8h: 0.05}
+  adulto_perro: {menos_2h: 0.15, 2_4h: 0.35, 4_8h: 0.40, mas_8h: 0.10}
+  adulto_gato:  {menos_2h: 0.05, 2_4h: 0.15, 4_8h: 0.40, mas_8h: 0.40}
+
+# Animales reactivos o temerosos: nunca se declaran compatibles con niños ni con
+# otros animales, nunca son "sociables" y requieren un nivel más de experiencia.
+reactividad:
+  fuente: "POR CITAR"
+  probabilidad: 0.15
+
+# Relación con personas (columna temperamento).
+temperamento:
+  fuente: "POR CITAR"
+  no_reactiva: {sociable: 0.65, reservado: 0.30, timido: 0.05}
+  reactiva:    {reservado: 0.40, timido: 0.60}
+
+compatibilidad:
+  fuente: "POR CITAR"
+  # Convivencia con niños cuando la mascota no es reactiva (si lo es, "no"):
+  # todos = incluso menores de 6 años; mayores = solo de 6 o más.
+  ninos: {todos: 0.65, mayores: 0.25, "no": 0.10}
+  # Probabilidad de "sí" según la especie de la mascota, si no es reactiva.
+  convive_perros_si: {Perro: 0.80, Gato: 0.45}
+  convive_gatos_si:  {Perro: 0.45, Gato: 0.80}
+  # Fracción sin dato (NULL = no evaluado: genera una alerta, nunca excluye).
+  sin_dato: 0.10
+
+cuidados_especiales:
+  probabilidad_senior: 0.50
+  probabilidad_general: 0.08
+  # [descripción, nivel_cuidados]: leves = medicación o dieta;
+  # complejos = enfermedad crónica o discapacidad.
+  senior:
+    - ["Artrosis leve; requiere suplemento articular diario.", leves]
+    - ["Dieta renal indicada por veterinario.", complejos]
+    - ["Visión reducida; necesita un entorno sin cambios bruscos.", complejos]
+    - ["Control cardiológico cada 6 meses.", leves]
+  general:
+    - ["Alergia alimentaria; come alimento hipoalergénico.", leves]
+    - ["Tratamiento dermatológico en curso.", leves]
+    - ["Le falta una extremidad; se desplaza sin problemas.", complejos]
+    - ["Recuperándose de fractura; reposo parcial por 1 mes.", leves]
+
+# Ficha de salud (informativa, no puntúa): probabilidad de "sí"; una fracción
+# queda sin dato.
+salud:
+  fuente: "POR CITAR"
+  esterilizado: {cachorro: 0.10, joven: 0.60, adulto: 0.85, senior: 0.85}
+  vacunas_al_dia: 0.85
+  desparasitado: 0.90
+  microchip: 0.55
+  sin_dato: 0.05
+
+nombres:
+  Perro: [Luna, Rocky, Max, Kira, Toby, Canela, Bruno, Negra, Chester, Mora, Simón, Lola,
+          Oso, Nala, Rambo, Pelusa, Copito, Maya, Tango, Frida, Zeus, Chispa, Balto, Manchas,
+          Coco, Duque, Princesa, Pancho, Lupe, Rulo, Sombra, Kaiser, Mila, Terry, Bobby, Negrita,
+          Tobías, Cholo, Lassie, Chocolate, Pipo, Dana, Thor, Nieve, Rufo, Tita, Nacho, Bella]
+  Gato: [Michi, Misha, Garfield, Pelusa, Nube, Salem, Simba, Cleo, Tom, Luna, Mía, Oliver,
+         Gatúbela, Pantera, Leo, Kiara, Félix, Minino, Canela, Tigre, Bigotes, Nina, Pompón,
+         Ámbar, Chispa, Mora, Nieve, Carbón, Isis, Loki, Manchita, Sol]

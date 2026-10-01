@@ -14,16 +14,25 @@ import { Spinner } from "../components/Spinner";
 import { useToast } from "../context/ToastContext";
 import { useAjusteFotos } from "../hooks/useAjusteFotos";
 import { fechaCorta } from "../utils/tiempo";
-import { TAMANO_MAXIMO_FOTO_BYTES, TIPOS_FOTO_ACEPTADOS } from "../utils/opcionesMascota";
+import {
+  etiquetaOpcion,
+  etiquetaTriEstado,
+  formatearEdad,
+  OPCIONES_CONVIVENCIA_NINOS,
+  OPCIONES_ENERGIA,
+  OPCIONES_ESPACIO_MINIMO,
+  OPCIONES_EXPERIENCIA_REQUERIDA,
+  OPCIONES_NIVEL_CUIDADOS,
+  OPCIONES_SEXO,
+  OPCIONES_TAMANO,
+  OPCIONES_TEMPERAMENTO,
+  OPCIONES_TOLERANCIA_SOLEDAD,
+  resumenOpcion,
+  TAMANO_MAXIMO_FOTO_BYTES,
+  TIPOS_FOTO_ACEPTADOS,
+} from "../utils/opcionesMascota";
 import type { Mascota } from "../types/mascotas";
 import type { Postulacion } from "../types/postulaciones";
-
-const NIVEL: Record<string, string> = { bajo: "Baja", medio: "Media", alto: "Alta" };
-const ESPACIO: Record<string, string> = {
-  departamento: "Departamento",
-  casa_patio: "Casa con patio",
-  casa_grande: "Casa grande",
-};
 
 export default function MascotaRefugio() {
   const { id } = useParams<{ id: string }>();
@@ -156,16 +165,32 @@ export default function MascotaRefugio() {
   const fotoActual = fotos[fotoActivaIndex] ?? fotos[0] ?? null;
 
   const rasgos = mascota
-    ? ([
-        mascota.nivel_energia ? `Energía ${NIVEL[mascota.nivel_energia]?.toLowerCase()}` : null,
-        mascota.nivel_socializacion
-          ? `Socialización ${NIVEL[mascota.nivel_socializacion]?.toLowerCase()}`
-          : null,
-        mascota.espacio_minimo_requerido ? ESPACIO[mascota.espacio_minimo_requerido] : null,
-        mascota.nivel_experiencia_requerida
-          ? `Experiencia ${NIVEL[mascota.nivel_experiencia_requerida]?.toLowerCase()}`
-          : null,
-      ].filter(Boolean) as string[])
+    ? [
+        `Energía: ${resumenOpcion(OPCIONES_ENERGIA[mascota.especie], mascota.nivel_energia).toLowerCase()}`,
+        `Sola: ${resumenOpcion(OPCIONES_TOLERANCIA_SOLEDAD, mascota.tolerancia_soledad).toLowerCase()}`,
+        resumenOpcion(OPCIONES_TEMPERAMENTO, mascota.temperamento),
+        etiquetaOpcion(OPCIONES_ESPACIO_MINIMO, mascota.espacio_minimo_requerido),
+        etiquetaOpcion(OPCIONES_EXPERIENCIA_REQUERIDA, mascota.nivel_experiencia_requerida),
+      ]
+    : [];
+
+  // Convivencia: el refugio ve también lo que aún no evaluó, porque el
+  // adoptante recibe un aviso por cada dato sin evaluar.
+  const convivencia = mascota
+    ? [
+        resumenOpcion(OPCIONES_CONVIVENCIA_NINOS, mascota.convivencia_ninos ?? "sin_dato"),
+        `Con perros: ${etiquetaTriEstado(mascota.convive_perros).toLowerCase()}`,
+        `Con gatos: ${etiquetaTriEstado(mascota.convive_gatos).toLowerCase()}`,
+      ]
+    : [];
+
+  const salud = mascota
+    ? [
+        `Esterilización: ${etiquetaTriEstado(mascota.esterilizado, "sin información").toLowerCase()}`,
+        `Vacunas al día: ${etiquetaTriEstado(mascota.vacunas_al_dia, "sin información").toLowerCase()}`,
+        `Desparasitación: ${etiquetaTriEstado(mascota.desparasitado, "sin información").toLowerCase()}`,
+        `Microchip: ${etiquetaTriEstado(mascota.microchip, "sin información").toLowerCase()}`,
+      ]
     : [];
 
   return (
@@ -321,39 +346,48 @@ export default function MascotaRefugio() {
             <p className="text-sm font-semibold text-slate-500 mb-4">
               {[
                 mascota.raza || mascota.especie,
-                mascota.edad != null ? `${mascota.edad} ${mascota.edad === 1 ? "año" : "años"}` : null,
+                etiquetaOpcion(OPCIONES_SEXO, mascota.sexo),
+                mascota.tamano ? etiquetaOpcion(OPCIONES_TAMANO, mascota.tamano) : null,
+                mascota.edad != null ? formatearEdad(mascota.edad) : null,
               ]
                 .filter(Boolean)
                 .join(" • ") || "Sin datos adicionales"}
             </p>
 
-            <div className="flex flex-wrap gap-2">
-              {rasgos.map((r) => (
-                <span
-                  key={r}
-                  className="text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700"
-                >
-                  {r}
-                </span>
+            <div className="space-y-3">
+              {[
+                { titulo: "Personalidad y rutina", items: rasgos, estilo: "bg-slate-100 text-slate-700" },
+                { titulo: "Convivencia", items: convivencia, estilo: "bg-emerald-50 border border-emerald-200 text-emerald-700" },
+                { titulo: "Salud", items: salud, estilo: "bg-teal-50 border border-teal-200 text-teal-800" },
+              ].map((grupo) => (
+                <div key={grupo.titulo}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                    {grupo.titulo}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {grupo.items.map((r) => (
+                      <span key={r} className={`text-xs font-bold px-3 py-1.5 rounded-full ${grupo.estilo}`}>
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               ))}
-              {mascota.compatible_ninos && (
-                <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">
-                  Compatible con niños
-                </span>
-              )}
-              {mascota.compatible_otras_mascotas && (
-                <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">
-                  Compatible con otras mascotas
-                </span>
-              )}
             </div>
 
-            {mascota.cuidados_especiales && (
+            {mascota.nivel_cuidados !== "ninguno" && mascota.cuidados_especiales && (
               <div className="rounded-2xl bg-rose-50 border border-rose-100 p-4 mt-4">
                 <p className="text-xs font-black text-rose-700 uppercase tracking-wider mb-1">
-                  Cuidados especiales
+                  Cuidados especiales · {resumenOpcion(OPCIONES_NIVEL_CUIDADOS, mascota.nivel_cuidados)}
                 </p>
                 <p className="text-xs font-semibold text-slate-800">{mascota.cuidados_especiales}</p>
+              </div>
+            )}
+
+            {mascota.notas_salud && (
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 mt-3">
+                <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1">Notas de salud</p>
+                <p className="text-xs font-semibold text-slate-800">{mascota.notas_salud}</p>
               </div>
             )}
           </div>

@@ -6,21 +6,10 @@ export interface AreaRecorte {
 }
 
 /**
- * Redimensiona y recorta automáticamente cualquier imagen a un formato
- * cuadrado (1:1) centrado, optimizado para móvil (máximo 480x480 px, o su
- * tamaño natural si es menor para evitar sobreescalar).
- */
-export async function redimensionarAlCuadrado(
-  archivo: File,
-  tamanoMax: number = 480,
-  calidad: number = 0.90
-): Promise<File> {
-  return recortarCuadrado(archivo, null, tamanoMax, calidad);
-}
-
-/**
  * Recorta la zona cuadrada que eligió el usuario en el editor de fotos
- * (AjustarFoto). Con `area = null` usa el recorte centrado de siempre.
+ * (AjustarFoto) y la redimensiona para móvil (máximo 480x480 px, o su
+ * tamaño natural si es menor para evitar sobreescalar). Con `area = null`
+ * usa un recorte cuadrado centrado.
  */
 export async function recortarCuadrado(
   archivo: File,

@@ -62,15 +62,9 @@ def registrar_usuario(datos: schemas.UsuarioRegistro, db: Session = Depends(get_
     db.refresh(nuevo_usuario)
 
     if datos.telefono:
-        perfil = models.PerfilAdoptante(
-            usuario_id=nuevo_usuario.id,
-            telefono=datos.telefono,
-            espacio_disponible="departamento",
-            tiempo_disponible_horas_dia=4,
-            experiencia_previa="ninguna",
-            nivel_actividad_fisica="medio",
-        )
-        db.add(perfil)
+        # Solo el teléfono: las respuestas del cuestionario quedan en NULL hasta
+        # que el adoptante lo complete, para no recomendar con datos inventados.
+        db.add(models.PerfilAdoptante(usuario_id=nuevo_usuario.id, telefono=datos.telefono))
         db.commit()
 
     token = security.crear_access_token({"sub": str(nuevo_usuario.id), "rol": nuevo_usuario.rol})

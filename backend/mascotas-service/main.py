@@ -29,6 +29,14 @@ from sqlalchemy.orm import Session, joinedload
 
 app = FastAPI(title="HouseFound - Mascotas Service")
 
+# Credenciales SOLO desde el entorno (.env); nunca escritas en el código.
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True,
+)
+
 
 @app.get("/")
 def health_check():
@@ -219,6 +227,12 @@ async def agregar_foto(
     )
 
   # 4. SUBIR A CLOUDINARY
+  config_cloudinary = cloudinary.config()
+  if not (config_cloudinary.cloud_name and config_cloudinary.api_key and config_cloudinary.api_secret):
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="La subida de fotos no está configurada en el servidor (faltan credenciales de Cloudinary).",
+    )
   try:
     resultado = cloudinary.uploader.upload(
         foto.file, folder="hogarmatch/mascotas"

@@ -49,6 +49,8 @@ export default function Recomendaciones() {
     return () => controlador.abort();
   }, [navigate]);
 
+  const grupos = agrupar(recomendaciones);
+
   return (
     <PantallaAdoptante>
       <header className="mb-5">
@@ -71,31 +73,66 @@ export default function Recomendaciones() {
       {!cargando && !error && recomendaciones.length === 0 && (
         <div className="rounded-3xl bg-white border border-slate-200 p-8 text-center shadow-xs">
           <p className="font-extrabold text-slate-800 text-base">
-            Todavía no hay mascotas disponibles
+            Por ahora no encontramos mascotas compatibles
           </p>
           <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-            Vuelve a revisar más tarde para ver nuevas sugerencias de compatibilidad.
+            Los refugios publican mascotas nuevas seguido. Mientras tanto, en Explorar puedes verlas todas y por qué algunas no calzan con tu hogar.
           </p>
+          <button
+            onClick={() => navigate("/explorar")}
+            className="mt-4 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs"
+          >
+            Ir a Explorar
+          </button>
         </div>
       )}
 
-      <div className="space-y-3">
-        {recomendaciones.map((rec) => (
-          <TarjetaMascota
-            key={rec.mascota_id}
-            mascotaId={rec.mascota_id}
-            nombre={rec.nombre}
-            especie={rec.especie}
-            raza={rec.raza}
-            edad={rec.edad}
-            urlFoto={rec.url_foto}
-            score={rec.score_compatibilidad}
-            descripcion={descripcionCorta(rec)}
-            guardado={guardados.includes(rec.mascota_id)}
-            onAlternarGuardado={alternar}
-          />
-        ))}
-      </div>
+      {/* El backend ya las ordena: primero las que cumplen las preferencias
+          (tamaño, edad, sexo) y después por %. Se separan en dos grupos para
+          que se entienda por qué una de 85% puede quedar bajo una de 73%. */}
+      {grupos.map((grupo) => (
+        <section key={grupo.titulo ?? "todas"} className="mb-5">
+          {grupo.titulo && (
+            <div className="mb-2.5 px-0.5">
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">{grupo.titulo}</h2>
+              {grupo.detalle && <p className="text-[11px] font-medium text-slate-500 mt-0.5">{grupo.detalle}</p>}
+            </div>
+          )}
+          <div className="space-y-3">
+            {grupo.mascotas.map((rec) => (
+              <TarjetaMascota
+                key={rec.mascota_id}
+                mascotaId={rec.mascota_id}
+                nombre={rec.nombre}
+                especie={rec.especie}
+                raza={rec.raza}
+                edad={rec.edad}
+                urlFoto={rec.url_foto}
+                score={rec.score_compatibilidad}
+                descripcion={descripcionCorta(rec)}
+                guardado={guardados.includes(rec.mascota_id)}
+                onAlternarGuardado={alternar}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
     </PantallaAdoptante>
   );
+}
+
+function agrupar(recomendaciones: Recomendacion[]) {
+  const coinciden = recomendaciones.filter((r) => r.discrepancias_preferencias.length === 0);
+  const otras = recomendaciones.filter((r) => r.discrepancias_preferencias.length > 0);
+  if (coinciden.length === 0 || otras.length === 0) {
+    return [{ titulo: null, detalle: null, mascotas: recomendaciones }];
+  }
+  return [
+    { titulo: "Coinciden con lo que buscas", detalle: null, mascotas: coinciden },
+    {
+      titulo: "También compatibles contigo",
+      detalle: "No calzan con alguna de tus preferencias de tamaño, edad o sexo, pero se llevarían bien con tu hogar.",
+      mascotas: otras,
+    },
+  ];
 }

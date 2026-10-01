@@ -10,6 +10,7 @@ necesita ver el nombre del postulante y su score de compatibilidad al
 evaluar una solicitud (CU05 y RN04 del documento de requisitos).
 """
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
 from database import Base
@@ -29,11 +30,16 @@ class PerfilAdoptante(Base):
     id = Column(Integer, primary_key=True)
     usuario_id = Column(Integer, unique=True, nullable=False)
     espacio_disponible = Column(String)
-    tiempo_disponible_horas_dia = Column(Integer)
+    restriccion_vivienda = Column(String)
+    horas_sola = Column(String)
+    tiempo_actividad = Column(String)
     experiencia_previa = Column(String)
-    tiene_ninos = Column(Boolean, default=False)
-    otras_mascotas = Column(Boolean, default=False)
-    nivel_actividad_fisica = Column(String)
+    ambiente_hogar = Column(String)
+    ninos_hogar = Column(String)
+    tiene_perros = Column(Boolean, default=False)
+    tiene_gatos = Column(Boolean, default=False)
+    alergias = Column(String)
+    acepta_cuidados = Column(String)
     telefono = Column(String)
 
 
@@ -44,6 +50,7 @@ class Match(Base):
     adoptante_id = Column(Integer, nullable=False)
     mascota_id = Column(Integer, nullable=False)
     score_compatibilidad = Column(Numeric(4, 3))
+    desglose = Column(JSONB)
 
 
 class Refugio(Base):

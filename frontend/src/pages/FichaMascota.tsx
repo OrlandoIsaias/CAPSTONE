@@ -1,23 +1,37 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { obtenerMascota } from "../api/mascotas";
 import { obtenerScoreIndividual } from "../api/matching";
 import { crearPostulacion } from "../api/postulaciones";
 import { BotonVolver } from "../components/BotonVolver";
+import { DesgloseCompatibilidad } from "../components/DesgloseCompatibilidad";
 import { SkeletonFila } from "../components/Skeleton";
 import type { Mascota } from "../types/mascotas";
-
-function etiqueta(v?: string) {
-  if (!v) return "-";
-  return v.charAt(0).toUpperCase() + v.slice(1).replace("_", " ");
-}
+import type { Recomendacion } from "../types/matching";
+import {
+  etiquetaOpcion,
+  etiquetaTriEstado,
+  formatearEdad,
+  OPCIONES_CONVIVENCIA_NINOS,
+  OPCIONES_ENERGIA,
+  OPCIONES_ESPACIO_MINIMO,
+  OPCIONES_EXPERIENCIA_REQUERIDA,
+  OPCIONES_NIVEL_CUIDADOS,
+  OPCIONES_SEXO,
+  OPCIONES_TAMANO,
+  OPCIONES_TEMPERAMENTO,
+  OPCIONES_TOLERANCIA_SOLEDAD,
+  resumenOpcion,
+} from "../utils/opcionesMascota";
 
 export default function FichaMascota() {
   const { id } = useParams<{ id: string }>();
 
   const [mascota, setMascota] = useState<Mascota | null>(null);
-  const [score, setScore] = useState<number | null>(null);
+  const [compatibilidad, setCompatibilidad] = useState<Recomendacion | null>(null);
+  // 400 = el adoptante aún no completa su cuestionario: se le invita a hacerlo.
+  const [sinCuestionario, setSinCuestionario] = useState(false);
   const [fotoActiva, setFotoActiva] = useState(0);
   const [postulando, setPostulando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: "exito" | "error"; texto: string } | null>(null);
@@ -43,9 +57,9 @@ export default function FichaMascota() {
       .finally(() => setCargando(false));
 
     obtenerScoreIndividual(mascotaId)
-      .then((rec) => setScore(rec.score_compatibilidad))
-      .catch(() => {
-        // Omitir score si no aplica
+      .then(setCompatibilidad)
+      .catch((err) => {
+        if (axios.isAxiosError(err) && err.response?.status === 400) setSinCuestionario(true);
       });
   }, [id]);
 
@@ -146,13 +160,28 @@ export default function FichaMascota() {
   const fotos = mascota.fotos ?? [];
 
   const ATRIBUTOS = [
-    { etiq: "Nivel de energía", val: etiqueta(mascota.nivel_energia) },
-    { etiq: "Socialización", val: etiqueta(mascota.nivel_socializacion) },
-    { etiq: "Experiencia req.", val: etiqueta(mascota.nivel_experiencia_requerida) },
-    { etiq: "Espacio mínimo", val: etiqueta(mascota.espacio_minimo_requerido) },
-    { etiq: "Compatible niños", val: mascota.compatible_ninos ? "Sí" : "No" },
-    { etiq: "Otras mascotas", val: mascota.compatible_otras_mascotas ? "Sí" : "No" },
+    { etiq: "Energía", val: resumenOpcion(OPCIONES_ENERGIA[mascota.especie], mascota.nivel_energia) },
+    { etiq: "Puede estar sola", val: resumenOpcion(OPCIONES_TOLERANCIA_SOLEDAD, mascota.tolerancia_soledad) },
+    { etiq: "Con las personas", val: resumenOpcion(OPCIONES_TEMPERAMENTO, mascota.temperamento) },
+    { etiq: "Adecuada para", val: etiquetaOpcion(OPCIONES_EXPERIENCIA_REQUERIDA, mascota.nivel_experiencia_requerida) },
+    { etiq: "Espacio", val: etiquetaOpcion(OPCIONES_ESPACIO_MINIMO, mascota.espacio_minimo_requerido) },
+    {
+      etiq: "Convive con niños",
+      val: resumenOpcion(OPCIONES_CONVIVENCIA_NINOS, mascota.convivencia_ninos ?? "sin_dato"),
+    },
+    { etiq: "Con perros", val: etiquetaTriEstado(mascota.convive_perros) },
+    { etiq: "Con gatos", val: etiquetaTriEstado(mascota.convive_gatos) },
   ];
+
+  const SALUD = [
+    { etiq: "Esterilización", val: etiquetaTriEstado(mascota.esterilizado, "Sin información") },
+    { etiq: "Vacunas al día", val: etiquetaTriEstado(mascota.vacunas_al_dia, "Sin información") },
+    { etiq: "Desparasitación", val: etiquetaTriEstado(mascota.desparasitado, "Sin información") },
+    { etiq: "Microchip", val: etiquetaTriEstado(mascota.microchip, "Sin información") },
+  ];
+
+  const score = compatibilidad?.score_compatibilidad ?? null;
+  const excluida = compatibilidad?.excluida ?? false;
 
   return (
     <div className="min-h-screen bg-[var(--color-fondo)]">
@@ -200,9 +229,15 @@ export default function FichaMascota() {
             {/* Score superpuesto */}
             {score !== null && (
               <div className="absolute top-3.5 right-3.5 z-10">
-                <span className="bg-emerald-600 text-white font-black text-xs px-2.5 py-1 rounded-full shadow-md">
-                  {Math.round(score * 100)}% afinidad
-                </span>
+                {excluida ? (
+                  <span className="bg-rose-600 text-white font-black text-xs px-2.5 py-1 rounded-full shadow-md">
+                    No compatible
+                  </span>
+                ) : (
+                  <span className="bg-emerald-600 text-white font-black text-xs px-2.5 py-1 rounded-full shadow-md">
+                    {Math.round(score * 100)}% afinidad
+                  </span>
+                )}
               </div>
             )}
 
@@ -255,10 +290,17 @@ export default function FichaMascota() {
             {mascota.nombre}
           </h1>
           <p className="text-sm font-semibold text-slate-500 mt-1">
-            {[mascota.especie, mascota.raza].filter(Boolean).join(" • ") || "Sin datos adicionales"}
+            {[
+              mascota.especie,
+              mascota.raza,
+              etiquetaOpcion(OPCIONES_SEXO, mascota.sexo),
+              mascota.tamano ? etiquetaOpcion(OPCIONES_TAMANO, mascota.tamano) : null,
+            ]
+              .filter(Boolean)
+              .join(" • ")}
             {mascota.edad != null && (
               <span className="ml-2 text-orange-600 font-bold">
-                • {mascota.edad} {mascota.edad === 1 ? "año" : "años"}
+                • {formatearEdad(mascota.edad)}
               </span>
             )}
           </p>
@@ -279,6 +321,61 @@ export default function FichaMascota() {
           </div>
         </div>
 
+        {/* Salud y cuidados: informativo */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-5 space-y-3">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Salud</h2>
+          <div className="grid grid-cols-2 gap-2.5">
+            {SALUD.map(({ etiq, val }) => (
+              <div key={etiq} className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{etiq}</p>
+                <p className="text-xs font-black text-slate-800 mt-0.5">{val}</p>
+              </div>
+            ))}
+          </div>
+          {mascota.nivel_cuidados !== "ninguno" && mascota.cuidados_especiales && (
+            <div className="rounded-2xl bg-rose-50 border border-rose-100 p-3.5">
+              <p className="text-[10px] font-black uppercase tracking-wider text-rose-700">
+                Cuidados especiales · {resumenOpcion(OPCIONES_NIVEL_CUIDADOS, mascota.nivel_cuidados)}
+              </p>
+              <p className="text-xs font-semibold text-slate-800 mt-1">{mascota.cuidados_especiales}</p>
+            </div>
+          )}
+          {mascota.notas_salud && (
+            <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Lo que debes saber</p>
+              <p className="text-xs font-semibold text-slate-800 mt-1">{mascota.notas_salud}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Por qué este % de afinidad */}
+        {compatibilidad && (
+          <div className="mb-5">
+            <DesgloseCompatibilidad
+              score={compatibilidad.score_compatibilidad}
+              criterios={compatibilidad.desglose}
+              exclusiones={compatibilidad.motivos_exclusion}
+              alertas={compatibilidad.alertas}
+              topeAplicado={compatibilidad.tope_aplicado}
+              perspectiva="adoptante"
+            />
+          </div>
+        )}
+        {sinCuestionario && (
+          <div className="mb-5 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
+            <p className="text-xs font-extrabold text-indigo-900">¿Qué tan compatibles son?</p>
+            <p className="text-[11px] text-indigo-700 mt-1 mb-3">
+              Completa tu cuestionario y te mostramos tu afinidad con {mascota.nombre}.
+            </p>
+            <Link
+              to="/perfil-adoptante/editar"
+              className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs"
+            >
+              Completar cuestionario
+            </Link>
+          </div>
+        )}
+
         {/* Feedback de postulación */}
         {mensaje && (
           <div
@@ -290,6 +387,13 @@ export default function FichaMascota() {
           >
             {mensaje.texto}
           </div>
+        )}
+
+        {/* La exclusión no bloquea postular: decide el refugio, que ve el mismo motivo. */}
+        {excluida && mascota.estado === "disponible" && mensaje?.tipo !== "exito" && (
+          <p className="text-[11px] font-medium text-slate-500 text-center mb-2.5">
+            Puedes postular igual: el refugio verá esta incompatibilidad al revisar tu solicitud.
+          </p>
         )}
 
         {/* Botón de postulación */}

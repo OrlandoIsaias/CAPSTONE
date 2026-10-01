@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { InsigniaScore } from "./InsigniaScore";
+import { formatearEdad } from "../utils/opcionesMascota";
 
 export function TarjetaMascota({
   mascotaId,
@@ -17,10 +18,10 @@ export function TarjetaMascota({
   mascotaId: number;
   nombre: string;
   especie?: string;
-  raza?: string;
-  edad?: number;
+  raza?: string | null;
+  edad?: number | null;
   score?: number;
-  urlFoto?: string;
+  urlFoto?: string | null;
   /** Frase corta bajo la raza, en el tono del primario. */
   descripcion?: string;
   /** Si se pasa, la tarjeta muestra el corazón/pill de guardado en vez del score. */
@@ -63,7 +64,7 @@ export function TarjetaMascota({
         </div>
 
         <p className="text-xs font-semibold text-slate-500 truncate">
-          {[raza || especie, edad != null ? `${edad} ${edad === 1 ? "año" : "años"}` : undefined]
+          {[raza || especie, edad != null ? formatearEdad(edad) : undefined]
             .filter(Boolean)
             .join(" • ") || "Sin datos adicionales"}
         </p>

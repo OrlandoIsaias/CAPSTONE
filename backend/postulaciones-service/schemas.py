@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -38,11 +38,19 @@ class PostulacionDetalleOut(PostulacionOut):
     que el adoptante respondió (CU01), que el refugio consulta para decidir."""
 
     espacio_disponible: Optional[str] = None
-    tiempo_disponible_horas_dia: Optional[int] = None
+    restriccion_vivienda: Optional[str] = None
+    horas_sola: Optional[str] = None
+    tiempo_actividad: Optional[str] = None
     experiencia_previa: Optional[str] = None
-    tiene_ninos: Optional[bool] = None
-    otras_mascotas: Optional[bool] = None
-    nivel_actividad_fisica: Optional[str] = None
+    ambiente_hogar: Optional[str] = None
+    ninos_hogar: Optional[str] = None
+    tiene_perros: Optional[bool] = None
+    tiene_gatos: Optional[bool] = None
+    alergias: Optional[str] = None
+    acepta_cuidados: Optional[str] = None
+    # Detalle del score que guardó matching-service (criterios, exclusiones y
+    # alertas); None si nunca se calculó el match de este par.
+    detalle_compatibilidad: Optional[dict[str, Any]] = None
 
 
 class PostulacionEstadoIn(BaseModel):

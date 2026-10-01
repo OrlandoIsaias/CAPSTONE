@@ -1,5 +1,15 @@
-import type { EspacioDisponible, ExperienciaPrevia, NivelActividad } from "./auth";
-import type { EstadoMascota } from "./mascotas";
+import type {
+  AceptaCuidados,
+  Alergias,
+  AmbienteHogar,
+  EspacioDisponible,
+  ExperienciaPrevia,
+  NinosHogar,
+  RestriccionVivienda,
+  TiempoActividad,
+} from "./auth";
+import type { EstadoMascota, TramoHoras } from "./mascotas";
+import type { DetalleCompatibilidad } from "./matching";
 
 export type EstadoPostulacion = "pendiente" | "aprobada" | "rechazada";
 
@@ -26,9 +36,16 @@ export interface Postulacion {
     refugio consulta antes de decidir. */
 export interface PostulacionDetalle extends Postulacion {
   espacio_disponible?: EspacioDisponible | null;
-  tiempo_disponible_horas_dia?: number | null;
+  restriccion_vivienda?: RestriccionVivienda | null;
+  horas_sola?: TramoHoras | null;
+  tiempo_actividad?: TiempoActividad | null;
   experiencia_previa?: ExperienciaPrevia | null;
-  tiene_ninos?: boolean | null;
-  otras_mascotas?: boolean | null;
-  nivel_actividad_fisica?: NivelActividad | null;
+  ambiente_hogar?: AmbienteHogar | null;
+  ninos_hogar?: NinosHogar | null;
+  tiene_perros?: boolean | null;
+  tiene_gatos?: boolean | null;
+  alergias?: Alergias | null;
+  acepta_cuidados?: AceptaCuidados | null;
+  /** Detalle del score que guardó matching-service; null si nunca se calculó. */
+  detalle_compatibilidad?: DetalleCompatibilidad | null;
 }

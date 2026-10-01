@@ -7,6 +7,7 @@ import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { SkeletonFila } from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
 import { useGuardados } from "../utils/guardados";
+import { formatearEdad } from "../utils/opcionesMascota";
 import type { FotoMascota, Mascota } from "../types/mascotas";
 import type { Recomendacion } from "../types/matching";
 import type { Postulacion } from "../types/postulaciones";
@@ -33,11 +34,14 @@ function TarjetaMascotaGrid({
   guardado,
   onAlternarGuardado,
   score,
+  excluida,
 }: {
   mascota: Mascota;
   guardado: boolean;
   onAlternarGuardado: (id: number) => void;
   score?: number;
+  /** No compatible por seguridad con el hogar del adoptante. */
+  excluida?: boolean;
 }) {
   const [imgError, setImgError] = useState(false);
   const foto = mascota.fotos?.find((f) => f.es_principal) ?? mascota.fotos?.[0];
@@ -99,7 +103,7 @@ function TarjetaMascotaGrid({
           <p className="text-[11px] font-semibold text-slate-400 truncate mt-0.5">
             {[
               mascota.raza || mascota.especie,
-              mascota.edad != null ? `${mascota.edad} ${mascota.edad === 1 ? "año" : "años"}` : null,
+              mascota.edad != null ? formatearEdad(mascota.edad) : null,
             ]
               .filter(Boolean)
               .join(" • ") || "Sin detalles"}
@@ -108,7 +112,11 @@ function TarjetaMascotaGrid({
       </div>
 
       <div className="px-1 pt-2">
-        {score != null ? (
+        {excluida ? (
+          <span className="text-[10px] font-black px-2 py-0.5 rounded-md inline-block text-rose-700 bg-rose-50 border border-rose-200/70">
+            No compatible
+          </span>
+        ) : score != null ? (
           <span
             className={`text-[10px] font-black px-2 py-0.5 rounded-md inline-block ${
               score >= 0.8
@@ -147,7 +155,10 @@ export default function ExplorarMascotas() {
       listarMascotas("disponible")
         .then(setMascotas)
         .catch(() => setError("No pudimos cargar las mascotas disponibles.")),
-      obtenerRecomendaciones()
+      // Modo explorar: la compatibilidad de todas las disponibles, aunque no
+      // sean de la especie preferida o no sean compatibles (esas no
+      // aparecen en Recomendaciones; acá se muestran marcadas).
+      obtenerRecomendaciones(undefined, { explorar: true })
         .then(setRecomendaciones)
         .catch(() => setRecomendaciones([])),
       misPostulaciones()
@@ -161,24 +172,27 @@ export default function ExplorarMascotas() {
     ]).finally(() => setCargando(false));
   }, []);
 
-  const scoresMap = useMemo(() => {
-    const mapa: Record<number, number> = {};
+  const compatibilidadPorMascota = useMemo(() => {
+    const mapa: Record<number, Recomendacion> = {};
     for (const r of recomendaciones) {
-      mapa[r.mascota_id] = r.score_compatibilidad;
+      mapa[r.mascota_id] = r;
     }
     return mapa;
   }, [recomendaciones]);
 
-  // Mascota destacada del día
+  // Mascota destacada del día: la primera recomendación de la especie que
+  // busca el adoptante y compatible con su hogar (vienen ordenadas por
+  // preferencias y score).
   const destacado = useMemo(() => {
-    if (recomendaciones.length > 0) {
-      const encontrada = mascotas.find((m) => m.id === recomendaciones[0].mascota_id);
+    const mejor = recomendaciones.find((r) => r.coincide_preferencia && !r.excluida);
+    if (mejor) {
+      const encontrada = mascotas.find((m) => m.id === mejor.mascota_id);
       if (encontrada) return encontrada;
     }
-    return mascotas[0] || null;
-  }, [recomendaciones, mascotas]);
+    return mascotas.find((m) => !compatibilidadPorMascota[m.id]?.excluida) || null;
+  }, [recomendaciones, mascotas, compatibilidadPorMascota]);
 
-  const destacadoScore = destacado ? scoresMap[destacado.id] : null;
+  const destacadoScore = destacado ? compatibilidadPorMascota[destacado.id]?.score_compatibilidad : null;
 
   const visibles = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -293,7 +307,7 @@ export default function ExplorarMascotas() {
                   {destacado.nombre}
                 </h3>
                 <p className="text-xs text-slate-200 font-medium">
-                  {[destacado.especie, destacado.raza, destacado.edad != null ? `${destacado.edad} ${destacado.edad === 1 ? "año" : "años"}` : null]
+                  {[destacado.especie, destacado.raza, destacado.edad != null ? formatearEdad(destacado.edad) : null]
                     .filter(Boolean)
                     .join(" • ")}
                 </p>
@@ -421,7 +435,8 @@ export default function ExplorarMascotas() {
                   mascota={m}
                   guardado={guardados.includes(m.id)}
                   onAlternarGuardado={alternar}
-                  score={scoresMap[m.id]}
+                  score={compatibilidadPorMascota[m.id]?.score_compatibilidad}
+                  excluida={compatibilidadPorMascota[m.id]?.excluida}
                 />
               ))}
             </div>

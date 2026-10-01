@@ -9,30 +9,30 @@ import {
 } from "../api/postulaciones";
 import { AvatarIniciales, EstadoPostulacionBadge } from "../components/Badges";
 import { PantallaRefugio } from "../components/BarraRefugio";
+import { DesgloseCompatibilidad } from "../components/DesgloseCompatibilidad";
 import { CargandoVista, Spinner } from "../components/Spinner";
 import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
 import { fechaCorta } from "../utils/tiempo";
 import { linkWhatsApp } from "../utils/telefono";
 import type { PostulacionDetalle } from "../types/postulaciones";
+import {
+  OPCIONES_ACEPTA_CUIDADOS,
+  OPCIONES_ALERGIAS,
+  OPCIONES_AMBIENTE_HOGAR,
+  OPCIONES_ESPACIO_DISPONIBLE,
+  OPCIONES_EXPERIENCIA_PREVIA,
+  OPCIONES_HORAS_SOLA,
+  OPCIONES_NINOS_HOGAR,
+  OPCIONES_RESTRICCION_VIVIENDA,
+  OPCIONES_TIEMPO_ACTIVIDAD,
+  resumenAnimales,
+} from "../utils/opcionesAdoptante";
+import { resumenOpcion, type Opcion } from "../utils/opcionesMascota";
 
-const ESPACIO: Record<string, string> = {
-  departamento: "Departamento",
-  casa_patio: "Casa con patio",
-  casa_grande: "Casa grande",
-};
-
-const EXPERIENCIA: Record<string, string> = {
-  ninguna: "Sin experiencia previa",
-  basica: "Experiencia básica",
-  alta: "Con mucha experiencia",
-};
-
-const ACTIVIDAD: Record<string, string> = {
-  bajo: "Baja",
-  medio: "Media",
-  alto: "Alta",
-};
+function respuesta<V extends string>(opciones: Opcion<V>[], valor: V | null | undefined): string | null {
+  return valor ? resumenOpcion(opciones, valor) : null;
+}
 
 export default function DetalleSolicitud() {
   const { id } = useParams<{ id: string }>();
@@ -178,43 +178,54 @@ export default function DetalleSolicitud() {
               Respuestas del cuestionario de estilo de vida
             </p>
             <dl>
+              <Dato etiqueta="Tipo de vivienda" valor={respuesta(OPCIONES_ESPACIO_DISPONIBLE, solicitud.espacio_disponible)} />
               <Dato
-                etiqueta="Tipo de vivienda"
-                valor={solicitud.espacio_disponible ? ESPACIO[solicitud.espacio_disponible] : null}
+                etiqueta="Condiciones de la vivienda"
+                valor={respuesta(OPCIONES_RESTRICCION_VIVIENDA, solicitud.restriccion_vivienda)}
               />
               <Dato
-                etiqueta="Experiencia previa"
-                valor={
-                  solicitud.experiencia_previa ? EXPERIENCIA[solicitud.experiencia_previa] : null
-                }
+                etiqueta="Tiempo sola al día"
+                valor={respuesta(OPCIONES_HORAS_SOLA, solicitud.horas_sola)}
               />
+              <Dato
+                etiqueta="Para pasear o jugar"
+                valor={respuesta(OPCIONES_TIEMPO_ACTIVIDAD, solicitud.tiempo_actividad)}
+              />
+              <Dato etiqueta="Ambiente del hogar" valor={respuesta(OPCIONES_AMBIENTE_HOGAR, solicitud.ambiente_hogar)} />
+              <Dato etiqueta="Niños en casa" valor={respuesta(OPCIONES_NINOS_HOGAR, solicitud.ninos_hogar)} />
               <Dato
                 etiqueta="Otras mascotas"
-                valor={solicitud.otras_mascotas == null ? null : solicitud.otras_mascotas ? "Sí" : "No"}
-              />
-              <Dato
-                etiqueta="Niños en casa"
-                valor={solicitud.tiene_ninos == null ? null : solicitud.tiene_ninos ? "Sí" : "No"}
-              />
-              <Dato
-                etiqueta="Disponibilidad"
                 valor={
-                  solicitud.tiempo_disponible_horas_dia != null
-                    ? `${solicitud.tiempo_disponible_horas_dia} horas al día`
-                    : null
+                  solicitud.tiene_perros == null && solicitud.tiene_gatos == null
+                    ? null
+                    : resumenAnimales(Boolean(solicitud.tiene_perros), Boolean(solicitud.tiene_gatos))
                 }
               />
+              <Dato etiqueta="Alergias" valor={respuesta(OPCIONES_ALERGIAS, solicitud.alergias)} />
               <Dato
-                etiqueta="Actividad física"
-                valor={
-                  solicitud.nivel_actividad_fisica
-                    ? ACTIVIDAD[solicitud.nivel_actividad_fisica]
-                    : null
-                }
+                etiqueta="Experiencia previa"
+                valor={respuesta(OPCIONES_EXPERIENCIA_PREVIA, solicitud.experiencia_previa)}
+              />
+              <Dato
+                etiqueta="Cuidados especiales"
+                valor={respuesta(OPCIONES_ACEPTA_CUIDADOS, solicitud.acepta_cuidados)}
                 ultimo
               />
             </dl>
           </div>
+
+          {solicitud.detalle_compatibilidad && solicitud.score_compatibilidad != null && (
+            <div className="mb-5">
+              <DesgloseCompatibilidad
+                score={solicitud.score_compatibilidad}
+                criterios={solicitud.detalle_compatibilidad.criterios}
+                exclusiones={solicitud.detalle_compatibilidad.exclusiones}
+                alertas={solicitud.detalle_compatibilidad.alertas}
+                topeAplicado={solicitud.detalle_compatibilidad.tope_aplicado}
+                perspectiva="refugio"
+              />
+            </div>
+          )}
 
           {solicitud.estado === "pendiente" && (
             <div className="flex gap-3">
