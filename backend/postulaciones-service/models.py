@@ -11,6 +11,7 @@ evaluar una solicitud (CU05 y RN04 del documento de requisitos).
 """
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from database import Base
@@ -71,6 +72,20 @@ class Mascota(Base):
     especie = Column(String)
     raza = Column(String)
     estado = Column(String, nullable=False, default="disponible")
+
+    fotos = relationship("FotoMascota", back_populates="mascota")
+
+
+class FotoMascota(Base):
+    __tablename__ = "fotos_mascota"
+
+    id = Column(Integer, primary_key=True)
+    mascota_id = Column(Integer, ForeignKey("mascotas.id"), nullable=False)
+    url = Column(String, nullable=False)
+    es_principal = Column(Boolean, nullable=False, default=False)
+    orden = Column(Integer)
+
+    mascota = relationship("Mascota", back_populates="fotos")
 
 
 class Postulacion(Base):

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { SlidersHorizontal, RotateCcw, X, Check } from "lucide-react";
 import { listarMascotas } from "../api/mascotas";
 import { obtenerRecomendaciones } from "../api/matching";
 import { misPostulaciones } from "../api/postulaciones";
@@ -12,13 +13,36 @@ import type { FotoMascota, Mascota } from "../types/mascotas";
 import type { Recomendacion } from "../types/matching";
 import type { Postulacion } from "../types/postulaciones";
 
-type Filtro = "todos" | "perros" | "gatos";
+export type FiltroEspecie = "todos" | "perros" | "gatos";
+export type FiltroEdad = "todos" | "cachorro" | "joven" | "adulto" | "senior";
+export type FiltroTamano = "todos" | "pequeno" | "mediano" | "grande";
+export type FiltroSexo = "todos" | "hembra" | "macho";
+export type FiltroEspacio = "todos" | "departamento" | "casa_patio";
+export type FiltroEnergia = "todos" | "bajo" | "medio" | "alto";
 
-const FILTROS: { id: Filtro; etiqueta: string }[] = [
-  { id: "todos", etiqueta: "Todos" },
-  { id: "perros", etiqueta: "Perros" },
-  { id: "gatos", etiqueta: "Gatos" },
-];
+export interface FiltrosAvanzados {
+  especie: FiltroEspecie;
+  edad: FiltroEdad;
+  tamano: FiltroTamano;
+  sexo: FiltroSexo;
+  espacio: FiltroEspacio;
+  conNinos: boolean;
+  convivePerros: boolean;
+  conviveGatos: boolean;
+  energia: FiltroEnergia;
+}
+
+const FILTROS_INICIALES: FiltrosAvanzados = {
+  especie: "todos",
+  edad: "todos",
+  tamano: "todos",
+  sexo: "todos",
+  espacio: "todos",
+  conNinos: false,
+  convivePerros: false,
+  conviveGatos: false,
+  energia: "todos",
+};
 
 function esPerro(especie?: string) {
   return (especie ?? "").toLowerCase().includes("perr");
@@ -145,19 +169,53 @@ export default function ExplorarMascotas() {
   const [recomendaciones, setRecomendaciones] = useState<Recomendacion[]>([]);
   const [solicitudActiva, setSolicitudActiva] = useState<Postulacion | null>(null);
   const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [filtros, setFiltros] = useState<FiltrosAvanzados>(FILTROS_INICIALES);
+  const [modalFiltrosAbierto, setModalFiltrosAbierto] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imgHeroError, setImgHeroError] = useState(false);
+
+  const contenedorGridRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const startYRef = useRef(0);
+  const scrollTopRef = useRef(0);
+  const hasMovedRef = useRef(false);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (!contenedorGridRef.current) return;
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    startYRef.current = e.pageY - contenedorGridRef.current.offsetTop;
+    scrollTopRef.current = contenedorGridRef.current.scrollTop;
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current || !contenedorGridRef.current) return;
+    const y = e.pageY - contenedorGridRef.current.offsetTop;
+    const walk = (y - startYRef.current) * 1.2;
+    if (Math.abs(walk) > 6) {
+      hasMovedRef.current = true;
+    }
+    contenedorGridRef.current.scrollTop = scrollTopRef.current - walk;
+  };
+
+  const onMouseUpOrLeave = () => {
+    isDraggingRef.current = false;
+  };
+
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (hasMovedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      hasMovedRef.current = false;
+    }
+  };
 
   useEffect(() => {
     Promise.all([
       listarMascotas("disponible")
         .then(setMascotas)
         .catch(() => setError("No pudimos cargar las mascotas disponibles.")),
-      // Modo explorar: la compatibilidad de todas las disponibles, aunque no
-      // sean de la especie preferida o no sean compatibles (esas no
-      // aparecen en Recomendaciones; acá se muestran marcadas).
       obtenerRecomendaciones(undefined, { explorar: true })
         .then(setRecomendaciones)
         .catch(() => setRecomendaciones([])),
@@ -180,33 +238,87 @@ export default function ExplorarMascotas() {
     return mapa;
   }, [recomendaciones]);
 
-  // Mascota destacada del día: la primera recomendación de la especie que
-  // busca el adoptante y compatible con su hogar (vienen ordenadas por
-  // preferencias y score).
-  const destacado = useMemo(() => {
-    const mejor = recomendaciones.find((r) => r.coincide_preferencia && !r.excluida);
-    if (mejor) {
-      const encontrada = mascotas.find((m) => m.id === mejor.mascota_id);
-      if (encontrada) return encontrada;
-    }
-    return mascotas.find((m) => !compatibilidadPorMascota[m.id]?.excluida) || null;
-  }, [recomendaciones, mascotas, compatibilidadPorMascota]);
-
-  const destacadoScore = destacado ? compatibilidadPorMascota[destacado.id]?.score_compatibilidad : null;
+  const filtrosActivosCount = useMemo(() => {
+    let count = 0;
+    if (filtros.especie !== "todos") count++;
+    if (filtros.edad !== "todos") count++;
+    if (filtros.tamano !== "todos") count++;
+    if (filtros.sexo !== "todos") count++;
+    if (filtros.espacio !== "todos") count++;
+    if (filtros.conNinos) count++;
+    if (filtros.convivePerros) count++;
+    if (filtros.conviveGatos) count++;
+    if (filtros.energia !== "todos") count++;
+    return count;
+  }, [filtros]);
 
   const visibles = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return mascotas.filter((m) => {
-      if (filtro === "perros" && !esPerro(m.especie)) return false;
-      if (filtro === "gatos" && !esGato(m.especie)) return false;
+      // 1. Búsqueda por texto
+      if (texto) {
+        const coincide = [m.nombre, m.especie, m.raza]
+          .filter(Boolean)
+          .some((campo) => campo!.toLowerCase().includes(texto));
+        if (!coincide) return false;
+      }
 
-      if (!texto) return true;
-      return [m.nombre, m.especie, m.raza]
-        .filter(Boolean)
-        .some((campo) => campo!.toLowerCase().includes(texto));
+      // 2. Especie
+      if (filtros.especie === "perros" && !esPerro(m.especie)) return false;
+      if (filtros.especie === "gatos" && !esGato(m.especie)) return false;
+
+      // 3. Edad
+      if (filtros.edad === "cachorro" && m.edad > 1) return false;
+      if (filtros.edad === "joven" && (m.edad < 1 || m.edad > 3)) return false;
+      if (filtros.edad === "adulto" && (m.edad < 4 || m.edad > 7)) return false;
+      if (filtros.edad === "senior" && m.edad < 8) return false;
+
+      // 4. Tamaño
+      if (filtros.tamano !== "todos" && m.tamano && m.tamano !== filtros.tamano) return false;
+
+      // 5. Sexo
+      if (filtros.sexo !== "todos" && m.sexo !== filtros.sexo) return false;
+
+      // 6. Espacio / Vivienda
+      if (filtros.espacio === "departamento" && m.espacio_minimo_requerido !== "departamento") return false;
+      if (filtros.espacio === "casa_patio" && m.espacio_minimo_requerido === "casa_grande") return false;
+
+      // 7. Convivencia
+      if (filtros.conNinos && m.convivencia_ninos === "no") return false;
+      if (filtros.convivePerros && m.convive_perros === false) return false;
+      if (filtros.conviveGatos && m.convive_gatos === false) return false;
+
+      // 8. Energía
+      if (filtros.energia !== "todos" && m.nivel_energia && m.nivel_energia !== filtros.energia) return false;
+
+      return true;
     });
-  }, [mascotas, filtro, busqueda]);
+  }, [mascotas, filtros, busqueda]);
 
+  // Mascota destacada del día: adaptada al filtro de especie activo (perros, gatos o todos)
+  const destacado = useMemo(() => {
+    const candidatos = recomendaciones.filter((r) => {
+      if (r.excluida) return false;
+      const m = mascotas.find((masc) => masc.id === r.mascota_id);
+      if (!m) return false;
+      if (filtros.especie === "perros" && !esPerro(m.especie)) return false;
+      if (filtros.especie === "gatos" && !esGato(m.especie)) return false;
+      return true;
+    });
+
+    const mejor = candidatos.find((r) => r.coincide_preferencia) || candidatos[0];
+    if (mejor) {
+      const encontrada = mascotas.find((m) => m.id === mejor.mascota_id);
+      if (encontrada) return encontrada;
+    }
+
+    const disponible = visibles.find((m) => !compatibilidadPorMascota[m.id]?.excluida);
+    if (disponible) return disponible;
+
+    return visibles[0] || null;
+  }, [recomendaciones, mascotas, compatibilidadPorMascota, filtros.especie, visibles]);
+
+  const destacadoScore = destacado ? compatibilidadPorMascota[destacado.id]?.score_compatibilidad : null;
   const fotoDestacada = destacado?.fotos?.find((f: FotoMascota) => f.es_principal) ?? destacado?.fotos?.[0];
 
   return (
@@ -234,7 +346,7 @@ export default function ExplorarMascotas() {
       {/* 2. Banner de Notificación / Solicitud Activa (si existe) */}
       {solicitudActiva && (
         <div
-          onClick={() => navigate("/guardados")}
+          onClick={() => navigate("/guardados?tab=solicitudes")}
           className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-3.5 text-white shadow-md mb-4 flex items-center justify-between gap-3 cursor-pointer hover:shadow-lg active:scale-[0.99] transition-all"
         >
           <div className="flex items-center gap-3 min-w-0">
@@ -262,7 +374,7 @@ export default function ExplorarMascotas() {
       )}
 
       {/* 3. Tarjeta Hero / Destacado del Día (si no hay búsqueda) */}
-      {!busqueda && filtro === "todos" && destacado && (
+      {!busqueda && destacado && (
         <div className="mb-5">
           <div
             onClick={() => navigate(`/mascota/${destacado.id}`)}
@@ -325,65 +437,161 @@ export default function ExplorarMascotas() {
         </div>
       )}
 
-      {/* 4. Buscador Moderno (Ubicado justo arriba de las categorías) */}
-      <div className="relative mb-3.5">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
-        </span>
-        <input
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre, raza o especie..."
-          className="w-full rounded-2xl bg-white border border-slate-200/90 pl-11 pr-10 py-3.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 shadow-xs focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 transition-all"
-        />
-        {busqueda && (
-          <button
-            onClick={() => setBusqueda("")}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-100 w-5 h-5 rounded-full flex items-center justify-center"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
-      {/* 5. Categorías (Todos, Perros, Gatos) */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between mb-2 px-0.5">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-            Categorías
-          </h2>
-          {filtro !== "todos" && (
+      {/* 4. Buscador Moderno y Botón de Filtros */}
+      <div className="flex items-center gap-2 mb-3.5">
+        <div className="relative flex-1">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </span>
+          <input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por nombre, raza o especie..."
+            className="w-full rounded-2xl bg-white border border-slate-200/90 pl-11 pr-10 py-3 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 shadow-xs focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 transition-all"
+          />
+          {busqueda && (
             <button
-              onClick={() => setFiltro("todos")}
-              className="text-[11px] font-bold text-orange-600 hover:text-orange-800"
+              onClick={() => setBusqueda("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-100 w-5 h-5 rounded-full flex items-center justify-center"
             >
-              Restablecer
+              ✕
             </button>
           )}
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none">
-          {FILTROS.map((f) => {
-            const activo = filtro === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setFiltro(f.id)}
-                className={`flex items-center px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all active:scale-95 shadow-2xs ${
-                  activo
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-white border border-slate-200/90 text-slate-700 hover:border-orange-300 hover:bg-slate-50"
-                }`}
-              >
-                <span>{f.etiqueta}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Botón Filtros */}
+        <button
+          onClick={() => setModalFiltrosAbierto(true)}
+          className={`flex items-center gap-1.5 px-3.5 py-3 rounded-2xl text-xs font-black shrink-0 transition-all active:scale-95 shadow-2xs border ${
+            filtrosActivosCount > 0
+              ? "bg-orange-600 text-white border-orange-600 shadow-xs"
+              : "bg-white border-slate-200 text-slate-800 hover:border-orange-300"
+          }`}
+        >
+          <SlidersHorizontal size={15} strokeWidth={2.5} />
+          <span>Filtros</span>
+          {filtrosActivosCount > 0 && (
+            <span className="w-5 h-5 rounded-full bg-white text-orange-600 text-[10px] font-black flex items-center justify-center">
+              {filtrosActivosCount}
+            </span>
+          )}
+        </button>
       </div>
+
+      {/* Etiquetas de filtros activos si los hay */}
+      {filtrosActivosCount > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap mb-4 px-0.5">
+          <span className="text-[11px] font-bold text-slate-400">Filtros:</span>
+          {filtros.especie !== "todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              {filtros.especie === "perros" ? "Perros" : "Gatos"}
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, especie: "todos" }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filtros.edad !== "todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              {filtros.edad.charAt(0).toUpperCase() + filtros.edad.slice(1)}
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, edad: "todos" }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filtros.tamano !== "todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              {filtros.tamano.charAt(0).toUpperCase() + filtros.tamano.slice(1)}
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, tamano: "todos" }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filtros.sexo !== "todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              {filtros.sexo.charAt(0).toUpperCase() + filtros.sexo.slice(1)}
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, sexo: "todos" }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filtros.espacio !== "todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              {filtros.espacio === "departamento" ? "Depto" : "Casa"}
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, espacio: "todos" }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filtros.conNinos && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              Con niños
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, conNinos: false }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filtros.convivePerros && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              Con perros
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, convivePerros: false }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filtros.conviveGatos && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              Con gatos
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, conviveGatos: false }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filtros.energia !== "todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              Energía {filtros.energia}
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, energia: "todos" }))}
+                className="hover:text-orange-950 font-bold ml-0.5"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          <button
+            onClick={() => setFiltros(FILTROS_INICIALES)}
+            className="text-[11px] font-bold text-orange-600 hover:text-orange-800 underline ml-1 active:scale-95"
+          >
+            Limpiar todo
+          </button>
+        </div>
+      )}
 
       {/* Estados de carga */}
       {cargando && (
@@ -407,15 +615,21 @@ export default function ExplorarMascotas() {
           <div className="flex items-center justify-between mb-3 px-0.5">
             <div>
               <h2 className="font-[family-name:var(--font-display)] text-lg font-black text-slate-900">
-                {filtro === "todos" && !busqueda ? "Recién Llegados" : "Mascotas encontradas"}
+                {filtrosActivosCount === 0 && !busqueda ? "Recién Llegados" : "Mascotas encontradas"}
               </h2>
               <p className="text-[11px] text-slate-400 font-medium">
                 {visibles.length} {visibles.length === 1 ? "animal disponible" : "animales disponibles"}
               </p>
             </div>
-            <span className="text-[11px] font-bold text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200/60">
-              En adopción
-            </span>
+            {visibles.length > 4 ? (
+              <span className="text-[10px] font-bold text-slate-500 bg-white/80 border border-slate-200 px-2.5 py-1 rounded-full shadow-2xs">
+                Desliza para ver más ↓
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200/60">
+                En adopción
+              </span>
+            )}
           </div>
 
           {visibles.length === 0 ? (
@@ -423,24 +637,334 @@ export default function ExplorarMascotas() {
               <p className="font-extrabold text-slate-800 text-base">
                 No encontramos coincidencias
               </p>
-              <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-                Prueba con otra categoría o término de búsqueda.
+              <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto mb-4">
+                Prueba relajando algunos filtros para ver más animales en adopción.
               </p>
+              <button
+                onClick={() => {
+                  setBusqueda("");
+                  setFiltros(FILTROS_INICIALES);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 hover:bg-orange-100 active:scale-95 transition-all"
+              >
+                Limpiar todos los filtros
+              </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 pb-6">
-              {visibles.map((m) => (
-                <TarjetaMascotaGrid
-                  key={m.id}
-                  mascota={m}
-                  guardado={guardados.includes(m.id)}
-                  onAlternarGuardado={alternar}
-                  score={compatibilidadPorMascota[m.id]?.score_compatibilidad}
-                  excluida={compatibilidadPorMascota[m.id]?.excluida}
-                />
-              ))}
+            <div className="bg-white/75 border border-slate-200/90 rounded-3xl p-2.5 sm:p-3 shadow-xs">
+              <div
+                ref={contenedorGridRef}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUpOrLeave}
+                onMouseLeave={onMouseUpOrLeave}
+                onClickCapture={onClickCapture}
+                className={`overflow-y-auto overscroll-contain touch-pan-y pr-1 pb-1 scrollbar-suave select-none cursor-grab active:cursor-grabbing rounded-2xl ${
+                  visibles.length > 4 ? "max-h-[495px]" : ""
+                }`}
+              >
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                  {visibles.map((m) => (
+                    <TarjetaMascotaGrid
+                      key={m.id}
+                      mascota={m}
+                      guardado={guardados.includes(m.id)}
+                      onAlternarGuardado={alternar}
+                      score={compatibilidadPorMascota[m.id]?.score_compatibilidad}
+                      excluida={compatibilidadPorMascota[m.id]?.excluida}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 7. Modal Completo de Filtros Avanzados */}
+      {modalFiltrosAbierto && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          {/* Fondo oscuro */}
+          <div
+            onClick={() => setModalFiltrosAbierto(false)}
+            className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs animate-[fade-in_0.15s_ease-out]"
+          />
+
+          {/* Panel modal */}
+          <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col z-10 animate-[sheet-in_0.2s_ease-out]">
+            {/* Cabecera */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200/60 flex items-center justify-center text-orange-600">
+                  <SlidersHorizontal size={16} strokeWidth={2.2} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 leading-tight">
+                    Filtros de Búsqueda
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {filtrosActivosCount > 0
+                      ? `${filtrosActivosCount} ${filtrosActivosCount === 1 ? "filtro activo" : "filtros activos"}`
+                      : "Personaliza según tu hogar y estilo de vida"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModalFiltrosAbierto(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center active:scale-95 transition-all"
+              >
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* Opciones con scroll */}
+            <div className="p-5 overflow-y-auto space-y-5 scrollbar-suave">
+              {/* Especie */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Especie
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "todos", label: "Todos" },
+                    { id: "perros", label: "Perros" },
+                    { id: "gatos", label: "Gatos" },
+                  ].map((op) => (
+                    <button
+                      key={op.id}
+                      onClick={() =>
+                        setFiltros((prev) => ({ ...prev, especie: op.id as FiltroEspecie }))
+                      }
+                      className={`py-2 px-3 rounded-2xl text-xs font-bold transition-all ${
+                        filtros.especie === op.id
+                          ? "bg-slate-900 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200/70"
+                      }`}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Etapa de vida / Edad */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Etapa de Vida / Edad
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "todos", label: "Cualquier edad" },
+                    { id: "cachorro", label: "Cachorro (< 1 año)" },
+                    { id: "joven", label: "Joven (1 a 3 años)" },
+                    { id: "adulto", label: "Adulto (4 a 7 años)" },
+                    { id: "senior", label: "Senior (8+ años)" },
+                  ].map((op) => (
+                    <button
+                      key={op.id}
+                      onClick={() =>
+                        setFiltros((prev) => ({ ...prev, edad: op.id as FiltroEdad }))
+                      }
+                      className={`py-2 px-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                        filtros.edad === op.id
+                          ? "bg-slate-900 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200/70"
+                      }`}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tamaño */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Tamaño Estimado
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "todos", label: "Todos los tamaños" },
+                    { id: "pequeno", label: "Pequeño (< 10 kg)" },
+                    { id: "mediano", label: "Mediano (10 a 25 kg)" },
+                    { id: "grande", label: "Grande (> 25 kg)" },
+                  ].map((op) => (
+                    <button
+                      key={op.id}
+                      onClick={() =>
+                        setFiltros((prev) => ({ ...prev, tamano: op.id as FiltroTamano }))
+                      }
+                      className={`py-2 px-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                        filtros.tamano === op.id
+                          ? "bg-slate-900 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200/70"
+                      }`}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sexo */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Sexo
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "todos", label: "Ambos" },
+                    { id: "hembra", label: "Hembra" },
+                    { id: "macho", label: "Macho" },
+                  ].map((op) => (
+                    <button
+                      key={op.id}
+                      onClick={() =>
+                        setFiltros((prev) => ({ ...prev, sexo: op.id as FiltroSexo }))
+                      }
+                      className={`py-2 px-3 rounded-2xl text-xs font-bold transition-all ${
+                        filtros.sexo === op.id
+                          ? "bg-slate-900 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200/70"
+                      }`}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Espacio / Vivienda */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Vivienda Requerida
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "todos", label: "Cualquier vivienda" },
+                    { id: "departamento", label: "Apto departamento" },
+                    { id: "casa_patio", label: "Casa con patio" },
+                  ].map((op) => (
+                    <button
+                      key={op.id}
+                      onClick={() =>
+                        setFiltros((prev) => ({ ...prev, espacio: op.id as FiltroEspacio }))
+                      }
+                      className={`py-2 px-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                        filtros.espacio === op.id
+                          ? "bg-slate-900 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200/70"
+                      }`}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Convivencia */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Convivencia en el Hogar
+                </p>
+                <div className="space-y-2">
+                  <label className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Compatible con niños</p>
+                      <p className="text-[11px] text-slate-400">Tolerante y cariñoso en hogares familiares</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={filtros.conNinos}
+                      onChange={(e) =>
+                        setFiltros((prev) => ({ ...prev, conNinos: e.target.checked }))
+                      }
+                      className="w-5 h-5 rounded-lg text-orange-600 focus:ring-orange-500 rounded"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Convive con otros perros</p>
+                      <p className="text-[11px] text-slate-400">Socializado para compartir con canes</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={filtros.convivePerros}
+                      onChange={(e) =>
+                        setFiltros((prev) => ({ ...prev, convivePerros: e.target.checked }))
+                      }
+                      className="w-5 h-5 rounded-lg text-orange-600 focus:ring-orange-500 rounded"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Convive con gatos</p>
+                      <p className="text-[11px] text-slate-400">Apto para hogares con felinos</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={filtros.conviveGatos}
+                      onChange={(e) =>
+                        setFiltros((prev) => ({ ...prev, conviveGatos: e.target.checked }))
+                      }
+                      className="w-5 h-5 rounded-lg text-orange-600 focus:ring-orange-500 rounded"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Nivel de Energía */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Nivel de Energía
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { id: "todos", label: "Todos" },
+                    { id: "bajo", label: "Baja" },
+                    { id: "medio", label: "Media" },
+                    { id: "alto", label: "Alta" },
+                  ].map((op) => (
+                    <button
+                      key={op.id}
+                      onClick={() =>
+                        setFiltros((prev) => ({ ...prev, energia: op.id as FiltroEnergia }))
+                      }
+                      className={`py-2 px-2 text-center rounded-2xl text-xs font-bold transition-all ${
+                        filtros.energia === op.id
+                          ? "bg-slate-900 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200/70"
+                      }`}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Pie del modal */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/70 rounded-b-3xl flex items-center gap-3 shrink-0">
+              {filtrosActivosCount > 0 && (
+                <button
+                  onClick={() => setFiltros(FILTROS_INICIALES)}
+                  className="px-4 py-3 rounded-2xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+                >
+                  <RotateCcw size={14} />
+                  Limpiar
+                </button>
+              )}
+              <button
+                onClick={() => setModalFiltrosAbierto(false)}
+                className="flex-1 py-3 px-5 rounded-2xl font-black text-xs text-white bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-sm hover:shadow-md active:scale-98 transition-all flex items-center justify-center gap-2"
+              >
+                <Check size={16} strokeWidth={2.5} />
+                Mostrar {visibles.length} {visibles.length === 1 ? "mascota" : "mascotas"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </PantallaAdoptante>

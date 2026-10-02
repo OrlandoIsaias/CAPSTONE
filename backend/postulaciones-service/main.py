@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 import models
 import schemas
@@ -86,6 +86,13 @@ def _score_de(adoptante_id: int, mascota_id: int, db: Session) -> Optional[float
     return float(fila[0]) if fila and fila[0] is not None else None
 
 
+def _foto_principal(mascota: models.Mascota) -> Optional[str]:
+    if not mascota.fotos:
+        return None
+    foto = next((f.url for f in mascota.fotos if f.es_principal), None)
+    return foto or mascota.fotos[0].url
+
+
 def _a_postulacion_out(
     p: models.Postulacion, mascota: models.Mascota, db: Session
 ) -> schemas.PostulacionOut:
@@ -98,6 +105,7 @@ def _a_postulacion_out(
         mascota_nombre=mascota.nombre,
         mascota_especie=mascota.especie,
         mascota_estado=mascota.estado,
+        mascota_foto=_foto_principal(mascota),
         estado=p.estado,
         score_compatibilidad=_score_de(p.adoptante_id, p.mascota_id, db),
         fecha_postulacion=p.fecha_postulacion,
@@ -116,7 +124,12 @@ def _a_postulacion_out(
 def _mapa_mascotas(mascota_ids: set, db: Session) -> dict:
     if not mascota_ids:
         return {}
-    filas = db.query(models.Mascota).filter(models.Mascota.id.in_(mascota_ids)).all()
+    filas = (
+        db.query(models.Mascota)
+        .options(selectinload(models.Mascota.fotos))
+        .filter(models.Mascota.id.in_(mascota_ids))
+        .all()
+    )
     return {m.id: m for m in filas}
 
 
@@ -162,7 +175,12 @@ def crear_postulacion(
 ):
     perfil = _perfil_adoptante_de(usuario_actual.id, db)
 
-    mascota = db.query(models.Mascota).filter(models.Mascota.id == datos.mascota_id).first()
+    mascota = (
+        db.query(models.Mascota)
+        .options(selectinload(models.Mascota.fotos))
+        .filter(models.Mascota.id == datos.mascota_id)
+        .first()
+    )
     if not mascota:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mascota no encontrada")
 
@@ -243,6 +261,7 @@ def mis_postulaciones(
                 mascota_nombre=mascota.nombre,
                 mascota_especie=mascota.especie,
                 mascota_estado=mascota.estado,
+                mascota_foto=_foto_principal(mascota),
                 estado=p.estado,
                 score_compatibilidad=scores.get((perfil.id, p.mascota_id)),
                 fecha_postulacion=p.fecha_postulacion,
@@ -294,6 +313,7 @@ def postulaciones_recibidas(
                 mascota_nombre=mascota.nombre,
                 mascota_especie=mascota.especie,
                 mascota_estado=mascota.estado,
+                mascota_foto=_foto_principal(mascota),
                 estado=p.estado,
                 score_compatibilidad=scores.get((p.adoptante_id, p.mascota_id)),
                 fecha_postulacion=p.fecha_postulacion,
@@ -323,6 +343,7 @@ def evaluar_postulacion(
     # condición de carrera (dos adoptantes "ganando" al mismo tiempo).
     mascota = (
         db.query(models.Mascota)
+        .options(selectinload(models.Mascota.fotos))
         .filter(models.Mascota.id == postulacion.mascota_id)
         .with_for_update()
         .first()
@@ -393,6 +414,7 @@ def confirmar_adopcion(
 
     mascota = (
         db.query(models.Mascota)
+        .options(selectinload(models.Mascota.fotos))
         .filter(models.Mascota.id == postulacion.mascota_id)
         .with_for_update()
         .first()
@@ -445,7 +467,12 @@ def detalle_postulacion(
     if not postulacion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Postulación no encontrada")
 
-    mascota = db.query(models.Mascota).filter(models.Mascota.id == postulacion.mascota_id).first()
+    mascota = (
+        db.query(models.Mascota)
+        .options(selectinload(models.Mascota.fotos))
+        .filter(models.Mascota.id == postulacion.mascota_id)
+        .first()
+    )
     if not mascota:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mascota no encontrada")
 
