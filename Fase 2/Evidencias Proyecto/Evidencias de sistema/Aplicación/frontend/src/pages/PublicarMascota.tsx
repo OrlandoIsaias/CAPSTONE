@@ -13,6 +13,7 @@ import { BotonVolver } from "../components/BotonVolver";
 import {
   BarraPasos,
   Pregunta,
+  SelectorLista,
   SelectorOpciones,
   type PasoCuestionario,
 } from "../components/Preguntas";
@@ -540,26 +541,22 @@ export default function PublicarMascota() {
                       />
                     </Pregunta>
 
-                    <div>
-                      <label htmlFor="raza" className={claseEtiqueta}>
-                        Raza
-                      </label>
-                      <select
-                        id="raza"
-                        value={ficha.raza}
-                        onChange={(e) => responder("raza", e.target.value)}
-                        disabled={!ficha.especie}
-                        className={claseCampo}
-                      >
-                        <option value="">{ficha.especie ? "Selecciona..." : "Elige primero si es perro o gato"}</option>
-                        {razasDisponibles.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
-                        ))}
-                      </select>
-                      {errores.raza && <p role="alert" className={claseErrorCampo}>{errores.raza}</p>}
-                    </div>
+                    <Pregunta
+                      titulo="¿De qué raza es?"
+                      ayuda="Si no estás seguro, elige «Quiltro (mestizo)»."
+                      error={errores.raza}
+                    >
+                      <SelectorLista
+                        titulo="¿De qué raza es?"
+                        opciones={razasDisponibles.map((r) => ({ valor: r, etiqueta: r }))}
+                        valor={ficha.raza}
+                        onCambio={(v) => responder("raza", v)}
+                        tono="emerald"
+                        placeholder={ficha.especie ? "Elige una raza" : "Elige primero si es perro o gato"}
+                        deshabilitado={!ficha.especie}
+                        buscable
+                      />
+                    </Pregunta>
 
                     <Pregunta titulo="Sexo" error={errores.sexo}>
                       <SelectorOpciones
@@ -571,25 +568,16 @@ export default function PublicarMascota() {
                       />
                     </Pregunta>
 
-                    <div>
-                      <label htmlFor="edad" className={claseEtiqueta}>
-                        Edad aproximada
-                      </label>
-                      <select
-                        id="edad"
-                        value={ficha.edad}
-                        onChange={(e) => responder("edad", e.target.value === "" ? "" : Number(e.target.value))}
-                        className={claseCampo}
-                      >
-                        <option value="">Selecciona...</option>
-                        {edadOpciones.map((o) => (
-                          <option key={o.valor} value={o.valor}>
-                            {o.etiqueta}
-                          </option>
-                        ))}
-                      </select>
-                      {errores.edad && <p role="alert" className={claseErrorCampo}>{errores.edad}</p>}
-                    </div>
+                    <Pregunta titulo="¿Qué edad tiene?" ayuda="Basta con una estimación." error={errores.edad}>
+                      <SelectorLista
+                        titulo="¿Qué edad tiene?"
+                        opciones={edadOpciones.map((o) => ({ valor: String(o.valor), etiqueta: o.etiqueta }))}
+                        valor={ficha.edad === "" ? "" : String(ficha.edad)}
+                        onCambio={(v) => responder("edad", Number(v))}
+                        tono="emerald"
+                        placeholder="Elige su edad"
+                      />
+                    </Pregunta>
 
                     {ficha.especie === "Perro" && (
                       <Pregunta

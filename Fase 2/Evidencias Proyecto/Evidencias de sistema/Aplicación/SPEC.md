@@ -63,7 +63,8 @@ A diferencia de las galerías o listados tradicionales, la plataforma incorpora 
 - Endpoint de recomendaciones (lista completa ordenada) y score individual por mascota.
 
 ### RF-05 · Postulaciones
-- Un adoptante crea una postulación a una mascota `disponible`.
+- Un adoptante crea una postulación a una mascota `disponible`. Requiere el cuestionario completo (400 si falta): el refugio siempre recibe las respuestas y la compatibilidad.
+- En el frontend, un adoptante sin cuestionario completo solo puede ver el cuestionario: cualquier otra pantalla lo redirige a él (`RutaProtegida`).
 - Control de duplicados: máximo una postulación `pendiente` por par adoptante-mascota.
 - El refugio aprueba o rechaza (solo el dueño de la mascota, validación por `refugio_id`).
 - **Al aprobar**: la mascota pasa a `en_proceso` y todas las demás postulaciones pendientes se rechazan automáticamente (con `SELECT ... FOR UPDATE` para evitar race conditions).

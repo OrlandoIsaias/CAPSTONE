@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { Link } from "react-router-dom";
+import { Pencil } from "lucide-react";
 import { obtenerPerfilAdoptante } from "../api/auth";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { CargandoVista } from "../components/Spinner";
@@ -34,27 +34,30 @@ function claveCache(usuarioId: number) {
   return `housefound_perfil_adoptante_cache_${usuarioId}`;
 }
 
+// Una caché anterior a los cuestionarios v2 no trae cuestionario_completo:
+// sus respuestas ya no existen, así que se ignora.
 function leerCache(usuarioId: number): IPerfilAdoptante | null {
   try {
     const crudo = localStorage.getItem(claveCache(usuarioId));
-    return crudo ? JSON.parse(crudo) : null;
+    const perfil: IPerfilAdoptante | null = crudo ? JSON.parse(crudo) : null;
+    return perfil?.cuestionario_completo ? perfil : null;
   } catch {
     return null;
   }
 }
 
-
+/* RutaProtegida solo deja llegar aquí a un adoptante con el cuestionario
+   completo, así que esta pantalla siempre muestra sus respuestas. */
 export default function PerfilAdoptante() {
   const { usuario, cerrarSesion } = useAuth();
-  const navigate = useNavigate();
 
   const [perfil, setPerfil] = useState<IPerfilAdoptante | null>(() =>
     usuario ? leerCache(usuario.id) : null
   );
-  const [cargando, setCargando] = useState(() => (usuario ? leerCache(usuario.id) === null : true));
-  // Un perfil sin respuestas (creado en el registro) cuenta como cuestionario pendiente.
-  // "!== false": una caché guardada antes de existir este campo corresponde a un perfil completo.
-  const cuestionarioCompleto = perfil !== null && perfil.cuestionario_completo !== false;
+  // Con caché la pantalla se muestra de inmediato y la consulta solo la actualiza;
+  // si la consulta falla, quedan a la vista los últimos datos conocidos.
+  const [cargando, setCargando] = useState(() => perfil === null);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     obtenerPerfilAdoptante()
@@ -68,13 +71,14 @@ export default function PerfilAdoptante() {
           }
         }
       })
-      .catch((err) => {
-        if (axios.isAxiosError(err) && err.response?.status === 404) {
-          setPerfil(null);
-        }
-      })
+      .catch(() => {})
       .finally(() => setCargando(false));
-  }, [usuario]);
+  }, [usuario, intento]);
+
+  function reintentar() {
+    setCargando(true);
+    setIntento((n) => n + 1);
+  }
 
   return (
     <PantallaAdoptante>
@@ -119,51 +123,39 @@ export default function PerfilAdoptante() {
         </div>
       </div>
 
-      {/* Cuadro destacado para Editar Perfil o Cuestionario */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-[1.5px] shadow-sm mb-4">
-        <div className="bg-white rounded-[22px] p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-base shrink-0 shadow-2xs">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                <path d="m15 5 4 4" />
-              </svg>
-            </span>
-            <div>
-              <h3 className="font-extrabold text-slate-900 text-sm">
-                Editar estilo de vida y cuestionario
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Actualiza vivienda, horarios y convivencia para recalcular tu afinidad.
-              </p>
-            </div>
-          </div>
+      {cargando && (
+        <div className="bg-white border border-slate-200/90 rounded-3xl shadow-xs mb-4">
+          <CargandoVista mensaje="Cargando tu perfil…" className="text-slate-400 py-8" />
+        </div>
+      )}
+
+      {!cargando && !perfil && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-center mb-4">
+          <p className="text-sm font-medium text-rose-700">No pudimos cargar tu perfil.</p>
           <button
-            onClick={() => navigate("/perfil-adoptante/editar")}
-            className="w-full sm:w-auto shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-sm hover:shadow-md active:scale-95 transition-all"
+            onClick={reintentar}
+            className="mt-3 bg-white border border-rose-200 hover:bg-rose-100 text-rose-700 text-xs font-bold px-4 py-2 rounded-xl"
           >
-            Editar datos
+            Reintentar
           </button>
         </div>
-      </div>
+      )}
 
-      {/* Resumen de Datos Importantes (Estilo de Vida) */}
-      <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-4 space-y-3.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-            Resumen de Estilo de Vida
-          </h2>
-          <Link
-            to="/perfil-adoptante/editar"
-            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800"
-          >
-            Modificar
-          </Link>
-        </div>
+      {!cargando && perfil && (
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-4 space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+              Tu estilo de vida
+            </h2>
+            <Link
+              to="/perfil-adoptante/editar"
+              className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl transition-colors"
+            >
+              <Pencil size={12} />
+              Editar
+            </Link>
+          </div>
 
-        {cargando && <CargandoVista mensaje="Cargando tu perfil…" className="text-slate-400 py-8" />}
-
-        {!cargando && perfil && cuestionarioCompleto && (
           <div className="grid grid-cols-2 gap-2.5">
             {[
               { etiqueta: "Vivienda", valor: resumenOpcion(OPCIONES_ESPACIO_DISPONIBLE, perfil.espacio_disponible) },
@@ -183,28 +175,11 @@ export default function PerfilAdoptante() {
               </div>
             ))}
           </div>
-        )}
-
-        {!cargando && !cuestionarioCompleto && (
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center">
-            <p className="text-xs font-extrabold text-amber-900">
-              Aún no has completado tu cuestionario de afinidad.
-            </p>
-            <p className="text-[11px] text-amber-700 mt-1 mb-3">
-              Completa tus datos para encontrar las mascotas más compatibles contigo.
-            </p>
-            <button
-              onClick={() => navigate("/perfil-adoptante/editar")}
-              className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs"
-            >
-              Completar Cuestionario Ahora
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Preferencias: solo ordenan las recomendaciones (la especie filtra) */}
-      {!cargando && perfil && cuestionarioCompleto && (
+      {!cargando && perfil && (
         <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs mb-4">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-teal-700">Preferencias</p>
           <h2 className="font-[family-name:var(--font-display)] text-xl font-black text-slate-900 mt-0.5 mb-2">
