@@ -5,7 +5,8 @@ import { listarMascotas } from "../api/mascotas";
 import { obtenerRecomendaciones } from "../api/matching";
 import { misPostulaciones } from "../api/postulaciones";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
-import { SkeletonFila } from "../components/Skeleton";
+import { Skeleton, SkeletonFila } from "../components/Skeleton";
+import { Spinner } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import { useGuardados } from "../utils/guardados";
 import { formatearEdad } from "../utils/opcionesMascota";
@@ -31,6 +32,9 @@ export interface FiltrosAvanzados {
   conviveGatos: boolean;
   energia: FiltroEnergia;
 }
+
+/** Cuántas tarjetas se agregan cada vez que el usuario llega al final. */
+const MASCOTAS_POR_TANDA = 20;
 
 const FILTROS_INICIALES: FiltrosAvanzados = {
   especie: "todos",
@@ -81,6 +85,8 @@ function TarjetaMascotaGrid({
             <img
               src={foto.url}
               alt={mascota.nombre}
+              loading="lazy"
+              decoding="async"
               onError={() => setImgError(true)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
@@ -172,6 +178,7 @@ export default function ExplorarMascotas() {
   const [filtros, setFiltros] = useState<FiltrosAvanzados>(FILTROS_INICIALES);
   const [modalFiltrosAbierto, setModalFiltrosAbierto] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [cargandoRecomendaciones, setCargandoRecomendaciones] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imgHeroError, setImgHeroError] = useState(false);
 
@@ -211,23 +218,27 @@ export default function ExplorarMascotas() {
     }
   };
 
+  // Las tres consultas van en paralelo y cada una se muestra apenas llega:
+  // el listado no espera al matching, que es la más lenta (calcula y guarda
+  // la compatibilidad de todas las disponibles). Los % de afinidad aparecen
+  // en las tarjetas cuando el matching responde.
   useEffect(() => {
-    Promise.all([
-      listarMascotas("disponible")
-        .then(setMascotas)
-        .catch(() => setError("No pudimos cargar las mascotas disponibles.")),
-      obtenerRecomendaciones(undefined, { explorar: true })
-        .then(setRecomendaciones)
-        .catch(() => setRecomendaciones([])),
-      misPostulaciones()
-        .then((lista) => {
-          const pendiente = lista.find(
-            (p) => p.estado === "pendiente" || p.estado === "aprobada"
-          );
-          setSolicitudActiva(pendiente || null);
-        })
-        .catch(() => setSolicitudActiva(null)),
-    ]).finally(() => setCargando(false));
+    listarMascotas("disponible")
+      .then(setMascotas)
+      .catch(() => setError("No pudimos cargar las mascotas disponibles."))
+      .finally(() => setCargando(false));
+    obtenerRecomendaciones(undefined, { explorar: true })
+      .then(setRecomendaciones)
+      .catch(() => setRecomendaciones([]))
+      .finally(() => setCargandoRecomendaciones(false));
+    misPostulaciones()
+      .then((lista) => {
+        const pendiente = lista.find(
+          (p) => p.estado === "pendiente" || p.estado === "aprobada"
+        );
+        setSolicitudActiva(pendiente || null);
+      })
+      .catch(() => setSolicitudActiva(null));
   }, []);
 
   const compatibilidadPorMascota = useMemo(() => {
@@ -321,6 +332,41 @@ export default function ExplorarMascotas() {
   const destacadoScore = destacado ? compatibilidadPorMascota[destacado.id]?.score_compatibilidad : null;
   const fotoDestacada = destacado?.fotos?.find((f: FotoMascota) => f.es_principal) ?? destacado?.fotos?.[0];
 
+  // Scroll infinito dentro del recuadro de la grilla: con cientos de
+  // mascotas, dibujar todas las tarjetas (y pedir todas sus fotos) de una vez
+  // hace lenta la pantalla. Se muestran de a MASCOTAS_POR_TANDA y se agregan
+  // más al acercarse al final del recuadro. La cantidad queda asociada a la
+  // búsqueda y los filtros actuales, así al cambiarlos se parte de nuevo
+  // desde la primera tanda.
+  const claveBusqueda = `${JSON.stringify(filtros)}|${busqueda.trim().toLowerCase()}`;
+  const [tandas, setTandas] = useState({ clave: claveBusqueda, cantidad: MASCOTAS_POR_TANDA });
+  const cantidadVisible = tandas.clave === claveBusqueda ? tandas.cantidad : MASCOTAS_POR_TANDA;
+  const mostradas = visibles.slice(0, cantidadVisible);
+  const hayMas = cantidadVisible < visibles.length;
+  const centinelaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const centinela = centinelaRef.current;
+    if (!centinela || !hayMas) return;
+    // Se recrea en cada tanda: si tras agregar mascotas el final sigue a la
+    // vista, el observador nuevo carga la siguiente tanda.
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        if (entradas[0]?.isIntersecting) {
+          setTandas({ clave: claveBusqueda, cantidad: cantidadVisible + MASCOTAS_POR_TANDA });
+        }
+      },
+      { root: contenedorGridRef.current, rootMargin: "0px 0px 400px 0px" }
+    );
+    observador.observe(centinela);
+    return () => observador.disconnect();
+  }, [hayMas, claveBusqueda, cantidadVisible]);
+
+  // Al cambiar los filtros o la búsqueda, el recuadro vuelve arriba.
+  useEffect(() => {
+    if (contenedorGridRef.current) contenedorGridRef.current.scrollTop = 0;
+  }, [claveBusqueda]);
+
   return (
     <PantallaAdoptante>
       {/* 1. Encabezado con Saludo Personalizado */}
@@ -373,8 +419,12 @@ export default function ExplorarMascotas() {
         </div>
       )}
 
-      {/* 3. Tarjeta Hero / Destacado del Día (si no hay búsqueda) */}
-      {!busqueda && destacado && (
+      {/* 3. Tarjeta Hero / Destacado del Día (si no hay búsqueda). Espera al
+          matching para elegir la mascota más afín y no cambiar de golpe. */}
+      {!busqueda && cargandoRecomendaciones && (
+        <Skeleton className="w-full h-52 rounded-3xl mb-5" />
+      )}
+      {!busqueda && !cargandoRecomendaciones && destacado && (
         <div className="mb-5">
           <div
             onClick={() => navigate(`/mascota/${destacado.id}`)}
@@ -664,7 +714,7 @@ export default function ExplorarMascotas() {
                 }`}
               >
                 <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                  {visibles.map((m) => (
+                  {mostradas.map((m) => (
                     <TarjetaMascotaGrid
                       key={m.id}
                       mascota={m}
@@ -675,6 +725,17 @@ export default function ExplorarMascotas() {
                     />
                   ))}
                 </div>
+                {hayMas ? (
+                  <div ref={centinelaRef} className="flex justify-center py-4 text-slate-400">
+                    <Spinner className="w-5 h-5" />
+                  </div>
+                ) : (
+                  visibles.length > MASCOTAS_POR_TANDA && (
+                    <p className="text-center text-[11px] font-medium text-slate-400 py-3">
+                      Viste las {visibles.length} mascotas disponibles
+                    </p>
+                  )
+                )}
               </div>
             </div>
           )}

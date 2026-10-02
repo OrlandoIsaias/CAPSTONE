@@ -42,6 +42,8 @@ export function TarjetaMascota({
           <img
             src={urlFoto}
             alt={nombre}
+            loading="lazy"
+            decoding="async"
             onError={() => setImgError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />

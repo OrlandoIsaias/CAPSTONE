@@ -47,7 +47,13 @@ SEGUIMIENTO_SERVICE_URL = os.getenv("SEGUIMIENTO_SERVICE_URL", "http://localhost
 JWT_SECRET = os.getenv("JWT_SECRET", "cambia-esta-clave-en-produccion")
 ALGORITHM = "HS256"
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+# Uno o varios orígenes separados por coma, p. ej. para abrir la app desde
+# el computador (localhost) y desde un teléfono en la misma red (IP local).
+FRONTEND_URLS = [
+    origen.strip()
+    for origen in os.getenv("FRONTEND_URL", "http://localhost:5173").split(",")
+    if origen.strip()
+]
 
 # Tabla de enrutamiento: primer segmento de la ruta -> servicio destino.
 # "mascotas" cubre tanto /mascotas como /mascotas/{id}/fotos, etc.
@@ -71,7 +77,7 @@ app = FastAPI(title="HouseFound - API Gateway")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=FRONTEND_URLS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
