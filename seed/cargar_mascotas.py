@@ -1,6 +1,6 @@
 """
 Carga en la BD las mascotas de ejemplo del CSV generado por generar_mascotas.py
-(sin fotos; las fotos se agregan en un paso aparte).
+(sin fotos; las fotos se agregan después con fotos_mascotas.py).
 
 Uso (desde Aplicación/, con el venv de auth-service activo):
     python seed/cargar_mascotas.py [--limite N] [--dry-run]
@@ -191,7 +191,7 @@ def borrar(args):
         """)).scalar()
         if fotos:
             raise SystemExit(f"No se borró nada: {fotos} mascotas seed tienen fotos en Cloudinary; "
-                             "bórralas primero con el script de fotos.")
+                             "bórralas primero con: python seed/fotos_mascotas.py --borrar --confirmar")
         # matches son puntajes calculados por matching-service; se recalculan solos.
         matches = conexion.execute(text("""
             DELETE FROM matches WHERE mascota_id IN (SELECT id FROM mascotas WHERE origen = 'seed')

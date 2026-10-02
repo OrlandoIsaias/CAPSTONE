@@ -30,6 +30,57 @@ en Cloudinary, y elimina los puntajes de compatibilidad (`matches`) asociados,
 que matching-service recalcula solo. Las mascotas publicadas por refugios
 (`origen = 'manual'`) nunca se tocan.
 
+## Fotos
+
+Cada mascota seed recibe una foto principal de [Pixabay](https://pixabay.com/service/license-summary/)
+(uso libre y gratuito), buscada por especie, raza y etapa de vida (ej. "dachshund
+puppy", "mixed breed senior dog"). Requiere la clave gratuita de la API de Pixabay
+(aparece en [pixabay.com/api/docs](https://pixabay.com/api/docs/) con la sesión
+iniciada) en `seed/.env` (copia `seed/.env.example`) y las credenciales de
+Cloudinary de `backend/mascotas-service/.env`.
+
+```
+python seed/fotos_mascotas.py --revisar              # asigna fotos; no escribe nada
+python seed/fotos_mascotas.py --cargar --limite 5    # prueba con pocas
+python seed/fotos_mascotas.py --cargar               # sube lo revisado; re-ejecutable
+python seed/fotos_mascotas.py --borrar --confirmar   # quita todas las fotos seed
+```
+
+`--revisar` deja `salida/revision_fotos.html` para mirar las fotos antes de
+cargarlas, `salida/fotos.csv` con la asignación y el autor de cada foto, y
+`salida/sin_foto.csv` con las mascotas que quedan sin foto. Para cambiar una
+foto, agrega su id a `fotos.excluidas` en `seed_config.yaml` y vuelve a revisar.
+
+Cada foto se valida por sus etiquetas de Pixabay (reglas en `seed_config.yaml`,
+sección `fotos`):
+
+| Regla | Si ninguna foto cumple |
+|---|---|
+| Etiqueta de su especie ("himalayan" también es un panda rojo) | Se descarta esa foto |
+| Etiqueta de su raza entre las 3 primeras (en mestizos, en cualquier posición) y ninguna de otra raza, incluidas razas fuera del catálogo (esfinge, bulldog…) | Queda **sin foto** |
+| Cachorro: etiqueta de cachorro entre las 3 primeras; joven, adulto o senior: sin ella | Queda **sin foto** |
+| Adulto o senior: sin etiquetas de joven ("young", "baby"); cachorro o joven: sin etiquetas de mayor | Queda **sin foto** |
+| Senior: prefiere una foto con etiqueta de animal mayor | Usa una de adulto (aproximado; marcada en la hoja) |
+| Sin personas, primeros planos, disfraces, varios animales ni otra especie | Se descarta esa foto |
+| Una foto por sesión (mismo autor, ids cercanos): si no, el mismo animal aparecería en dos mascotas. Excluir una foto descarta también su sesión | Se descarta esa foto |
+
+Las etiquetas de Pixabay tienen ruido (adultos etiquetados "kitten", un ovillo de
+lana como "angora"), así que **la edad y la especie se confirman mirando cada foto**:
+la revisión más eficaz es agrupar por especie y etapa, donde un adulto entre
+cachorros salta a la vista. Lo que no corresponde va a `fotos.excluidas`. Al
+excluir una foto, las mascotas del mismo grupo se reasignan entre fotos ya
+revisadas; solo hay que mirar las fotos nuevas.
+
+Los links de Pixabay vencen a las 24 h de consultados: `--cargar` los acepta hasta
+23 h y `--revisar` reutiliza consultas de hasta 12 h, así que **tras revisar quedan
+al menos 11 h para cargar** (si no, el script pide revisar de nuevo). Pixabay
+tampoco permite enlazar sus imágenes desde la app: por eso se
+suben a Cloudinary (`hogarmatch/seed`, etiqueta `seed`), recortadas en cuadrado de
+480 px igual que las que suben los refugios.
+
+Es **una sola foto por mascota**: con fotos de stock, varias serían animales
+distintos.
+
 ## Propiedades
 
 - **Determinista**: cada refugio usa su propio generador (`semilla` + RUT). Dos

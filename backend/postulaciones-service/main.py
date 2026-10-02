@@ -16,6 +16,21 @@ from database import get_db
 
 app = FastAPI(title="HouseFound - Postulaciones Service")
 
+# Preguntas obligatorias del cuestionario (las mismas que exige matching-service
+# en scoring.py): sin ellas el refugio recibiría una solicitud sin respuestas
+# ni compatibilidad.
+CAMPOS_CUESTIONARIO = (
+    "espacio_disponible",
+    "restriccion_vivienda",
+    "horas_sola",
+    "tiempo_actividad",
+    "experiencia_previa",
+    "ambiente_hogar",
+    "ninos_hogar",
+    "alergias",
+    "acepta_cuidados",
+)
+
 
 @app.get("/")
 def health_check():
@@ -161,6 +176,11 @@ def crear_postulacion(
     usuario_actual: security.UsuarioToken = Depends(security.requerir_rol("adoptante")),
 ):
     perfil = _perfil_adoptante_de(usuario_actual.id, db)
+    if any(getattr(perfil, campo) is None for campo in CAMPOS_CUESTIONARIO):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debes completar tu cuestionario antes de postular",
+        )
 
     mascota = db.query(models.Mascota).filter(models.Mascota.id == datos.mascota_id).first()
     if not mascota:

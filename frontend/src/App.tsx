@@ -69,7 +69,7 @@ function App() {
           <Route
             path="/perfil-adoptante/editar"
             element={
-              <RutaProtegida rolRequerido="adoptante">
+              <RutaProtegida rolRequerido="adoptante" permitirSinCuestionario>
                 <EditarPerfilAdoptante />
               </RutaProtegida>
             }

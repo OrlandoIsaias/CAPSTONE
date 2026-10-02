@@ -149,3 +149,127 @@ nombres:
   Gato: [Michi, Misha, Garfield, Pelusa, Nube, Salem, Simba, Cleo, Tom, Luna, Mía, Oliver,
          Gatúbela, Pantera, Leo, Kiara, Félix, Minino, Canela, Tigre, Bigotes, Nina, Pompón,
          Ámbar, Chispa, Mora, Nieve, Carbón, Isis, Loki, Manchita, Sol]
+
+# Fotos de ejemplo (fotos_mascotas.py): una foto principal por mascota, de
+# Pixabay (licencia: uso libre y gratuito, sin atribución obligatoria; igual se
+# guarda el autor de cada foto en salida/fotos.csv). La búsqueda de Pixabay es
+# amplia ("himalayan cat" trae gatos de cualquier raza), así que cada foto se
+# valida por sus ETIQUETAS:
+#   - especie: debe tener una etiqueta de su especie (en Pixabay, "himalayan"
+#     también es un panda rojo o un yak).
+#   - raza: una etiqueta de su raza entre las primeras (Pixabay las ordena por
+#     relevancia; una raza mencionada al final suele ser ruido) y ninguna de
+#     otra raza. Si ninguna foto cumple, la mascota queda sin foto.
+#   - edad: un cachorro necesita etiqueta de cachorro entre las primeras; las
+#     demás etapas no la pueden tener en ninguna parte. Un senior prefiere una
+#     foto con etiqueta de mayor y, si no hay, usa una de adulto (aproximado).
+# Lo que las etiquetas no detectan se corrige a mano con "excluidas".
+# Las búsquedas van en inglés, donde hay más resultados.
+fotos:
+  fuente: "Pixabay (pixabay.com/service/license-summary)"
+  # Palabra que se agrega a la búsqueda según especie y etapa.
+  sustantivos:
+    Perro: {cachorro: puppy, joven: dog, adulto: dog, senior: senior dog}
+    Gato:  {cachorro: kitten, joven: cat, adulto: cat, senior: senior cat}
+  etiquetas_especie:
+    Perro: [dog, puppy, canine, pup]
+    Gato: [cat, kitten, feline, kitty]
+  # Cuántas de las primeras etiquetas cuentan para raza (salvo mestizos) y cachorro.
+  relevancia: 3
+  etiquetas_cachorro:
+    Perro: [puppy, puppies, pup]
+    Gato: [kitten, kittens]
+  etiquetas_senior: [senior, old, elderly, aged]
+  # Un adulto o senior no puede tener estas; un cachorro o joven, las de senior.
+  etiquetas_joven: [young, baby, juvenile]
+  # raza: [búsqueda o lista de búsquedas, [etiquetas que confirman la raza]].
+  # Sin etiquetas (gato doméstico) vale cualquier foto sin etiqueta de raza.
+  razas:
+    Perro:
+      "Quiltro (mestizo)":     [[mixed breed, mongrel, mutt, stray], [mixed breed, mongrel, mutt, crossbreed, hybrid, stray, street dog]]
+      "Labrador Retriever":    [labrador retriever, [labrador]]
+      "Pastor Alemán":         [german shepherd, [german shepherd, alsatian]]
+      "Caniche (Poodle)":      [poodle, [poodle]]
+      "Chihuahua":             [chihuahua, [chihuahua]]
+      "Salchicha (Dachshund)": [dachshund, [dachshund, sausage dog]]
+      "Pitbull":               [pitbull, [pitbull, pit bull]]
+      "Golden Retriever":      [golden retriever, [golden retriever]]
+      "Beagle":                [beagle, [beagle]]
+      "Boxer":                 [boxer, [boxer]]
+      "Yorkshire Terrier":     [yorkshire terrier, [yorkshire terrier, yorkie]]
+      "Shih Tzu":              [shih tzu, [shih tzu, shih-tzu]]
+      "Husky Siberiano":       [siberian husky, [husky]]
+      "Schnauzer":             [schnauzer, [schnauzer]]
+      "Rottweiler":            [rottweiler, [rottweiler]]
+      "Cocker Spaniel":        [cocker spaniel, [cocker spaniel, cocker]]
+      "Maltés":                [maltese, [maltese]]
+      "Border Collie":         [border collie, [border collie]]
+      "Galgo":                 [greyhound, [greyhound]]
+      "Doberman":              [doberman, [doberman, dobermann]]
+      "Pug (Carlino)":         [pug, [pug]]
+    Gato:
+      "Doméstico / criollo":   [domestic, []]
+      "Siamés":                [siamese, [siamese]]
+      "Persa":                 [persian, [persian]]
+      "Angora":                [turkish angora, [angora]]
+      "Maine Coon":            [maine coon, [maine coon]]
+      "Bengalí":               [bengal, [bengal]]
+      "Azul Ruso":             [russian blue, [russian blue]]
+      "Himalayo":              [himalayan, [himalayan]]
+  # Razas fuera del catálogo: una foto con ellas tampoco sirve para un
+  # mestizo, un gato doméstico ni otra raza.
+  otras_razas_conocidas:
+    # Nombres específicos: un término genérico ("retriever", "terrier") también
+    # descartaría a las razas del catálogo que lo contienen.
+    Perro: [bulldog, french bulldog, english bulldog, spitz, pomeranian, jack russell, bull terrier,
+            boston terrier, west highland, westie, fox terrier, australian shepherd, malinois, rough collie,
+            springer spaniel, cavalier, akita, shiba, corgi, dalmatian, great dane, saint bernard, malamute,
+            samoyed, bernese, weimaraner, vizsla, pointer, setter, chow chow, shar pei, saluki, whippet,
+            afghan hound, labradoodle, goldendoodle, bichon, havanese, papillon, pekingese, lhasa apso,
+            mastiff, newfoundland, basset, bloodhound, cane corso, dogo, jack russell terrier]
+    Gato: [british shorthair, sphynx, sphinx, ragdoll, birman, scottish fold, exotic, devon rex, cornish rex,
+           abyssinian, munchkin, norwegian forest, burmese, savannah, oriental, chartreux, turkish van, selkirk,
+           somali, tonkinese, balinese, ragamuffin, siberian, nebelung, korat, bombay, manx, lykoi]
+  # Se descarta una foto si sus etiquetas mencionan alguna de estas palabras:
+  # personas, primeros planos, disfraces o varios animales.
+  descartar_si_menciona: [person, people, woman, women, man, men, girl, boy, child, children, kid, baby, hand, hands, owner,
+                          macro, close-up, closeup, close up, eye, iris, nose, costume, disguise, santa claus, christmas, halloween, hat,
+                          two, pair, couple, together, group, friends, family]
+  # Otra especie ("bengal" también trae tigres de Bengala).
+  descartar_otra_especie:
+    Perro: [cat, cats, kitten, kittens, wolf, jackal, fox, coyote]
+    Gato: [dog, dogs, puppy, puppies, tiger, lion, leopard, lynx, wildcat]
+  # Ids de Pixabay rechazados al revisar salida/revision_fotos.html: raza o edad
+  # que no calza, varios animales, personas, primeros planos o fotos sin el animal.
+  excluidas: [
+    # Gatos
+    6150937, 4894153, 1916542, 6748193, 1837067, 1845789, 3504008, 1045782, 6664360, 667909, 636172, 5628953,
+    6645241, 9125207, 649164, 6647197, 7552840, 3678858, 3593015, 694730, 468814, 2538281, 1077516, 3633131,
+    # Perros
+    218748, 2955832, 8715674, 8122581, 4841109, 6563435, 7126258, 3410488, 4016220, 3357519, 5000331, 4098555,
+    1967445, 7293082, 7524424, 7272440, 2502879, 2400289, 4432586, 7770340, 4410710, 1615943, 1615936, 1615944,
+    4767019, 7789964, 1615935, 1615940, 1615934, 1615938, 4759188, 3360192, 4854238, 6967959, 1487553, 1239337,
+    5374676, 7116091, 7116081, 2448841, 4111651, 4504880, 5000573, 7510792, 672780, 1519374, 1718023, 4095481,
+    4095525, 3360176,
+    # Segunda revisión
+    6020436, 837428, 94473, 4509249, 7259778, 5903305, 7986603, 6834901, 672716, 6689258, 7496214, 6490089,
+    4364174, 1544994, 1273752,
+    # Tercera revisión
+    3234675, 3249952, 7558727, 6498886,
+    # Revisión por edad (gatos): adultos marcados como cachorro, gatitos marcados
+    # como joven/adulto/senior, un ovillo de lana, raza o encuadre equivocados.
+    806211, 6572630, 9508590, 8446390, 8575641, 1282309, 8267220, 3971068, 440161, 4555825, 3031684, 6468112,
+    8012976, 339400, 1151519, 3294603, 10110760, 626676, 9595396,
+    # Revisión por edad (perros): adultos marcados como cachorro, varios perros,
+    # personas, el mismo perro repetido o raza pura marcada como quiltro.
+    8203158, 5937757, 3879893, 819230, 7150788, 4759190, 4751618, 1040947, 8297371, 6934437, 7725506, 182160,
+    10306154, 7524423, 4998443, 4734721, 3358747, 753269,
+    # Revisión de las fotos nuevas
+    2603300, 8579018, 3535404, 4803841, 7003849, 8012977, 955465, 1358907, 2875154, 5435062, 6934436, 5469767,
+    4734720,
+    8612685, 5233986, 6735840, 7344042, 3536289, 7184020,
+    958203, 1799835, 8121892, 1652822,
+    7818520, 7355398, 9602316,
+    2273598, 9583302,
+    6479019,
+  ]

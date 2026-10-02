@@ -6,11 +6,14 @@ import type { Rol } from "../types/auth";
 export function RutaProtegida({
   children,
   rolRequerido,
+  permitirSinCuestionario = false,
 }: {
   children: ReactNode;
   rolRequerido?: Rol;
+  // Solo la pantalla del cuestionario: el resto exige haberlo completado.
+  permitirSinCuestionario?: boolean;
 }) {
-  const { usuario, cargando } = useAuth();
+  const { usuario, cargando, cuestionarioCompleto } = useAuth();
 
   if (cargando) return null;
 
@@ -20,6 +23,13 @@ export function RutaProtegida({
 
   if (rolRequerido && usuario.rol !== rolRequerido) {
     return <Navigate to="/" replace />;
+  }
+
+  // Sin cuestionario no hay compatibilidad que mostrar: el adoptante lo
+  // completa antes de usar la app.
+  if (usuario.rol === "adoptante" && !permitirSinCuestionario) {
+    if (cuestionarioCompleto === null) return null;
+    if (!cuestionarioCompleto) return <Navigate to="/perfil-adoptante/editar" replace />;
   }
 
   return <>{children}</>;
