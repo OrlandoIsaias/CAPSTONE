@@ -183,6 +183,12 @@ export default function Guardados() {
             <div className="space-y-3.5">
               {solicitudes.map((s) => {
                 const esAprobada = s.estado === "aprobada";
+                const mascotaRel = mascotas.find((m) => m.id === s.mascota_id);
+                const fotoUrl =
+                  s.mascota_foto ||
+                  mascotaRel?.fotos?.find((f) => f.es_principal)?.url ||
+                  mascotaRel?.fotos?.[0]?.url;
+
                 return (
                   <div
                     key={s.id}
@@ -192,10 +198,24 @@ export default function Guardados() {
                         : "bg-white border-slate-200/90"
                     }`}
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <AvatarIniciales nombre={s.mascota_nombre} />
+                    <div className="flex items-center gap-3.5 mb-2">
+                      <Link to={`/mascota/${s.mascota_id}`} className="shrink-0 group">
+                        {fotoUrl ? (
+                          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs group-hover:scale-105 transition-transform">
+                            <img
+                              src={fotoUrl}
+                              alt={s.mascota_nombre}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <AvatarIniciales nombre={s.mascota_nombre} />
+                        )}
+                      </Link>
                       <div className="flex-1 min-w-0">
-                        <p className="font-extrabold text-slate-900 text-base truncate">{s.mascota_nombre}</p>
+                        <Link to={`/mascota/${s.mascota_id}`} className="hover:underline">
+                          <p className="font-extrabold text-slate-900 text-base truncate">{s.mascota_nombre}</p>
+                        </Link>
                         <p className="text-xs font-semibold text-slate-400">
                           Enviada el {fechaCorta(s.fecha_postulacion)}
                         </p>

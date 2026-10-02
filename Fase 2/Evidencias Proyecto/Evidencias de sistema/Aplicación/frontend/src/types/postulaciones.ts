@@ -21,6 +21,7 @@ export interface Postulacion {
   mascota_nombre: string;
   mascota_especie?: string;
   mascota_estado: EstadoMascota;
+  mascota_foto?: string | null;
   estado: EstadoPostulacion;
   /** null si el adoptante nunca abrió la ficha y no hay match calculado. */
   score_compatibilidad?: number | null;

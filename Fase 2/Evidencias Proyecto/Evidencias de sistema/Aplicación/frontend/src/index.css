@@ -72,3 +72,19 @@ body {
 .animate-abrir-abajo {
   animation: abrirAbajo 1s ease-in-out forwards;
 }
+
+/* Scrollbar sutil para listas y contenedores internos */
+.scrollbar-suave {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.scrollbar-suave::-webkit-scrollbar {
+  width: 5px;
+}
+.scrollbar-suave::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-suave::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}

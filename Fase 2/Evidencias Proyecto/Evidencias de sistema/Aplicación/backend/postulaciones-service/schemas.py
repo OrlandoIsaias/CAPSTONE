@@ -16,6 +16,7 @@ class PostulacionOut(BaseModel):
     mascota_nombre: str
     mascota_especie: Optional[str] = None
     mascota_estado: str
+    mascota_foto: Optional[str] = None
     estado: str
     # Referencia para el refugio al evaluar (RN04): es apoyo a la decisión,
     # nunca un criterio de aceptación automática. None si el adoptante nunca
