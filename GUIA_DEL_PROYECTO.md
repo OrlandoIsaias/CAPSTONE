@@ -3,7 +3,7 @@
 **Estado al 1 de octubre de 2026** · CAPSTONE APT122, sección 004D · Docente: Marco Antonio Valenzuela Contreras
 **Equipo:** Orlando Espinoza (Product Owner), Patricio Cárcamo (Scrum Master), Martín Guzmán y Benjamín Ormazábal
 
-Esta guía explica el proyecto tal como está hoy en el código: qué hace, cómo está construido, cómo viajan los datos, por qué se decidió cada cosa y qué falta. Cierra con las preguntas que puede hacer el docente guía en la revisión de avance. El detalle técnico completo está en [SPEC.md](<../Evidencias de sistema/Aplicación/SPEC.md>), el [README de la base de datos](<../Evidencias de sistema/Base de datos/README_BaseDeDatos.md>) y el [README de los datos de ejemplo](<../Evidencias de sistema/Aplicación/seed/README.md>).
+Esta guía explica el proyecto tal como está hoy en el código: qué hace, cómo está construido, cómo viajan los datos, por qué se decidió cada cosa y qué falta. Cierra con las preguntas que puede hacer el docente guía en la revisión de avance. El detalle técnico completo está en [SPEC.md](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/SPEC.md>), el [README de la base de datos](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Base de datos/README_BaseDeDatos.md>) y el [README de los datos de ejemplo](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/seed/README.md>).
 
 ## Índice
 
@@ -143,7 +143,7 @@ sequenceDiagram
     Note over FE: Ante un 401, el frontend borra la sesión<br/>y vuelve al login
 ```
 
-El token se guarda en `sessionStorage`, así que la sesión termina al cerrar la pestaña. Axios lo agrega solo a cada petición ([client.ts](<../Evidencias de sistema/Aplicación/frontend/src/api/client.ts>)).
+El token se guarda en `sessionStorage`, así que la sesión termina al cerrar la pestaña. Axios lo agrega solo a cada petición ([client.ts](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/frontend/src/api/client.ts>)).
 
 ### 4.2 Ciclo completo de una adopción
 
@@ -182,7 +182,7 @@ stateDiagram-v2
 
 ## 5. Modelo de datos
 
-10 tablas en PostgreSQL. El script completo es [BD_HouseFound_v2.sql](<../Evidencias de sistema/Base de datos/BD_HouseFound_v2.sql>) y ya incluye las 6 migraciones.
+10 tablas en PostgreSQL. El script completo es [BD_HouseFound_v2.sql](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Base de datos/BD_HouseFound_v2.sql>) y ya incluye las 6 migraciones.
 
 ```mermaid
 erDiagram
@@ -224,7 +224,7 @@ erDiagram
 
 ## 6. Motor de compatibilidad
 
-Está en [scoring.py](<../Evidencias de sistema/Aplicación/backend/matching-service/scoring.py>). Cada pregunta al adoptante tiene su espejo en la ficha de la mascota, y el resultado se arma en 3 capas.
+Está en [scoring.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/matching-service/scoring.py>). Cada pregunta al adoptante tiene su espejo en la ficha de la mascota, y el resultado se arma en 3 capas.
 
 | Pregunta al adoptante | Dato de la mascota | Capa |
 |---|---|---|
@@ -303,7 +303,7 @@ Está en [scoring.py](<../Evidencias de sistema/Aplicación/backend/matching-ser
 ## 8. Datos de ejemplo
 
 - **Refugios reales.** Las 67 organizaciones vienen de la nómina SII de organizaciones de rescate animal. La de prueba (RUT 11.111.111-1) es del equipo.
-- **Mascotas sintéticas.** [generar_mascotas.py](<../Evidencias de sistema/Aplicación/seed/generar_mascotas.py>) crea 541 mascotas con proporciones configurables y [cargar_mascotas.py](<../Evidencias de sistema/Aplicación/seed/cargar_mascotas.py>) las carga. Sus propiedades:
+- **Mascotas sintéticas.** [generar_mascotas.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/seed/generar_mascotas.py>) crea 541 mascotas con proporciones configurables y [cargar_mascotas.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/seed/cargar_mascotas.py>) las carga. Sus propiedades:
   - **deterministas:** la misma semilla genera siempre el mismo resultado;
   - **trazables:** `origen = 'seed'`, así que se pueden borrar en bloque;
   - **coherentes**, por ejemplo:
@@ -320,7 +320,7 @@ Está en [scoring.py](<../Evidencias de sistema/Aplicación/backend/matching-ser
 
 ## 9. Calidad y pruebas
 
-- **24 pruebas unitarias del motor de matching** en [test_scoring.py](<../Evidencias de sistema/Aplicación/backend/matching-service/test_scoring.py>). El 1 de octubre de 2026 pasaron las 24.
+- **24 pruebas unitarias del motor de matching** en [test_scoring.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/matching-service/test_scoring.py>). El 1 de octubre de 2026 pasaron las 24.
 
   | Grupo | Pruebas | Qué verifican |
   |---|---|---|
