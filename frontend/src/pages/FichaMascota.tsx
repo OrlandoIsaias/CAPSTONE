@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import axios from "axios";
 import { obtenerMascota } from "../api/mascotas";
 import { obtenerScoreIndividual } from "../api/matching";
@@ -30,8 +30,6 @@ export default function FichaMascota() {
 
   const [mascota, setMascota] = useState<Mascota | null>(null);
   const [compatibilidad, setCompatibilidad] = useState<Recomendacion | null>(null);
-  // 400 = el adoptante aún no completa su cuestionario: se le invita a hacerlo.
-  const [sinCuestionario, setSinCuestionario] = useState(false);
   const [fotoActiva, setFotoActiva] = useState(0);
   const [postulando, setPostulando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: "exito" | "error"; texto: string } | null>(null);
@@ -56,11 +54,10 @@ export default function FichaMascota() {
       )
       .finally(() => setCargando(false));
 
+    // Si falla, la ficha se muestra igual, solo sin el desglose de afinidad.
     obtenerScoreIndividual(mascotaId)
       .then(setCompatibilidad)
-      .catch((err) => {
-        if (axios.isAxiosError(err) && err.response?.status === 400) setSinCuestionario(true);
-      });
+      .catch(() => {});
   }, [id]);
 
   function manejarScroll() {
@@ -112,13 +109,14 @@ export default function FichaMascota() {
       await crearPostulacion(mascota.id);
       setMensaje({ tipo: "exito", texto: "¡Postulación enviada! El refugio la va a revisar pronto." });
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 409) {
-        setMensaje({ tipo: "error", texto: "Ya tienes una postulación pendiente para esta mascota." });
-      } else if (axios.isAxiosError(err) && err.response?.status === 400) {
-        setMensaje({ tipo: "error", texto: "Esta mascota ya no está disponible para postular." });
-      } else {
-        setMensaje({ tipo: "error", texto: "No pudimos enviar tu postulación. Intenta de nuevo." });
-      }
+      // 400 y 409 traen el motivo listo para mostrar: postulación pendiente,
+      // mascota no disponible o cuestionario incompleto.
+      const respuesta = axios.isAxiosError(err) ? err.response : undefined;
+      const detalle = respuesta && [400, 409].includes(respuesta.status) ? respuesta.data?.detail : undefined;
+      setMensaje({
+        tipo: "error",
+        texto: typeof detalle === "string" ? `${detalle}.` : "No pudimos enviar tu postulación. Intenta de nuevo.",
+      });
     } finally {
       setPostulando(false);
     }
@@ -359,20 +357,6 @@ export default function FichaMascota() {
               topeAplicado={compatibilidad.tope_aplicado}
               perspectiva="adoptante"
             />
-          </div>
-        )}
-        {sinCuestionario && (
-          <div className="mb-5 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
-            <p className="text-xs font-extrabold text-indigo-900">¿Qué tan compatibles son?</p>
-            <p className="text-[11px] text-indigo-700 mt-1 mb-3">
-              Completa tu cuestionario y te mostramos tu afinidad con {mascota.nombre}.
-            </p>
-            <Link
-              to="/perfil-adoptante/editar"
-              className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs"
-            >
-              Completar cuestionario
-            </Link>
           </div>
         )}
 
