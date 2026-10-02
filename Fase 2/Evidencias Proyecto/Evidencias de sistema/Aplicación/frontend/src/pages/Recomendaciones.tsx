@@ -33,13 +33,6 @@ export default function Recomendaciones() {
       .then(setRecomendaciones)
       .catch((err) => {
         if (axios.isCancel(err)) return;
-        if (axios.isAxiosError(err) && err.response?.status === 400) {
-          // El backend nos dice que falta el perfil — en vez de dejar al
-          // usuario varado leyendo un error, lo mandamos directo al
-          // formulario para que lo complete ahora mismo.
-          navigate("/perfil-adoptante", { replace: true });
-          return;
-        }
         setError("No pudimos cargar tus recomendaciones. Intenta de nuevo más tarde.");
       })
       .finally(() => {
@@ -47,7 +40,7 @@ export default function Recomendaciones() {
       });
 
     return () => controlador.abort();
-  }, [navigate]);
+  }, []);
 
   const grupos = agrupar(recomendaciones);
 

@@ -11,6 +11,7 @@ import {
   type PasoCuestionario,
 } from "../components/Preguntas";
 import { Spinner } from "../components/Spinner";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { normalizarTelefonoCL, validarTelefonoCL } from "../utils/telefono";
 import {
@@ -182,6 +183,7 @@ function mostrarPrimerError() {
 export default function EditarPerfilAdoptante() {
   const navigate = useNavigate();
   const mostrarToast = useToast();
+  const { cerrarSesion, marcarCuestionarioCompleto } = useAuth();
 
   const [respuestas, setRespuestas] = useState<Respuestas>(SIN_RESPUESTAS);
   const [paso, setPaso] = useState(0);
@@ -280,6 +282,7 @@ export default function EditarPerfilAdoptante() {
         sexo_preferido: respuestas.sexo_preferido === "cualquiera" ? null : respuestas.sexo_preferido,
         telefono: respuestas.telefono.trim() ? normalizarTelefonoCL(respuestas.telefono) : "",
       });
+      marcarCuestionarioCompleto();
       if (primeraVez) {
         mostrarToast("¡Cuestionario completado! Estas son tus recomendaciones.");
         navigate("/recomendaciones");
@@ -312,13 +315,12 @@ export default function EditarPerfilAdoptante() {
   const textos = primeraVez
     ? {
         titulo: "Completa tu cuestionario",
-        subtitulo: "Con tus respuestas buscamos las mascotas más compatibles con tu hogar. Son 5 pasos cortos.",
-        secundario: "Completar más tarde",
+        subtitulo:
+          "Antes de empezar, cuéntanos de tu hogar: así te mostramos las mascotas más compatibles contigo. Son 5 pasos cortos.",
       }
     : {
         titulo: "Editar cuestionario",
         subtitulo: "Si cambias tus respuestas, recalculamos tu compatibilidad con cada mascota.",
-        secundario: "Cancelar",
       };
 
   const botonPrincipal = "flex-[1.6] flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-black py-3.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60";
@@ -328,14 +330,17 @@ export default function EditarPerfilAdoptante() {
     <div className="min-h-screen bg-[var(--color-fondo)]">
       <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-20">
         <header className="flex items-center gap-3 mb-5">
-          <button
-            type="button"
-            onClick={() => navigate("/perfil-adoptante")}
-            aria-label="Volver al perfil"
-            className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-xs flex items-center justify-center text-slate-600 hover:text-slate-900 active:scale-90 transition-transform shrink-0"
-          >
-            <ChevronLeft size={18} strokeWidth={2.5} />
-          </button>
+          {/* La primera vez no hay a dónde volver: el resto de la app exige el cuestionario. */}
+          {!primeraVez && (
+            <button
+              type="button"
+              onClick={() => navigate("/perfil-adoptante")}
+              aria-label="Volver al perfil"
+              className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-xs flex items-center justify-center text-slate-600 hover:text-slate-900 active:scale-90 transition-transform shrink-0"
+            >
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            </button>
+          )}
           <div>
             <h1 className="font-[family-name:var(--font-display)] text-2xl font-black text-slate-900 leading-tight">
               {textos.titulo}
@@ -624,14 +629,14 @@ export default function EditarPerfilAdoptante() {
             </button>
           )}
 
-          {/* Primera vez: saltarlo lleva a Explorar, que funciona sin
-              cuestionario (muestra las mascotas sin % de afinidad). */}
+          {/* La primera vez la única salida es cerrar sesión: sin cuestionario
+              no se puede usar el resto de la app. */}
           <button
             type="button"
-            onClick={() => navigate(primeraVez ? "/explorar" : "/perfil-adoptante")}
+            onClick={primeraVez ? cerrarSesion : () => navigate("/perfil-adoptante")}
             className="w-full py-3 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
           >
-            {textos.secundario}
+            {primeraVez ? "Cerrar sesión" : "Cancelar"}
           </button>
         </form>
       </div>
