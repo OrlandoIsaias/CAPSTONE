@@ -42,7 +42,7 @@ const ESTILOS_PESTANA: Record<TabColor, { iconoActivo: string; textoActivo: stri
 
 export function BarraAdoptante() {
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-lg z-40">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-slate-200/80 shadow-lg z-50">
       <div className="flex px-1 py-1">
         {PESTANAS.map((p) => {
           const estilo = ESTILOS_PESTANA[p.color];
@@ -86,7 +86,7 @@ export function BarraAdoptante() {
     centrado que PantallaRefugio, con espacio inferior reservado para la barra. */
 export function PantallaAdoptante({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[var(--color-fondo)]">
+    <div className="min-h-screen bg-[var(--color-fondo)] overflow-x-clip max-w-full">
       <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-28">{children}</div>
       <BarraAdoptante />
     </div>
