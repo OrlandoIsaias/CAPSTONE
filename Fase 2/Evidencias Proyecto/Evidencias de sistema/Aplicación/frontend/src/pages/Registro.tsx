@@ -51,7 +51,10 @@ export default function Registro() {
         telefono: telefonoNormalizado,
       });
       iniciarSesion(resultado.access_token, resultado.usuario);
-      navigate("/perfil-adoptante/editar");
+      try {
+        sessionStorage.setItem("housefound_mostrar_tutorial_registro", "1");
+      } catch {}
+      navigate("/perfil-adoptante/editar", { state: { recienRegistrado: true } });
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
         setError("Ese email ya está registrado.");

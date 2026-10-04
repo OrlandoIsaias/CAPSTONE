@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ChevronLeft, Clock, Heart, House, Phone, Sparkles, Users } from "lucide-react";
 import { guardarPerfilAdoptante, obtenerPerfilAdoptante } from "../api/auth";
@@ -11,6 +11,7 @@ import {
   type PasoCuestionario,
 } from "../components/Preguntas";
 import { Spinner } from "../components/Spinner";
+import { ModalTutorialAdoptante, CLAVE_TUTORIAL_VISTO } from "../components/ModalTutorialAdoptante";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { normalizarTelefonoCL, validarTelefonoCL } from "../utils/telefono";
@@ -182,8 +183,9 @@ function mostrarPrimerError() {
 
 export default function EditarPerfilAdoptante() {
   const navigate = useNavigate();
+  const location = useLocation();
   const mostrarToast = useToast();
-  const { cerrarSesion, marcarCuestionarioCompleto } = useAuth();
+  const { usuario, cerrarSesion, marcarCuestionarioCompleto } = useAuth();
 
   const [respuestas, setRespuestas] = useState<Respuestas>(SIN_RESPUESTAS);
   const [paso, setPaso] = useState(0);
@@ -193,27 +195,74 @@ export default function EditarPerfilAdoptante() {
   // true si nunca respondió el cuestionario (perfil sin respuestas o sin
   // perfil): la pantalla se presenta como primer paso y no como edición.
   const [primeraVez, setPrimeraVez] = useState(false);
+  const [mostrarTutorial, setMostrarTutorial] = useState(() => {
+    try {
+      const recienRegistrado =
+        (location.state as { recienRegistrado?: boolean } | null)?.recienRegistrado === true ||
+        sessionStorage.getItem("housefound_mostrar_tutorial_registro") === "1";
+      if (recienRegistrado) return true;
+    } catch {}
+    return false;
+  });
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores] = useState<Errores>({});
   const [error, setError] = useState<string | null>(null);
 
+  const handleCerrarTutorial = () => {
+    try {
+      sessionStorage.removeItem("housefound_mostrar_tutorial_registro");
+      if (usuario?.id) {
+        localStorage.setItem(`housefound_tutorial_visto_${usuario.id}`, "1");
+      }
+      localStorage.removeItem(CLAVE_TUTORIAL_VISTO);
+    } catch {}
+    setMostrarTutorial(false);
+  };
+
   useEffect(() => {
     obtenerPerfilAdoptante()
       .then((p) => {
-        setPrimeraVez(!p.cuestionario_completo);
+        const esPrimera = !p.cuestionario_completo;
+        setPrimeraVez(esPrimera);
         setRespuestas(desdePerfil(p));
         if (p.cuestionario_completo) setPasoMaximo(ULTIMO_PASO);
+        if (esPrimera) {
+          try {
+            const uid = usuario?.id;
+            const vistoUsuario = uid
+              ? localStorage.getItem(`housefound_tutorial_visto_${uid}`) === "1"
+              : false;
+            const recienRegistrado =
+              (location.state as { recienRegistrado?: boolean } | null)?.recienRegistrado === true ||
+              sessionStorage.getItem("housefound_mostrar_tutorial_registro") === "1";
+            if (!vistoUsuario || recienRegistrado) {
+              setMostrarTutorial(true);
+            }
+          } catch {}
+        }
       })
       .catch((err) => {
         // 404: el adoptante se registró sin teléfono y aún no tiene perfil.
         if (axios.isAxiosError(err) && err.response?.status === 404) {
           setPrimeraVez(true);
+          try {
+            const uid = usuario?.id;
+            const vistoUsuario = uid
+              ? localStorage.getItem(`housefound_tutorial_visto_${uid}`) === "1"
+              : false;
+            const recienRegistrado =
+              (location.state as { recienRegistrado?: boolean } | null)?.recienRegistrado === true ||
+              sessionStorage.getItem("housefound_mostrar_tutorial_registro") === "1";
+            if (!vistoUsuario || recienRegistrado) {
+              setMostrarTutorial(true);
+            }
+          } catch {}
         } else {
           setError("No pudimos cargar tus respuestas guardadas. Recarga la página antes de editarlas.");
         }
       })
       .finally(() => setCargandoInicial(false));
-  }, []);
+  }, [usuario?.id, location.state]);
 
   const imposibles = especiesImposibles(respuestas.alergias, respuestas.restriccion_vivienda);
 
@@ -328,6 +377,12 @@ export default function EditarPerfilAdoptante() {
 
   return (
     <div className="min-h-screen bg-[var(--color-fondo)]">
+      <ModalTutorialAdoptante
+        abierto={mostrarTutorial}
+        onCerrar={handleCerrarTutorial}
+        usuarioId={usuario?.id}
+      />
+
       <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-20">
         <header className="flex items-center gap-3 mb-5">
           {/* La primera vez no hay a dónde volver: el resto de la app exige el cuestionario. */}
@@ -341,11 +396,22 @@ export default function EditarPerfilAdoptante() {
               <ChevronLeft size={18} strokeWidth={2.5} />
             </button>
           )}
-          <div>
-            <h1 className="font-[family-name:var(--font-display)] text-2xl font-black text-slate-900 leading-tight">
-              {textos.titulo}
-            </h1>
-            <p className="text-xs font-medium text-slate-500">{textos.subtitulo}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h1 className="font-[family-name:var(--font-display)] text-2xl font-black text-slate-900 leading-tight">
+                {textos.titulo}
+              </h1>
+              <button
+                type="button"
+                onClick={() => setMostrarTutorial(true)}
+                className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all shrink-0 shadow-2xs active:scale-95"
+                title="Ver mini tutorial de bienvenida"
+              >
+                <Sparkles size={13} className="text-amber-500 fill-amber-400" />
+                <span>Tutorial</span>
+              </button>
+            </div>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">{textos.subtitulo}</p>
           </div>
         </header>
 

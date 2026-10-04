@@ -146,17 +146,23 @@ def obtener_recomendaciones(
     # —incluida mascota.fotos, ya cargada arriba con selectinload— dispara
     # una consulta nueva para refrescarlo. Es el mismo N+1 que evitamos
     # arriba, reapareciendo en silencio si se arma la respuesta después.
+    # En Coincidencias (not explorar): solo mascotas compatibles (sin exclusiones y afinidad >= 50%)
+    # En Explorar (explorar=true): se muestran todas con sus estados de compatibilidad
     resultados = [
         _a_recomendacion(mascota, evaluaciones[mascota.id], fecha_por_mascota[mascota.id])
         for mascota in mascotas_disponibles
-        if explorar or not evaluaciones[mascota.id].excluida
+        if explorar or (not evaluaciones[mascota.id].excluida and evaluaciones[mascota.id].score >= 0.5)
     ]
 
     db.commit()
 
-    resultados.sort(
-        key=lambda r: (r.excluida, len(r.discrepancias_preferencias), -r.score_compatibilidad)
-    )
+    if not explorar:
+        # En Coincidencias: orden estricto de mayor a menor porcentaje de compatibilidad
+        resultados.sort(key=lambda r: -r.score_compatibilidad)
+    else:
+        resultados.sort(
+            key=lambda r: (r.excluida, len(r.discrepancias_preferencias), -r.score_compatibilidad)
+        )
     return resultados
 
 
