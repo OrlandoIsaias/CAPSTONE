@@ -1,0 +1,35 @@
+# Copia la carpeta Aplicación/ a la rama "deploy", con la app en la raíz.
+# Render no acepta tildes en las rutas, así que publica desde esa rama.
+# No editar la rama deploy a mano: se regenera sola en cada push a main.
+name: Actualizar rama deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # "Aplicaci*n" = Aplicación, escrito sin tilde para evitar problemas de codificación.
+      - "Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicaci*n/**"
+      - ".github/workflows/rama-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rama-deploy
+  cancel-in-progress: false
+
+jobs:
+  rama-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Copiar Aplicación/ a la rama deploy
+        run: |
+          git -c core.quotepath=false subtree split \
+            --prefix="Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación" \
+            -b deploy
+          git push origin deploy
