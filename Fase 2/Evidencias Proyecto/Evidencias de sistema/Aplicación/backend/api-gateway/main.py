@@ -55,6 +55,16 @@ FRONTEND_URLS = [
     if origen.strip()
 ]
 
+# Encabezados del navegador que no se reenvían a los microservicios.
+# accept-encoding se omite para que httpx pida solo compresiones que sabe
+# descomprimir (gzip/deflate): en Render, si se reenvía "br", el servicio
+# responde en brotli y el cuerpo llega comprimido al navegador sin avisarle.
+ENCABEZADOS_NO_REENVIADOS = {"host", "accept-encoding"}
+
+# En el plan gratis de Render los servicios se duermen sin uso y tardan
+# cerca de un minuto en despertar; con menos espera la primera petición falla.
+TIMEOUT_SERVICIOS = 60.0
+
 # Tabla de enrutamiento: primer segmento de la ruta -> servicio destino.
 # "mascotas" cubre tanto /mascotas como /mascotas/{id}/fotos, etc.
 RUTAS = {
@@ -139,11 +149,13 @@ async def _reenviar(servicio: str, resto_de_ruta: str, request: Request):
     cuerpo = await request.body()
 
     encabezados_reenviados = {
-        clave: valor for clave, valor in request.headers.items() if clave.lower() != "host"
+        clave: valor
+        for clave, valor in request.headers.items()
+        if clave.lower() not in ENCABEZADOS_NO_REENVIADOS
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=TIMEOUT_SERVICIOS) as client:
             respuesta = await client.request(
                 method=request.method,
                 url=url_destino,
