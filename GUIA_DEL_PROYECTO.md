@@ -349,7 +349,7 @@ Está en [scoring.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicaci
    - la salud de los 5 servicios en http://localhost:8080;
    - la documentación interactiva de cada servicio en `/docs` (por ejemplo, http://localhost:8002/docs).
 
-**Versión publicada:** la app también está en internet, en https://frontend-zavd.onrender.com, y se actualiza sola con cada push a `main`. Cómo está armada, cómo recrearla y qué revisar antes de una demo: [Guía de despliegue](GUIA_DE_DESPLIEGUE.md).
+**Versión publicada:** la app también está en internet, en https://frontend-zavd.onrender.com, y se actualiza sola con cada push a `main` que cambie algo dentro de `Aplicación/`. Cómo está armada, cómo recrearla y qué revisar antes de una demo: [Guía de despliegue](GUIA_DE_DESPLIEGUE.md).
 
 **Guion de demo (unos 5 minutos):**
 
@@ -480,7 +480,6 @@ Los servicios no guardan estado (salvo el contador de intentos de login), así q
 | Técnica | La lista de preguntas obligatorias del cuestionario se repite en matching, postulaciones y frontend | Unificarla en un solo lugar |
 | Técnica | Publicada en Render con el plan gratis: los servicios se duermen tras 15 minutos sin uso | Despertarlos antes de cada demo y convertir la app en PWA (ver la [Guía de despliegue](GUIA_DE_DESPLIEGUE.md)) |
 | Documentación | El Análisis del Caso describe el matching v1 | Actualizar sus secciones 4.2 y 4.3 |
-| Documentación | El README raíz dice "desarrollo aún no iniciado" | Actualizar |
 | Documentación | SPEC RF-01 a RF-04 desactualizados (ej. "registro de refugios", "6 criterios") | Actualizar |
 | Documentación | Diagrama ER en PNG anterior a las migraciones | Regenerar desde `BD_HouseFound_v2.sql` |
 | Proceso | Commits directos a `main` | Ramas `feature/*` + Pull Request desde el Sprint 1 |
