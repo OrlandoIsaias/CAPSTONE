@@ -5,6 +5,7 @@ import { listarMascotas } from "../api/mascotas";
 import { obtenerRecomendaciones } from "../api/matching";
 import { misPostulaciones } from "../api/postulaciones";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
+import { ModalTutorialAdoptante } from "../components/ModalTutorialAdoptante";
 import { Skeleton, SkeletonFila } from "../components/Skeleton";
 import { Spinner } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
@@ -181,6 +182,7 @@ export default function ExplorarMascotas() {
   const [cargandoRecomendaciones, setCargandoRecomendaciones] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imgHeroError, setImgHeroError] = useState(false);
+  const [tutorialAbierto, setTutorialAbierto] = useState(false);
 
   const contenedorGridRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -741,6 +743,27 @@ export default function ExplorarMascotas() {
           )}
         </div>
       )}
+
+      {/* Botón tutorial abajo de Recién Llegados (sin íconos) */}
+      <button
+        type="button"
+        onClick={() => setTutorialAbierto(true)}
+        className="w-full mt-4 py-3.5 px-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-slate-300 active:scale-[0.99] transition-all text-center flex flex-col items-center justify-center cursor-pointer"
+      >
+        <span className="font-[family-name:var(--font-display)] text-sm font-black text-slate-900">
+          ¿Cómo funciona HouseFound?
+        </span>
+        <span className="text-xs font-medium text-slate-500 mt-0.5">
+          Aprende sobre el cuestionario, el modo Swipe y cómo adoptar
+        </span>
+      </button>
+
+      {/* Modal Tutorial Adoptante */}
+      <ModalTutorialAdoptante
+        abierto={tutorialAbierto}
+        onCerrar={() => setTutorialAbierto(false)}
+        usuarioId={usuario?.id}
+      />
 
       {/* 7. Modal Completo de Filtros Avanzados */}
       {modalFiltrosAbierto && (

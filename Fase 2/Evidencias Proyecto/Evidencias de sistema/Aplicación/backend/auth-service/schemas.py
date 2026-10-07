@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, computed_field, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, computed_field, field_validator, model_validator
 
 from rut import parsear_rut
 
@@ -46,7 +46,7 @@ def _validar_y_normalizar_telefono_opcional(v: Optional[str]) -> Optional[str]:
 class UsuarioRegistro(BaseModel):
     nombre: str
     email: EmailStr
-    password: str
+    password: str = Field(min_length=6)
     rol: Literal["adoptante", "refugio"]
     telefono: Optional[str] = None
 

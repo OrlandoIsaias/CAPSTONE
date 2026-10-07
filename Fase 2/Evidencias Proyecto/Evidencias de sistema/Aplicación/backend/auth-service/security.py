@@ -4,6 +4,7 @@ Seguridad: hash de contraseñas con bcrypt y emisión/validación de JWT.
 import os
 from datetime import datetime, timedelta
 
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -13,7 +14,14 @@ from sqlalchemy.orm import Session
 import models
 from database import get_db
 
-SECRET_KEY = os.getenv("JWT_SECRET", "cambia-esta-clave-en-produccion")
+load_dotenv()
+
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY or SECRET_KEY.strip() == "cambia-esta-clave-en-produccion":
+    raise RuntimeError(
+        "Falta la variable de entorno JWT_SECRET o tiene el valor por defecto inseguro. "
+        "Configura una clave secreta para la firma de tokens en las variables de entorno."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 día
 
