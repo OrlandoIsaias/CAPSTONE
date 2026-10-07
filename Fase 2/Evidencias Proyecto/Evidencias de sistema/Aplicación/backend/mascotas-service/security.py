@@ -9,12 +9,20 @@ otro servicio solo para saber quién es el usuario o qué rol tiene.
 """
 import os
 
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-SECRET_KEY = os.getenv("JWT_SECRET", "cambia-esta-clave-en-produccion")
+load_dotenv()
+
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY or SECRET_KEY.strip() == "cambia-esta-clave-en-produccion":
+    raise RuntimeError(
+        "Falta la variable de entorno JWT_SECRET o tiene el valor por defecto inseguro. "
+        "Configura una clave secreta segura en las variables de entorno."
+    )
 ALGORITHM = "HS256"
 
 security_scheme = HTTPBearer()

@@ -44,7 +44,12 @@ MATCHING_SERVICE_URL = os.getenv("MATCHING_SERVICE_URL", "http://localhost:8002"
 POSTULACIONES_SERVICE_URL = os.getenv("POSTULACIONES_SERVICE_URL", "http://localhost:8003")
 SEGUIMIENTO_SERVICE_URL = os.getenv("SEGUIMIENTO_SERVICE_URL", "http://localhost:8004")
 
-JWT_SECRET = os.getenv("JWT_SECRET", "cambia-esta-clave-en-produccion")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET or JWT_SECRET.strip() == "cambia-esta-clave-en-produccion":
+    raise RuntimeError(
+        "Falta la variable de entorno JWT_SECRET o tiene el valor por defecto inseguro. "
+        "Configura una clave secreta para la validación de tokens en las variables de entorno."
+    )
 ALGORITHM = "HS256"
 
 # Uno o varios orígenes separados por coma, p. ej. para abrir la app desde
