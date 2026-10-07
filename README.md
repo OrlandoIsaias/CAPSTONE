@@ -147,6 +147,8 @@ Una vez levantado:
 
 `http://localhost:8080` responde con el estado de los 5 microservicios en un solo JSON, útil para diagnosticar rápido cuál servicio no levantó.
 
+La versión publicada en internet está en https://frontend-zavd.onrender.com y se actualiza sola con cada push a `main`. Ver la [Guía de despliegue](GUIA_DE_DESPLIEGUE.md).
+
 También es posible levantar cada servicio manualmente sin Docker (activando el `venv` de cada microservicio con Python y usando `npm run dev` para el frontend), pero Docker Compose es la forma recomendada para evaluar el progreso del sistema completo con un solo comando.
 
 ---
