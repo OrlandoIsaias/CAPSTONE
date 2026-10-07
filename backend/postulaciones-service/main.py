@@ -112,6 +112,8 @@ def _a_postulacion_out(
     p: models.Postulacion, mascota: models.Mascota, db: Session
 ) -> schemas.PostulacionOut:
     refugio = _contacto_refugio(mascota.refugio_id, db)
+    # RN06: los teléfonos solo se comparten cuando la postulación fue aprobada.
+    es_aprobada = p.estado == "aprobada"
     return schemas.PostulacionOut(
         id=p.id,
         adoptante_id=p.adoptante_id,
@@ -124,9 +126,9 @@ def _a_postulacion_out(
         estado=p.estado,
         score_compatibilidad=_score_de(p.adoptante_id, p.mascota_id, db),
         fecha_postulacion=p.fecha_postulacion,
-        adoptante_telefono=_telefono_adoptante(p.adoptante_id, db),
+        adoptante_telefono=_telefono_adoptante(p.adoptante_id, db) if es_aprobada else None,
         refugio_nombre=refugio.nombre_refugio if refugio else None,
-        refugio_telefono=refugio.telefono_contacto if refugio else None,
+        refugio_telefono=refugio.telefono_contacto if (refugio and es_aprobada) else None,
     )
 
 
@@ -272,6 +274,8 @@ def mis_postulaciones(
         # no se contempla el caso contrario.
         mascota = mascotas[p.mascota_id]
         refugio = refugios.get(mascota.refugio_id)
+        # RN06: los teléfonos solo se comparten cuando la postulación fue aprobada.
+        es_aprobada = p.estado == "aprobada"
         resultado.append(
             schemas.PostulacionOut(
                 id=p.id,
@@ -285,9 +289,9 @@ def mis_postulaciones(
                 estado=p.estado,
                 score_compatibilidad=scores.get((perfil.id, p.mascota_id)),
                 fecha_postulacion=p.fecha_postulacion,
-                adoptante_telefono=perfil.telefono,
+                adoptante_telefono=perfil.telefono if es_aprobada else None,
                 refugio_nombre=refugio.nombre_refugio if refugio else None,
-                refugio_telefono=refugio.telefono_contacto if refugio else None,
+                refugio_telefono=(refugio.telefono_contacto if refugio else None) if es_aprobada else None,
             )
         )
     return resultado
@@ -324,6 +328,8 @@ def postulaciones_recibidas(
     for p in postulaciones:
         mascota = mascotas[p.mascota_id]
         nombre, telefono = datos_adoptante.get(p.adoptante_id, (None, None))
+        # RN06: los teléfonos solo se comparten cuando la postulación fue aprobada.
+        es_aprobada = p.estado == "aprobada"
         resultado.append(
             schemas.PostulacionOut(
                 id=p.id,
@@ -337,9 +343,9 @@ def postulaciones_recibidas(
                 estado=p.estado,
                 score_compatibilidad=scores.get((p.adoptante_id, p.mascota_id)),
                 fecha_postulacion=p.fecha_postulacion,
-                adoptante_telefono=telefono,
+                adoptante_telefono=telefono if es_aprobada else None,
                 refugio_nombre=refugio.nombre_refugio,
-                refugio_telefono=refugio.telefono_contacto,
+                refugio_telefono=refugio.telefono_contacto if es_aprobada else None,
             )
         )
     return resultado
