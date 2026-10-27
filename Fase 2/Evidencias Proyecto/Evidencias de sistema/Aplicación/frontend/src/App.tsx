@@ -10,6 +10,8 @@ import Login from "./pages/Login";
 // El login es la primera pantalla, así que va incluido desde el inicio. El
 // resto se descarga recién cuando se visita (code splitting): quien entra a
 // iniciar sesión no baja el código de las otras pantallas.
+const ChatSeguimiento = lazy(() => import("./pages/ChatSeguimiento"));
+const Chats = lazy(() => import("./pages/Chats"));
 const DetalleSolicitud = lazy(() => import("./pages/DetalleSolicitud"));
 const EditarPerfilAdoptante = lazy(() => import("./pages/EditarPerfilAdoptante"));
 const EditarPerfilRefugio = lazy(() => import("./pages/EditarPerfilRefugio"));
@@ -186,6 +188,25 @@ function App() {
               </RutaProtegida>
             }
           />
+
+          {/* Chat de seguimiento post-adopción (adoptante y refugio) */}
+          <Route
+            path="/seguimiento"
+            element={
+              <RutaProtegida>
+                <Chats />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/seguimiento/:id"
+            element={
+              <RutaProtegida>
+                <ChatSeguimiento />
+              </RutaProtegida>
+            }
+          />
+
           <Route path="/cuestionarios" element={<Navigate to="/solicitudes" replace />} />
           <Route path="/postulaciones" element={<Navigate to="/solicitudes" replace />} />
         </Routes>

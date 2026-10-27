@@ -54,10 +54,11 @@ El núcleo del MVP funciona de punta a punta: registro, cuestionario, catálogo 
 | Ficha de la mascota con compatibilidad | Listo | Listo | Muestra motivos de exclusión y alertas |
 | Postular y "Mis solicitudes" | Listo | Listo | |
 | Evaluar postulaciones (aprobar, rechazar, confirmar adopción) | Listo | Listo | El refugio ve las respuestas, el % y su desglose |
-| Encuestas de seguimiento a 30 y 90 días | Listo | **Pendiente** | Endpoints listos; falta la pantalla |
+| Chat de seguimiento (texto, fotos, audios y videos) | Listo | Listo | Pestaña "Seguimiento"; se abre al aprobar la postulación. Archivos directo a Cloudinary (migración 007) |
+| Encuestas de seguimiento a 30 y 90 días | Listo | Listo | Dentro del chat, cuando se cumplen 30 y 90 días desde que el refugio confirma la adopción |
 | Panel de métricas del refugio | Listo | **Pendiente** | `GET /seguimientos/metricas` ya calcula la tasa de devolución |
 | Guardados (favoritos) | No existe | Listo | Se guardan solo en el navegador (`localStorage`) |
-| Pruebas automatizadas | Parcial | No | 24 pruebas del motor de matching |
+| Pruebas automatizadas | Parcial | No | 24 pruebas del motor de matching y 19 del chat de seguimiento |
 
 **Datos en la base de datos compartida (Neon), al 1 de octubre de 2026:**
 
@@ -86,7 +87,7 @@ flowchart LR
     GW --> MAS["mascotas-service :8001<br/>catálogo y fotos"]
     GW --> MAT["matching-service :8002<br/>compatibilidad"]
     GW --> POS["postulaciones-service :8003<br/>solicitudes de adopción"]
-    GW --> SEG["seguimiento-service :8004<br/>encuestas y métricas"]
+    GW --> SEG["seguimiento-service :8004<br/>chat, encuestas y métricas"]
     MAS -->|"HTTP: ¿cuál es mi refugio?"| AUTH
     MAS --> CLD[("Cloudinary<br/>fotos")]
     AUTH --> SMTP[["Correo SMTP<br/>código de acceso"]]
@@ -105,7 +106,7 @@ flowchart LR
 | mascotas-service | 8001 | Publicar, editar, cambiar estado, subir y borrar fotos | `mascotas`, `fotos_mascota` | Pide su refugio a auth-service por HTTP | Martín |
 | matching-service | 8002 | Calcula la compatibilidad adoptante–mascota | `matches` | `perfiles_adoptante`, `mascotas`, `fotos_mascota` | Benjamín |
 | postulaciones-service | 8003 | Postular, aprobar o rechazar, confirmar la adopción | `postulaciones`, estado de `mascotas` | Perfiles, usuarios, refugios, `matches` | Martín |
-| seguimiento-service | 8004 | Encuestas a 30 y 90 días y métricas | `seguimientos_post_adopcion`, estado de `mascotas` | Postulaciones, mascotas, refugios | Benjamín |
+| seguimiento-service | 8004 | Chat adoptante-refugio, encuestas a 30 y 90 días y métricas | `seguimientos_post_adopcion`, `mensajes_seguimiento`, estado de `mascotas` | Postulaciones, mascotas, refugios | Benjamín |
 
 **Stack:**
 
@@ -468,7 +469,8 @@ Los servicios no guardan estado (salvo el contador de intentos de login), así q
 
 | Área | Situación actual | Qué hacer |
 |---|---|---|
-| Funcionalidad | Encuestas de seguimiento y panel de métricas sin pantalla (el backend está listo) | Construir ambas pantallas; cierran el objetivo de medir devoluciones |
+| Funcionalidad | Panel de métricas sin pantalla (el backend está listo) | Construirla; cierra el objetivo de medir devoluciones |
+| Funcionalidad | El chat de seguimiento busca mensajes nuevos cada 4 s y los límites de tamaño de los archivos solo los revisa el navegador | WebSockets si crece el uso; límites en un *upload preset* de Cloudinary |
 | Funcionalidad | "Guardados" vive solo en el navegador | Endpoint en el backend |
 | Funcionalidad | Solo la organización de prueba tiene correo, y el `.env` no configura SMTP: los refugios reales aún no pueden ingresar | Cargar correos verificados de la nómina y configurar SMTP |
 | Calidad | Pruebas automatizadas solo en el matching | Pruebas pytest de auth, postulaciones (flujo de aprobación), seguimiento y gateway, como pide la Definition of Done |

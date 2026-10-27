@@ -33,3 +33,25 @@ export function fechaCorta(iso: string): string {
 export function diasDesde(iso: string): number {
   return Math.floor((Date.now() - aFecha(iso).getTime()) / 86_400_000);
 }
+
+/** "14:32" — hora de un mensaje del chat. */
+export function horaCorta(iso: string): string {
+  return aFecha(iso).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Separador de días del chat: "Hoy", "Ayer" o "12 de octubre". */
+export function etiquetaDia(iso: string): string {
+  const fecha = aFecha(iso);
+  const hoy = new Date();
+  const ayer = new Date(hoy);
+  ayer.setDate(hoy.getDate() - 1);
+  if (fecha.toDateString() === hoy.toDateString()) return "Hoy";
+  if (fecha.toDateString() === ayer.toDateString()) return "Ayer";
+  return fechaCorta(iso);
+}
+
+/** "1:05" — duración de un audio o video. */
+export function duracionCorta(segundos: number): string {
+  const total = Math.max(0, Math.round(segundos));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}

@@ -90,7 +90,7 @@ Las claves viven **solo en el panel de Render** (pestaña **Environment** de cad
 | mascotas | `PORT=8001`, `DATABASE_URL`, `JWT_SECRET`, `AUTH_SERVICE_URL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` |
 | matching | `PORT=8002`, `DATABASE_URL`, `JWT_SECRET` |
 | postulaciones | `PORT=8003`, `DATABASE_URL`, `JWT_SECRET` |
-| seguimiento | `PORT=8004`, `DATABASE_URL`, `JWT_SECRET` |
+| seguimiento | `PORT=8004`, `DATABASE_URL`, `JWT_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (las mismas de mascotas; sin ellas el chat solo envía texto) |
 | api-gateway | `PORT=8080`, `JWT_SECRET`, `AUTH_SERVICE_URL`, `MASCOTAS_SERVICE_URL`, `MATCHING_SERVICE_URL`, `POSTULACIONES_SERVICE_URL`, `SEGUIMIENTO_SERVICE_URL`, `FRONTEND_URL` |
 | frontend | `VITE_API_URL`, `NODE_VERSION=22` |
 
@@ -106,6 +106,7 @@ Las claves viven **solo en el panel de Render** (pestaña **Environment** de cad
 - **`FRONTEND_URL`** es la lista de páginas que pueden llamar al gateway (CORS), separadas por coma. Hoy vale `https://frontend-zavd.onrender.com,http://localhost:5173`.
 - **`VITE_API_URL`** queda incluida en el código al compilar. Si cambia, hay que volver a publicar el frontend.
 - **Para cambiar una variable:** Environment → editar → **Save, rebuild, and deploy**.
+- **`SEGUIMIENTO_SIN_ESPERA` nunca va en Render.** Solo existe en los `.env` locales para probar las encuestas sin esperar 30 y 90 días; sin la variable, vale `false`.
 
 ---
 
@@ -178,6 +179,7 @@ En el gateway: `FRONTEND_URL` = `<URL del frontend>,http://localhost:5173` → *
 | La app carga mascotas | `FRONTEND_URL` del gateway (error de CORS en la consola del navegador) |
 | Iniciar sesión y navegar | Que `JWT_SECRET` sea igual en los 6 servicios |
 | Un refugio publica una mascota con foto | `AUTH_SERVICE_URL` y variables de Cloudinary en mascotas |
+| En Seguimiento, enviar una foto y un audio en el chat de una postulación aprobada | Variables de Cloudinary en seguimiento (si faltan, la app dice "El envío de archivos no está configurado en el servidor") |
 | Recargar una pantalla interna | La regla Rewrite del frontend |
 
 ---

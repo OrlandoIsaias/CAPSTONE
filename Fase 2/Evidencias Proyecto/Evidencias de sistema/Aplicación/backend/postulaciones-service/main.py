@@ -8,6 +8,7 @@ from typing import List, Optional
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.sql import func
 
 import models
 import schemas
@@ -467,6 +468,7 @@ def confirmar_adopcion(
         )
 
     mascota.estado = "adoptada"
+    postulacion.fecha_adopcion = func.now()
     db.commit()
     db.refresh(postulacion)
     db.refresh(mascota)

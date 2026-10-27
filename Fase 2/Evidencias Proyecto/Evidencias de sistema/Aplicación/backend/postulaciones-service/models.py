@@ -96,3 +96,6 @@ class Postulacion(Base):
     mascota_id = Column(Integer, ForeignKey("mascotas.id"), nullable=False)
     estado = Column(String, nullable=False, default="pendiente")
     fecha_postulacion = Column(DateTime, server_default=func.now())
+    # Se fija al confirmar la adopción; las encuestas de seguimiento cuentan
+    # sus 30 y 90 días desde aquí (migración 007).
+    fecha_adopcion = Column(DateTime)
