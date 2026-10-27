@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, MessageCircle } from "lucide-react";
 import {
   confirmarAdopcion,
   detallePostulacion,
@@ -293,6 +293,16 @@ export default function DetalleSolicitud() {
                 {solicitud.mascota_nombre} ya está en su nuevo hogar.
               </p>
             </div>
+          )}
+
+          {solicitud.estado === "aprobada" && (
+            <Link
+              to={`/seguimiento/${solicitud.id}`}
+              className="mt-3 flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold bg-[var(--color-morado-suave)] text-[var(--color-morado)] hover:brightness-95 active:scale-[0.98] transition-transform"
+            >
+              <MessageCircle size={17} strokeWidth={2.2} />
+              Abrir chat de seguimiento con {nombre}
+            </Link>
           )}
 
           {solicitud.estado === "rechazada" && (

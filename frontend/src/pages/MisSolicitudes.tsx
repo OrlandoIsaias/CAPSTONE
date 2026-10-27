@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, MessageCircle } from "lucide-react";
 import { misPostulaciones } from "../api/postulaciones";
 import { PantallaAdoptante } from "../components/BarraAdoptante";
 import { AvatarIniciales, EstadoPostulacionBadge } from "../components/Badges";
@@ -140,6 +140,13 @@ export default function MisSolicitudes() {
                         El refugio se comunicará pronto para coordinar la entrega.
                       </p>
                     ))}
+                  <Link
+                    to={`/seguimiento/${s.id}`}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-bold bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 active:scale-95 transition-all text-xs"
+                  >
+                    <MessageCircle size={16} strokeWidth={2.2} />
+                    Abrir chat de seguimiento
+                  </Link>
                 </div>
               )}
 
