@@ -1,8 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { CircleUserRound, FileText, Home, PawPrint } from "lucide-react";
+import { CircleUserRound, FileText, Home, MessageCircle, PawPrint } from "lucide-react";
 import type { ReactNode } from "react";
+import { useNoLeidos } from "../hooks/useNoLeidos";
+import { GloboNoLeidos } from "./GloboNoLeidos";
 
 type TabColor = "orange" | "emerald" | "blue" | "purple" | "indigo";
+
+const RUTA_SEGUIMIENTO = "/seguimiento";
 
 const PESTANAS: { to: string; etiqueta: string; icono: ReactNode; color: TabColor }[] = [
   { to: "/inicio", etiqueta: "Inicio", icono: <Home size={20} strokeWidth={1.8} />, color: "orange" },
@@ -17,6 +21,12 @@ const PESTANAS: { to: string; etiqueta: string; icono: ReactNode; color: TabColo
     etiqueta: "Solicitudes",
     icono: <FileText size={20} strokeWidth={1.8} />,
     color: "blue",
+  },
+  {
+    to: RUTA_SEGUIMIENTO,
+    etiqueta: "Seguimiento",
+    icono: <MessageCircle size={20} strokeWidth={1.8} />,
+    color: "purple",
   },
   {
     to: "/perfil-refugio",
@@ -50,6 +60,8 @@ const ESTILOS_PESTANA: Record<TabColor, { iconoActivo: string; textoActivo: stri
 };
 
 export function BarraRefugio() {
+  const noLeidos = useNoLeidos();
+
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-lg z-40">
       <div className="flex px-1 py-1">
@@ -64,13 +76,14 @@ export function BarraRefugio() {
               {({ isActive }) => (
                 <>
                   <span
-                    className={`w-10 h-8 rounded-xl flex items-center justify-center transition-all ${
+                    className={`relative w-10 h-8 rounded-xl flex items-center justify-center transition-all ${
                       isActive
                         ? estilo.iconoActivo
                         : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/60"
                     }`}
                   >
                     {p.icono}
+                    {p.to === RUTA_SEGUIMIENTO && <GloboNoLeidos total={noLeidos} />}
                   </span>
                   <span
                     className={`text-[11px] leading-none transition-colors ${

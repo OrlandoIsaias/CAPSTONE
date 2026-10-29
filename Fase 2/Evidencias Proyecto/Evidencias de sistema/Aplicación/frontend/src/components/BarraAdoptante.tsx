@@ -1,8 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { CircleUserRound, Heart, HeartHandshake, Home } from "lucide-react";
+import { CircleUserRound, Heart, HeartHandshake, Home, MessageCircle } from "lucide-react";
 import type { ReactNode } from "react";
+import { useNoLeidos } from "../hooks/useNoLeidos";
+import { GloboNoLeidos } from "./GloboNoLeidos";
 
-type TabColor = "orange" | "emerald" | "rose" | "indigo";
+type TabColor = "orange" | "emerald" | "rose" | "purple" | "indigo";
+
+const RUTA_SEGUIMIENTO = "/seguimiento";
 
 const PESTANAS: { to: string; etiqueta: string; icono: ReactNode; color: TabColor }[] = [
   { to: "/explorar", etiqueta: "Inicio", icono: <Home size={20} strokeWidth={1.8} />, color: "orange" },
@@ -13,6 +17,12 @@ const PESTANAS: { to: string; etiqueta: string; icono: ReactNode; color: TabColo
     color: "emerald",
   },
   { to: "/guardados", etiqueta: "Guardados", icono: <Heart size={20} strokeWidth={1.8} />, color: "rose" },
+  {
+    to: RUTA_SEGUIMIENTO,
+    etiqueta: "Seguimiento",
+    icono: <MessageCircle size={20} strokeWidth={1.8} />,
+    color: "purple",
+  },
   {
     to: "/perfil-adoptante",
     etiqueta: "Mi perfil",
@@ -34,6 +44,10 @@ const ESTILOS_PESTANA: Record<TabColor, { iconoActivo: string; textoActivo: stri
     iconoActivo: "bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-xs shadow-rose-500/30",
     textoActivo: "text-rose-600 font-bold",
   },
+  purple: {
+    iconoActivo: "bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white shadow-xs shadow-purple-600/30",
+    textoActivo: "text-purple-700 font-bold",
+  },
   indigo: {
     iconoActivo: "bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-xs shadow-indigo-600/30",
     textoActivo: "text-indigo-700 font-bold",
@@ -41,6 +55,8 @@ const ESTILOS_PESTANA: Record<TabColor, { iconoActivo: string; textoActivo: stri
 };
 
 export function BarraAdoptante() {
+  const noLeidos = useNoLeidos();
+
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-slate-200/80 shadow-lg z-50">
       <div className="flex px-1 py-1">
@@ -55,13 +71,14 @@ export function BarraAdoptante() {
               {({ isActive }) => (
                 <>
                   <span
-                    className={`w-10 h-8 rounded-xl flex items-center justify-center transition-all ${
+                    className={`relative w-10 h-8 rounded-xl flex items-center justify-center transition-all ${
                       isActive
                         ? estilo.iconoActivo
                         : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/60"
                     }`}
                   >
                     {p.icono}
+                    {p.to === RUTA_SEGUIMIENTO && <GloboNoLeidos total={noLeidos} />}
                   </span>
                   <span
                     className={`text-[11px] leading-none transition-colors ${

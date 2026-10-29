@@ -63,7 +63,7 @@ El núcleo del MVP funciona de punta a punta. El equipo trabaja en sprints desde
 - [x] Postulación, evaluación por el refugio y confirmación de la adopción
 - [x] Publicación en internet con despliegue automático
 - [ ] Envío del código por correo a los refugios reales (falta configurar el correo saliente y cargar sus direcciones)
-- [ ] Pantallas de las encuestas de seguimiento a 30 y 90 días (el backend ya está listo)
+- [x] Chat de seguimiento adoptante–refugio con fotos, audios y videos, y encuestas a 30 y 90 días
 - [ ] Panel de métricas del refugio (el backend ya calcula la tasa de devolución)
 - [ ] Pruebas automatizadas fuera del motor de compatibilidad
 - [ ] Instalación como app en el teléfono (PWA)
@@ -114,7 +114,7 @@ flowchart LR
 | mascotas-service | 8001 | Publicación de mascotas y fotos |
 | matching-service | 8002 | Cálculo de la compatibilidad |
 | postulaciones-service | 8003 | Postulaciones, aprobación y adopción |
-| seguimiento-service | 8004 | Encuestas a 30 y 90 días y métricas |
+| seguimiento-service | 8004 | Chat de seguimiento, encuestas a 30 y 90 días y métricas |
 
 La base de datos es una sola, compartida por todos los servicios, porque el futuro modelo de Machine Learning necesita cruzar datos de varias tablas sin procesos de integración adicionales. Más detalle en la [Guía del proyecto, sección 3](GUIA_DEL_PROYECTO.md#3-arquitectura).
 
