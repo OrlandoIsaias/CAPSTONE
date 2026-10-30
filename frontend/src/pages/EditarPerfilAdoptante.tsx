@@ -670,11 +670,13 @@ export default function EditarPerfilAdoptante() {
               </button>
             )}
             {primeraVez && paso < ULTIMO_PASO ? (
-              <button type="button" onClick={siguiente} className={botonPrincipal}>
+              <button key="siguiente" type="button" onClick={siguiente} className={botonPrincipal}>
                 Siguiente
               </button>
             ) : (
-              <button type="submit" disabled={guardando} className={botonPrincipal}>
+              // La key distinta evita que React reutilice el mismo botón al pasar
+              // al último paso: el clic de "Siguiente" lo enviaría como submit.
+              <button key="guardar" type="submit" disabled={guardando} className={botonPrincipal}>
                 {guardando && <Spinner />}
                 {guardando
                   ? "Guardando..."
