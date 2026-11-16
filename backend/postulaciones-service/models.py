@@ -99,3 +99,8 @@ class Postulacion(Base):
     # Se fija al confirmar la adopción; las encuestas de seguimiento cuentan
     # sus 30 y 90 días desde aquí (migración 007).
     fecha_adopcion = Column(DateTime)
+    # Compatibilidad congelada al postular (migración 011): matches se
+    # recalcula cada vez que el adoptante abre Recomendaciones o edita su
+    # cuestionario; aquí queda el puntaje con el que se postuló y decidió.
+    score_al_postular = Column(Numeric(4, 3))
+    desglose_al_postular = Column(JSONB)

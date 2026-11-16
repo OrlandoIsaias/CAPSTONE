@@ -87,18 +87,27 @@ def _contacto_refugio(refugio_id: int, db: Session) -> Optional[models.Refugio]:
     return db.query(models.Refugio).filter(models.Refugio.id == refugio_id).first()
 
 
-def _score_de(adoptante_id: int, mascota_id: int, db: Session) -> Optional[float]:
-    """El score vive en la tabla matches, que escribe Matching Service. Si el
-    adoptante nunca abrió la ficha de esa mascota no hay match calculado y
-    devolvemos None — el refugio verá "sin calcular" en vez de un 0 engañoso."""
-    fila = (
-        db.query(models.Match.score_compatibilidad)
+def _match_de(adoptante_id: int, mascota_id: int, db: Session):
+    """Cálculo vigente en matches (lo escribe Matching Service), o None si el
+    adoptante nunca abrió la ficha de esa mascota."""
+    return (
+        db.query(models.Match.score_compatibilidad, models.Match.desglose)
         .filter(
             models.Match.adoptante_id == adoptante_id,
             models.Match.mascota_id == mascota_id,
         )
         .first()
     )
+
+
+def _score_de(p: models.Postulacion, db: Session) -> Optional[float]:
+    """La compatibilidad de una postulación es la que quedó congelada al
+    postular (migración 011). Solo si no existe (no había cálculo en ese
+    momento) se usa el cálculo vigente. None = "sin calcular", nunca un 0
+    engañoso."""
+    if p.score_al_postular is not None:
+        return float(p.score_al_postular)
+    fila = _match_de(p.adoptante_id, p.mascota_id, db)
     return float(fila[0]) if fila and fila[0] is not None else None
 
 
@@ -125,7 +134,7 @@ def _a_postulacion_out(
         mascota_estado=mascota.estado,
         mascota_foto=_foto_principal(mascota),
         estado=p.estado,
-        score_compatibilidad=_score_de(p.adoptante_id, p.mascota_id, db),
+        score_compatibilidad=_score_de(p, db),
         fecha_postulacion=p.fecha_postulacion,
         adoptante_telefono=_telefono_adoptante(p.adoptante_id, db) if es_aprobada else None,
         refugio_nombre=refugio.nombre_refugio if refugio else None,
@@ -171,8 +180,19 @@ def _mapa_datos_adoptante(adoptante_ids: set, db: Session) -> dict:
     return {pid: (nombre, telefono) for pid, nombre, telefono in filas}
 
 
-def _mapa_scores(pares: set, db: Session) -> dict:
-    """{(adoptante_id, mascota_id): score}, en una sola consulta."""
+def _mapa_scores(postulaciones: list, db: Session) -> dict:
+    """{postulacion.id: score}: el congelado al postular y, solo para las que
+    no lo tienen, el vigente en matches (en una sola consulta)."""
+    resultado = {p.id: float(p.score_al_postular) for p in postulaciones if p.score_al_postular is not None}
+    sin_congelar = [p for p in postulaciones if p.score_al_postular is None]
+    vigentes = _mapa_scores_vigentes({(p.adoptante_id, p.mascota_id) for p in sin_congelar}, db)
+    for p in sin_congelar:
+        resultado[p.id] = vigentes.get((p.adoptante_id, p.mascota_id))
+    return resultado
+
+
+def _mapa_scores_vigentes(pares: set, db: Session) -> dict:
+    """{(adoptante_id, mascota_id): score} desde matches, en una sola consulta."""
     if not pares:
         return {}
     adoptante_ids = {a for a, _ in pares}
@@ -228,7 +248,15 @@ def crear_postulacion(
             detail="Ya tienes una postulación pendiente para esta mascota",
         )
 
-    nueva = models.Postulacion(adoptante_id=perfil.id, mascota_id=mascota.id, estado="pendiente")
+    # Se congela la compatibilidad con la que se postula (migración 011).
+    calculo = _match_de(perfil.id, mascota.id, db)
+    nueva = models.Postulacion(
+        adoptante_id=perfil.id,
+        mascota_id=mascota.id,
+        estado="pendiente",
+        score_al_postular=calculo[0] if calculo else None,
+        desglose_al_postular=calculo[1] if calculo else None,
+    )
     db.add(nueva)
     try:
         db.commit()
@@ -266,7 +294,7 @@ def mis_postulaciones(
     # está en `perfil`, ni eso hace falta pedirlo de nuevo).
     mascotas = _mapa_mascotas({p.mascota_id for p in postulaciones}, db)
     refugios = _mapa_refugios({m.refugio_id for m in mascotas.values()}, db)
-    scores = _mapa_scores({(perfil.id, p.mascota_id) for p in postulaciones}, db)
+    scores = _mapa_scores(postulaciones, db)
     nombre_propio = _nombre_adoptante(perfil.id, db)
 
     resultado = []
@@ -288,7 +316,7 @@ def mis_postulaciones(
                 mascota_estado=mascota.estado,
                 mascota_foto=_foto_principal(mascota),
                 estado=p.estado,
-                score_compatibilidad=scores.get((perfil.id, p.mascota_id)),
+                score_compatibilidad=scores.get(p.id),
                 fecha_postulacion=p.fecha_postulacion,
                 adoptante_telefono=perfil.telefono if es_aprobada else None,
                 refugio_nombre=refugio.nombre_refugio if refugio else None,
@@ -323,7 +351,7 @@ def postulaciones_recibidas(
     # cambio es siempre el mismo (el autenticado) — sin consulta extra.
     mascotas = _mapa_mascotas({p.mascota_id for p in postulaciones}, db)
     datos_adoptante = _mapa_datos_adoptante({p.adoptante_id for p in postulaciones}, db)
-    scores = _mapa_scores({(p.adoptante_id, p.mascota_id) for p in postulaciones}, db)
+    scores = _mapa_scores(postulaciones, db)
 
     resultado = []
     for p in postulaciones:
@@ -342,7 +370,7 @@ def postulaciones_recibidas(
                 mascota_estado=mascota.estado,
                 mascota_foto=_foto_principal(mascota),
                 estado=p.estado,
-                score_compatibilidad=scores.get((p.adoptante_id, p.mascota_id)),
+                score_compatibilidad=scores.get(p.id),
                 fecha_postulacion=p.fecha_postulacion,
                 adoptante_telefono=telefono if es_aprobada else None,
                 refugio_nombre=refugio.nombre_refugio,
@@ -516,14 +544,11 @@ def detalle_postulacion(
         .first()
     )
 
-    desglose = (
-        db.query(models.Match.desglose)
-        .filter(
-            models.Match.adoptante_id == postulacion.adoptante_id,
-            models.Match.mascota_id == postulacion.mascota_id,
-        )
-        .scalar()
-    )
+    # El desglose con el que se postuló (congelado); el vigente solo si no existe.
+    desglose = postulacion.desglose_al_postular
+    if desglose is None:
+        calculo = _match_de(postulacion.adoptante_id, postulacion.mascota_id, db)
+        desglose = calculo[1] if calculo else None
 
     base = _a_postulacion_out(postulacion, mascota, db)
     respuestas = {
