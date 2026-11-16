@@ -8,7 +8,7 @@ Uso (desde Aplicación/, con el venv de auth-service activo):
 
 - Idempotente: una mascota cuya clave_seed ya existe se omite.
 - Todo o nada: si una fila es inválida no se inserta ninguna.
-- Solo toca mascotas con origen = 'seed'; nunca las publicadas por un refugio.
+- Solo toca mascotas de ejemplo (con clave_seed); nunca las publicadas por un refugio.
 """
 import argparse
 import csv
@@ -23,7 +23,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from comun import CSV_MASCOTAS, RAIZ, motor
 
-# Mismos catálogos que los CHECK de la migración 006.
+# Mismos valores que las tablas catálogo de la BD (migración 010).
 NIVELES = {"bajo", "medio", "alto"}
 ESPACIOS = {"departamento", "casa_patio", "casa_grande"}
 TOLERANCIAS = {"menos_2h", "2_4h", "4_8h", "mas_8h"}
@@ -103,7 +103,6 @@ def leer_csv(ruta: Path, refugios_por_id: dict) -> tuple[list, list]:
                     "microchip": BOOLEANOS[m["microchip"]],
                     "estado": "disponible",
                     "fecha_publicacion": ahora - timedelta(days=int(m["dias_publicada"])),
-                    "origen": "seed",
                     "clave_seed": m["clave_seed"],
                 })
             except (KeyError, ValueError) as e:
@@ -118,9 +117,9 @@ def leer_csv(ruta: Path, refugios_por_id: dict) -> tuple[list, list]:
 
 def resumen(conexion) -> str:
     fila = conexion.execute(text("""
-        SELECT count(*) FILTER (WHERE origen = 'seed') AS seed,
-               count(*) FILTER (WHERE origen = 'manual') AS manual,
-               count(DISTINCT refugio_id) FILTER (WHERE origen = 'seed') AS refugios_seed
+        SELECT count(*) FILTER (WHERE clave_seed IS NOT NULL) AS seed,
+               count(*) FILTER (WHERE clave_seed IS NULL) AS manual,
+               count(DISTINCT refugio_id) FILTER (WHERE clave_seed IS NOT NULL) AS refugios_seed
         FROM mascotas
     """)).one()
     return (f"En la BD: {fila.seed} mascotas seed en {fila.refugios_seed} refugios "
@@ -181,22 +180,22 @@ def borrar(args):
     with motor().begin() as conexion:
         postulaciones = conexion.execute(text("""
             SELECT count(*) FROM postulaciones p JOIN mascotas m ON m.id = p.mascota_id
-            WHERE m.origen = 'seed'
+            WHERE m.clave_seed IS NOT NULL
         """)).scalar()
         if postulaciones:
             raise SystemExit(f"No se borró nada: hay {postulaciones} postulaciones reales a mascotas seed.")
         fotos = conexion.execute(text("""
             SELECT count(*) FROM fotos_mascota f JOIN mascotas m ON m.id = f.mascota_id
-            WHERE m.origen = 'seed'
+            WHERE m.clave_seed IS NOT NULL
         """)).scalar()
         if fotos:
             raise SystemExit(f"No se borró nada: {fotos} mascotas seed tienen fotos en Cloudinary; "
                              "bórralas primero con: python seed/fotos_mascotas.py --borrar --confirmar")
         # matches son puntajes calculados por matching-service; se recalculan solos.
         matches = conexion.execute(text("""
-            DELETE FROM matches WHERE mascota_id IN (SELECT id FROM mascotas WHERE origen = 'seed')
+            DELETE FROM matches WHERE mascota_id IN (SELECT id FROM mascotas WHERE clave_seed IS NOT NULL)
         """)).rowcount
-        borradas = conexion.execute(text("DELETE FROM mascotas WHERE origen = 'seed'")).rowcount
+        borradas = conexion.execute(text("DELETE FROM mascotas WHERE clave_seed IS NOT NULL")).rowcount
         print(f"Borradas: {borradas} mascotas seed y {matches} puntajes de compatibilidad asociados.")
         print(resumen(conexion))
 
@@ -206,7 +205,7 @@ def main():
     parser.add_argument("--csv", type=Path, default=CSV_MASCOTAS)
     parser.add_argument("--limite", type=int, help="Carga solo las primeras N filas del CSV")
     parser.add_argument("--dry-run", action="store_true", help="Valida e inserta dentro de una transacción que se deshace")
-    parser.add_argument("--borrar", action="store_true", help="Borra todas las mascotas con origen = 'seed'")
+    parser.add_argument("--borrar", action="store_true", help="Borra todas las mascotas de ejemplo (con clave_seed)")
     parser.add_argument("--confirmar", action="store_true", help="Requerido junto con --borrar")
     args = parser.parse_args()
 

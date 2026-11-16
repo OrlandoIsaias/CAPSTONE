@@ -28,7 +28,7 @@ python seed/cargar_mascotas.py --borrar --confirmar   # elimina solo las mascota
 `--borrar` se detiene si alguna mascota seed tiene postulaciones reales o fotos
 en Cloudinary, y elimina los puntajes de compatibilidad (`matches`) asociados,
 que matching-service recalcula solo. Las mascotas publicadas por refugios
-(`origen = 'manual'`) nunca se tocan.
+(sin `clave_seed`) nunca se tocan.
 
 ## Fotos
 
@@ -87,7 +87,7 @@ distintos.
   ejecuciones producen el mismo CSV, y agregar o quitar refugios no altera las
   mascotas de los demás.
 - **Trazable**: cada mascota tiene una `clave_seed` estable (`seed-<rut>-<n>`) y
-  en la BD queda con `origen = 'seed'` (migración 004), lo que permite recargar
+  esa clave las distingue en la BD de las publicadas por refugios, lo que permite recargar
   sin duplicar y eliminarlas en bloque.
 - **Catálogos cerrados**: especies y razas son exactamente las del formulario de
   publicación (`frontend/src/utils/opcionesMascota.ts`).

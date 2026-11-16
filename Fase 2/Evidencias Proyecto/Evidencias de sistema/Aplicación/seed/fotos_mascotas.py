@@ -90,7 +90,7 @@ def mascotas_sin_foto(conexion, rangos: dict) -> list[dict]:
     filas = conexion.execute(text("""
         SELECT m.id, m.clave_seed, m.nombre, m.especie, m.raza, m.edad, r.nombre_refugio AS refugio
         FROM mascotas m JOIN refugios r ON r.id = m.refugio_id
-        WHERE m.origen = 'seed' AND NOT EXISTS (SELECT 1 FROM fotos_mascota f WHERE f.mascota_id = m.id)
+        WHERE m.clave_seed IS NOT NULL AND NOT EXISTS (SELECT 1 FROM fotos_mascota f WHERE f.mascota_id = m.id)
         ORDER BY m.clave_seed
     """)).mappings()
     return [{**f, "etapa": etapa_de(f["edad"], rangos)} for f in filas]
@@ -419,7 +419,7 @@ def borrar(args):
     with motor().begin() as conexion:
         filas = conexion.execute(text("""
             DELETE FROM fotos_mascota
-            WHERE url LIKE :carpeta AND mascota_id IN (SELECT id FROM mascotas WHERE origen = 'seed')
+            WHERE url LIKE :carpeta AND mascota_id IN (SELECT id FROM mascotas WHERE clave_seed IS NOT NULL)
         """), {"carpeta": f"%/{CARPETA_CLOUDINARY}/%"}).rowcount
     print(f"Borradas: {borradas_nube} imágenes en Cloudinary y {filas} registros de fotos en la BD.")
 

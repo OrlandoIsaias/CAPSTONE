@@ -52,7 +52,7 @@ class Mascota(Base):
     notas_salud = Column(Text)
     estado = Column(String, nullable=False, default="disponible")
     fecha_publicacion = Column(DateTime, server_default=func.now())
-    origen = Column(String, nullable=False, default="manual")
+    # Solo las mascotas de ejemplo (seed) tienen clave; NULL = publicada por un refugio.
     clave_seed = Column(String, unique=True)
 
     fotos = relationship("FotoMascota", back_populates="mascota", cascade="all, delete-orphan")

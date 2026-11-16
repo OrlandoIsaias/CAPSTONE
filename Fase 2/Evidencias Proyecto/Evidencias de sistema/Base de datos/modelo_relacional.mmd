@@ -1,0 +1,298 @@
+erDiagram
+    usuarios {
+        int id PK
+        varchar nombre
+        varchar email UK
+        varchar password_hash "opcional"
+        varchar rol FK
+        timestamp fecha_registro
+        varchar estado FK
+    }
+    codigos_verificacion {
+        int id PK
+        int usuario_id FK
+        varchar codigo_hash
+        timestamp expira_en
+        int intentos
+        boolean usado
+        timestamp creado_en
+    }
+    perfiles_adoptante {
+        int id PK
+        int usuario_id FK, UK
+        varchar espacio_disponible FK
+        varchar experiencia_previa FK
+        varchar telefono "opcional"
+        varchar foto_perfil "opcional"
+        varchar especie_preferida FK
+        varchar restriccion_vivienda FK
+        varchar horas_sola FK
+        varchar tiempo_actividad FK
+        varchar ambiente_hogar FK
+        varchar ninos_hogar FK
+        boolean tiene_perros
+        boolean tiene_gatos
+        varchar alergias FK
+        varchar acepta_cuidados FK
+        varchar sexo_preferido FK
+    }
+    perfil_tamano_preferido {
+        int perfil_id PK, FK
+        varchar tamano PK, FK
+    }
+    perfil_etapa_preferida {
+        int perfil_id PK, FK
+        varchar etapa PK, FK
+    }
+    refugios {
+        int id PK
+        int usuario_id FK, UK
+        varchar nombre_refugio
+        varchar direccion "opcional"
+        varchar telefono_contacto "opcional"
+        int organizacion_id FK, UK
+    }
+    organizaciones_validadas {
+        int id PK
+        int rut UK
+        char dv
+        varchar razon_social
+        text actividad "opcional"
+        varchar direccion "opcional"
+        date fecha_inscripcion "opcional"
+        varchar correo "opcional"
+        boolean es_prueba
+        timestamp fecha_carga
+        timestamp fecha_actualizacion
+        int comuna_id FK
+    }
+    comunas {
+        int id PK
+        varchar nombre "unico con region_id"
+        int region_id FK "unico con nombre"
+    }
+    regiones {
+        int id PK
+        varchar nombre UK
+    }
+    mascotas {
+        int id PK
+        int refugio_id FK
+        varchar nombre
+        varchar especie FK
+        varchar raza FK
+        int edad
+        varchar nivel_energia FK
+        varchar nivel_experiencia_requerida FK
+        varchar espacio_minimo_requerido FK
+        varchar estado FK
+        timestamp fecha_publicacion
+        text cuidados_especiales "opcional"
+        varchar origen
+        varchar clave_seed UK
+        varchar sexo FK
+        varchar tamano FK
+        varchar tolerancia_soledad FK
+        varchar temperamento FK
+        varchar convivencia_ninos FK
+        boolean convive_perros "opcional"
+        boolean convive_gatos "opcional"
+        varchar nivel_cuidados FK
+        boolean esterilizado "opcional"
+        boolean vacunas_al_dia "opcional"
+        boolean desparasitado "opcional"
+        boolean microchip "opcional"
+        text notas_salud "opcional"
+    }
+    fotos_mascota {
+        int id PK
+        int mascota_id FK
+        varchar url
+        boolean es_principal
+        int orden "opcional"
+    }
+    especies {
+        varchar codigo PK
+        varchar nombre
+    }
+    razas {
+        varchar especie PK, FK
+        varchar nombre PK
+    }
+    tamanos {
+        varchar codigo PK
+        varchar nombre
+    }
+    etapas_vida {
+        varchar codigo PK
+        varchar nombre
+    }
+    matches {
+        int id PK
+        int adoptante_id FK "unico con mascota_id"
+        int mascota_id FK "unico con adoptante_id"
+        numeric score_compatibilidad "opcional"
+        timestamp fecha_calculo
+        jsonb desglose "opcional"
+    }
+    postulaciones {
+        int id PK
+        int adoptante_id FK
+        int mascota_id FK
+        varchar estado FK
+        timestamp fecha_postulacion
+        timestamp fecha_adopcion "opcional"
+    }
+    seguimientos_post_adopcion {
+        int id PK
+        int postulacion_id FK "unico con dias_transcurridos"
+        int dias_transcurridos FK "unico con postulacion_id"
+        varchar resultado FK
+        text motivo_devolucion "opcional"
+        timestamp fecha_respuesta "opcional"
+    }
+    mensajes_seguimiento {
+        int id PK
+        int postulacion_id FK
+        int autor_usuario_id FK
+        varchar tipo FK
+        text texto "opcional"
+        varchar media_public_id "opcional"
+        numeric duracion_seg "opcional"
+        timestamp creado_en
+        timestamp leido_en "opcional"
+    }
+    aceptaciones_cuidado {
+        varchar codigo PK
+        varchar nombre
+    }
+    ambientes_hogar {
+        varchar codigo PK
+        varchar nombre
+    }
+    convivencias_ninos {
+        varchar codigo PK
+        varchar nombre
+    }
+    estados_mascota {
+        varchar codigo PK
+        varchar nombre
+    }
+    estados_postulacion {
+        varchar codigo PK
+        varchar nombre
+    }
+    estados_usuario {
+        varchar codigo PK
+        varchar nombre
+    }
+    experiencias_previas {
+        varchar codigo PK
+        varchar nombre
+    }
+    hitos_seguimiento {
+        int dias PK
+        varchar nombre
+    }
+    niveles {
+        varchar codigo PK
+        varchar nombre
+    }
+    niveles_cuidado {
+        varchar codigo PK
+        varchar nombre
+    }
+    rangos_horas_sola {
+        varchar codigo PK
+        varchar nombre
+    }
+    restricciones_vivienda {
+        varchar codigo PK
+        varchar nombre
+    }
+    resultados_seguimiento {
+        varchar codigo PK
+        varchar nombre
+    }
+    roles {
+        varchar codigo PK
+        varchar nombre
+    }
+    sexos {
+        varchar codigo PK
+        varchar nombre
+    }
+    situaciones_ninos {
+        varchar codigo PK
+        varchar nombre
+    }
+    temperamentos {
+        varchar codigo PK
+        varchar nombre
+    }
+    tiempos_actividad {
+        varchar codigo PK
+        varchar nombre
+    }
+    tipos_alergia {
+        varchar codigo PK
+        varchar nombre
+    }
+    tipos_espacio {
+        varchar codigo PK
+        varchar nombre
+    }
+    tipos_mensaje {
+        varchar codigo PK
+        varchar nombre
+    }
+
+    estados_usuario ||--o{ usuarios : "estado"
+    roles ||--o{ usuarios : "rol"
+    usuarios ||--o{ codigos_verificacion : "verifica"
+    aceptaciones_cuidado |o--o{ perfiles_adoptante : "acepta_cuidados"
+    ambientes_hogar |o--o{ perfiles_adoptante : "ambiente_hogar"
+    especies |o--o{ perfiles_adoptante : "especie preferida"
+    experiencias_previas |o--o{ perfiles_adoptante : "experiencia_previa"
+    rangos_horas_sola |o--o{ perfiles_adoptante : "horas_sola"
+    restricciones_vivienda |o--o{ perfiles_adoptante : "restriccion_vivienda"
+    sexos |o--o{ perfiles_adoptante : "sexo_preferido"
+    situaciones_ninos |o--o{ perfiles_adoptante : "ninos_hogar"
+    tiempos_actividad |o--o{ perfiles_adoptante : "tiempo_actividad"
+    tipos_alergia |o--o{ perfiles_adoptante : "alergias"
+    tipos_espacio |o--o{ perfiles_adoptante : "espacio_disponible"
+    usuarios ||--o| perfiles_adoptante : "perfil de"
+    perfiles_adoptante ||--o{ perfil_tamano_preferido : "prefiere"
+    tamanos ||--o{ perfil_tamano_preferido : "tamano"
+    etapas_vida ||--o{ perfil_etapa_preferida : "etapa"
+    perfiles_adoptante ||--o{ perfil_etapa_preferida : "prefiere"
+    organizaciones_validadas ||--o| refugios : "valida"
+    usuarios ||--o| refugios : "cuenta de"
+    comunas |o--o{ organizaciones_validadas : "ubicada en"
+    regiones ||--o{ comunas : "pertenece a"
+    convivencias_ninos |o--o{ mascotas : "convivencia_ninos"
+    especies ||--o{ mascotas : "es de"
+    estados_mascota ||--o{ mascotas : "estado"
+    niveles ||--o{ mascotas : "nivel_experiencia_requerida"
+    niveles ||--o{ mascotas : "nivel_energia"
+    niveles_cuidado ||--o{ mascotas : "nivel_cuidados"
+    rangos_horas_sola ||--o{ mascotas : "tolerancia_soledad"
+    razas |o--o{ mascotas : "es de raza"
+    refugios ||--o{ mascotas : "publica"
+    sexos ||--o{ mascotas : "sexo"
+    tamanos |o--o{ mascotas : "tamano"
+    temperamentos ||--o{ mascotas : "temperamento"
+    tipos_espacio ||--o{ mascotas : "espacio_minimo_requerido"
+    mascotas ||--o{ fotos_mascota : "foto de"
+    especies ||--o{ razas : "de la especie"
+    mascotas ||--o{ matches : "compara con"
+    perfiles_adoptante ||--o{ matches : "calcula para"
+    estados_postulacion ||--o{ postulaciones : "estado"
+    mascotas ||--o{ postulaciones : "a la mascota"
+    perfiles_adoptante ||--o{ postulaciones : "postula"
+    hitos_seguimiento ||--o{ seguimientos_post_adopcion : "dias_transcurridos"
+    postulaciones ||--o{ seguimientos_post_adopcion : "sigue"
+    resultados_seguimiento |o--o{ seguimientos_post_adopcion : "resultado"
+    postulaciones ||--o{ mensajes_seguimiento : "chat de"
+    tipos_mensaje ||--o{ mensajes_seguimiento : "tipo"
+    usuarios ||--o{ mensajes_seguimiento : "escrito por"
