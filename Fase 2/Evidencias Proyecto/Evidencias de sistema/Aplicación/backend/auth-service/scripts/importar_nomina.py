@@ -22,12 +22,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from database import engine  # noqa: E402
 from rut import calcular_dv  # noqa: E402
 
+# La columna "UNIDAD SII" del Excel se ignora: el sistema no la usa (3FN,
+# migración 009). Comuna y región se guardan en sus propias tablas.
 COLUMNAS = {
     "rut": "RUT",
     "dv": "DV",
     "razon_social": "NOMBRE O RAZON SOCIAL",
     "actividad": "ACTIVIDAD",
-    "unidad_sii": "UNIDAD SII",
     "direccion": "DIRECCION",
     "comuna": "COMUNA",
     "fecha_inscripcion": "FECHA INSCRIPCION",
@@ -37,19 +38,28 @@ COLUMNAS = {
 OBLIGATORIAS = {"rut", "dv", "razon_social"}
 REGEX_CORREO = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
+SQL_REGION = text("""
+    INSERT INTO regiones (nombre) VALUES (:region)
+    ON CONFLICT (nombre) DO UPDATE SET nombre = EXCLUDED.nombre
+    RETURNING id
+""")
+SQL_COMUNA = text("""
+    INSERT INTO comunas (nombre, region_id) VALUES (:comuna, :region_id)
+    ON CONFLICT (nombre, region_id) DO UPDATE SET nombre = EXCLUDED.nombre
+    RETURNING id
+""")
+
 SQL_UPSERT = text("""
     INSERT INTO organizaciones_validadas
-        (rut, dv, razon_social, actividad, unidad_sii, direccion, comuna, region, fecha_inscripcion, correo)
+        (rut, dv, razon_social, actividad, direccion, comuna_id, fecha_inscripcion, correo)
     VALUES
-        (:rut, :dv, :razon_social, :actividad, :unidad_sii, :direccion, :comuna, :region, :fecha_inscripcion, :correo)
+        (:rut, :dv, :razon_social, :actividad, :direccion, :comuna_id, :fecha_inscripcion, :correo)
     ON CONFLICT (rut) DO UPDATE SET
         dv = EXCLUDED.dv,
         razon_social = EXCLUDED.razon_social,
         actividad = EXCLUDED.actividad,
-        unidad_sii = EXCLUDED.unidad_sii,
         direccion = EXCLUDED.direccion,
-        comuna = EXCLUDED.comuna,
-        region = EXCLUDED.region,
+        comuna_id = EXCLUDED.comuna_id,
         fecha_inscripcion = EXCLUDED.fecha_inscripcion,
         correo = COALESCE(EXCLUDED.correo, organizaciones_validadas.correo),
         fecha_actualizacion = now()
@@ -114,7 +124,6 @@ def leer_filas(ruta: Path) -> tuple[list[dict], list[str]]:
                 "dv": dv,
                 "razon_social": razon_social,
                 "actividad": _texto(crudo.get("actividad")),
-                "unidad_sii": _texto(crudo.get("unidad_sii")),
                 "direccion": _texto(crudo.get("direccion")),
                 "comuna": _texto(crudo.get("comuna")),
                 "region": _texto(crudo.get("region")),
@@ -152,6 +161,13 @@ def main():
     insertadas = actualizadas = 0
     with engine.begin() as conexion:
         for registro in registros:
+            comuna, region = registro.pop("comuna"), registro.pop("region")
+            registro["comuna_id"] = None
+            if comuna and region:
+                region_id = conexion.execute(SQL_REGION, {"region": region}).scalar()
+                registro["comuna_id"] = conexion.execute(
+                    SQL_COMUNA, {"comuna": comuna, "region_id": region_id}
+                ).scalar()
             if conexion.execute(SQL_UPSERT, registro).scalar():
                 insertadas += 1
             else:

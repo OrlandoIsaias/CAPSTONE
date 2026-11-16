@@ -149,7 +149,6 @@ def crear_seguimiento(
         models.MensajeSeguimiento(
             postulacion_id=postulacion.id,
             autor_usuario_id=usuario_actual.id,
-            autor_rol="adoptante",
             tipo="encuesta",
             texto=encuestas.resumen(datos.dias_transcurridos, datos.resultado, datos.motivo_devolucion),
         )
@@ -514,7 +513,6 @@ def enviar_mensaje(
     mensaje = models.MensajeSeguimiento(
         postulacion_id=postulacion_id,
         autor_usuario_id=usuario_actual.id,
-        autor_rol=usuario_actual.rol,
         tipo=datos.tipo,
         texto=datos.texto,
         media_public_id=datos.media_public_id if datos.tipo != "texto" else None,

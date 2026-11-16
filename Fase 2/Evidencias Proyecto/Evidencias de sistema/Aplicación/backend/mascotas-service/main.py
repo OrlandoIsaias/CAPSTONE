@@ -51,6 +51,18 @@ def _verificar_dueno(mascota: models.Mascota, refugio_id: int):
     )
 
 
+def _verificar_raza(datos: schemas.MascotaIn, db: Session):
+  # La FK (especie, raza) -> razas lo garantiza en la BD; aquí se valida
+  # antes para responder 422 con un mensaje claro en vez de un 500.
+  if datos.raza is None:
+    return
+  if db.get(models.Raza, (datos.especie, datos.raza)) is None:
+    raise HTTPException(
+        status_code=422,
+        detail=f"La raza '{datos.raza}' no está en el catálogo de {datos.especie.lower()}s",
+    )
+
+
 # ---------- Endpoints públicos ----------
 
 
@@ -121,6 +133,7 @@ def crear_mascota(
     db: Session = Depends(get_db),
 ):
   refugio_id = clients.obtener_refugio_id(credentials.credentials)
+  _verificar_raza(datos, db)
   nueva_mascota = models.Mascota(refugio_id=refugio_id, **datos.model_dump())
   db.add(nueva_mascota)
   db.commit()
@@ -150,6 +163,7 @@ def actualizar_mascota(
 
   refugio_id = clients.obtener_refugio_id(credentials.credentials)
   _verificar_dueno(mascota, refugio_id)
+  _verificar_raza(datos, db)
 
   for campo, valor in datos.model_dump().items():
     setattr(mascota, campo, valor)

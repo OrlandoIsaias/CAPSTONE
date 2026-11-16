@@ -187,9 +187,11 @@ def generar_mascota(rng: random.Random, config: dict, nombres_usados: set) -> di
 def leer_refugios() -> list:
     with motor().connect() as conexion:
         return conexion.execute(text("""
-            SELECT r.id AS refugio_id, o.rut, o.dv, r.nombre_refugio, o.actividad, o.region
+            SELECT r.id AS refugio_id, o.rut, o.dv, r.nombre_refugio, o.actividad, reg.nombre AS region
             FROM refugios r
             JOIN organizaciones_validadas o ON o.id = r.organizacion_id
+            LEFT JOIN comunas c ON c.id = o.comuna_id
+            LEFT JOIN regiones reg ON reg.id = c.region_id
             WHERE NOT o.es_prueba
             ORDER BY o.rut
         """)).all()
