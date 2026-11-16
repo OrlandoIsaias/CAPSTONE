@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -57,13 +56,59 @@ class PerfilAdoptante(Base):
     acepta_cuidados = Column(String)
     # Preferencias: NULL = me da igual.
     especie_preferida = Column(String)  # Perro | Gato
-    tamanos_preferidos = Column(ARRAY(String))
-    etapas_preferidas = Column(ARRAY(String))
     sexo_preferido = Column(String)
     telefono = Column(String)
     foto_perfil = Column(String)  # URL de Cloudinary; nullable, la columna ya existe en la BD
 
     usuario = relationship("Usuario", back_populates="perfil_adoptante")
+    # Tamaños y etapas preferidas viven en tablas puente (1FN: un valor por
+    # fila). Sin filas = me da igual.
+    _tamanos = relationship(
+        "PerfilTamanoPreferido", cascade="all, delete-orphan", lazy="selectin"
+    )
+    _etapas = relationship(
+        "PerfilEtapaPreferida", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    # Propiedades con la misma forma que las antiguas columnas de arreglo
+    # (lista o None), para que la API y el frontend no cambien.
+    @property
+    def tamanos_preferidos(self):
+        return [t.tamano for t in self._tamanos] or None
+
+    @tamanos_preferidos.setter
+    def tamanos_preferidos(self, valores):
+        actuales = {t.tamano: t for t in self._tamanos}
+        self._tamanos = [
+            actuales.get(v) or PerfilTamanoPreferido(tamano=v) for v in dict.fromkeys(valores or [])
+        ]
+
+    @property
+    def etapas_preferidas(self):
+        return [e.etapa for e in self._etapas] or None
+
+    @etapas_preferidas.setter
+    def etapas_preferidas(self, valores):
+        # Reutiliza las filas que ya existen: reemplazarlas por objetos nuevos
+        # con la misma PK haría que el INSERT choque antes del DELETE.
+        actuales = {e.etapa: e for e in self._etapas}
+        self._etapas = [
+            actuales.get(v) or PerfilEtapaPreferida(etapa=v) for v in dict.fromkeys(valores or [])
+        ]
+
+
+class PerfilTamanoPreferido(Base):
+    __tablename__ = "perfil_tamano_preferido"
+
+    perfil_id = Column(Integer, ForeignKey("perfiles_adoptante.id", ondelete="CASCADE"), primary_key=True)
+    tamano = Column(String, primary_key=True)  # FK a tamanos(codigo) en la BD
+
+
+class PerfilEtapaPreferida(Base):
+    __tablename__ = "perfil_etapa_preferida"
+
+    perfil_id = Column(Integer, ForeignKey("perfiles_adoptante.id", ondelete="CASCADE"), primary_key=True)
+    etapa = Column(String, primary_key=True)  # FK a etapas_vida(codigo) en la BD
 
 
 class OrganizacionValidada(Base):

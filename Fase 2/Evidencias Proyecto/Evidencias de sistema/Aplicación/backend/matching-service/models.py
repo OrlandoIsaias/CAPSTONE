@@ -12,7 +12,7 @@ Matching Service es DUEÑO de la tabla matches (la escribe); las otras dos
 las trata como solo lectura.
 """
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -36,9 +36,34 @@ class PerfilAdoptante(Base):
     alergias = Column(String)
     acepta_cuidados = Column(String)
     especie_preferida = Column(String)  # Perro | Gato | NULL = sin preferencia
-    tamanos_preferidos = Column(ARRAY(String))
-    etapas_preferidas = Column(ARRAY(String))
     sexo_preferido = Column(String)
+
+    # Tablas puente (1FN), solo lectura aquí; auth-service las escribe.
+    _tamanos = relationship("PerfilTamanoPreferido", lazy="selectin", viewonly=True)
+    _etapas = relationship("PerfilEtapaPreferida", lazy="selectin", viewonly=True)
+
+    # Misma forma que las antiguas columnas de arreglo: lista o None (me da igual).
+    @property
+    def tamanos_preferidos(self):
+        return [t.tamano for t in self._tamanos] or None
+
+    @property
+    def etapas_preferidas(self):
+        return [e.etapa for e in self._etapas] or None
+
+
+class PerfilTamanoPreferido(Base):
+    __tablename__ = "perfil_tamano_preferido"
+
+    perfil_id = Column(Integer, ForeignKey("perfiles_adoptante.id"), primary_key=True)
+    tamano = Column(String, primary_key=True)
+
+
+class PerfilEtapaPreferida(Base):
+    __tablename__ = "perfil_etapa_preferida"
+
+    perfil_id = Column(Integer, ForeignKey("perfiles_adoptante.id"), primary_key=True)
+    etapa = Column(String, primary_key=True)
 
 
 class Mascota(Base):
