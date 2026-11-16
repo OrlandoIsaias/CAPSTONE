@@ -1,18 +1,19 @@
 // HouseFound - modelo de datos relacional (PostgreSQL en Neon)
-// Generado desde el esquema real. Normalizado en 3FN (migraciones 008 y 009)
-// y con cada lista de valores en su propia tabla catalogo (migracion 010).
+// Generado desde el esquema real. Normalizado en 3FN (migraciones 008 y 009) y ajustado a las reglas del negocio (011).
+// Las listas cerradas de valores (estados, roles, niveles, etc.) se declaran con CHECK: se ven como nota en cada columna.
+// Colores: azul = cuentas y refugios, verde = adoptante, naranjo = ficha de mascotas, morado = compatibilidad y adopcion.
 
-Table usuarios {
+Table usuarios [headercolor: #2E86C1] {
   id int [pk, increment]
   nombre varchar [not null]
   email varchar [unique]
   password_hash varchar
-  rol varchar [not null]
+  rol varchar [not null, note: 'CHECK: adoptante | refugio']
   fecha_registro timestamp [not null, default: `now()`]
-  estado varchar [not null, default: 'activo']
+  estado varchar [not null, default: 'activo', note: 'CHECK: pendiente | activo']
 }
 
-Table codigos_verificacion {
+Table codigos_verificacion [headercolor: #2E86C1] {
   id int [pk, increment]
   usuario_id int [not null]
   codigo_hash varchar [not null]
@@ -22,7 +23,7 @@ Table codigos_verificacion {
   creado_en timestamp [not null, default: `now()`]
 }
 
-Table refugios {
+Table refugios [headercolor: #2E86C1] {
   id int [pk, increment]
   usuario_id int [not null, unique]
   nombre_refugio varchar [not null]
@@ -31,10 +32,10 @@ Table refugios {
   organizacion_id int [not null, unique]
 }
 
-Table organizaciones_validadas {
+Table organizaciones_validadas [headercolor: #2E86C1] {
   id int [pk, increment]
   rut int [not null, unique]
-  dv char(1) [not null]
+  dv char(1) [not null, note: 'CHECK: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | K']
   razon_social varchar [not null]
   actividad text
   direccion varchar
@@ -46,7 +47,7 @@ Table organizaciones_validadas {
   comuna_id int
 }
 
-Table comunas {
+Table comunas [headercolor: #2E86C1] {
   id int [pk, increment]
   nombre varchar [not null]
   region_id int [not null]
@@ -56,42 +57,32 @@ Table comunas {
   }
 }
 
-Table regiones {
+Table regiones [headercolor: #2E86C1] {
   id int [pk, increment]
   nombre varchar [not null, unique]
 }
 
-Table roles {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table estados_usuario {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table perfiles_adoptante {
+Table perfiles_adoptante [headercolor: #28B463] {
   id int [pk, increment]
   usuario_id int [not null, unique]
-  espacio_disponible varchar
-  experiencia_previa varchar
+  espacio_disponible varchar [note: 'CHECK: departamento | casa_patio | casa_grande']
+  experiencia_previa varchar [note: 'CHECK: ninguna | basica | alta']
   telefono varchar
   foto_perfil varchar
   especie_preferida varchar
-  restriccion_vivienda varchar
-  horas_sola varchar
-  tiempo_actividad varchar
-  ambiente_hogar varchar
-  ninos_hogar varchar
+  restriccion_vivienda varchar [note: 'CHECK: ninguna | solo_pequenas | solo_gatos | no_se']
+  horas_sola varchar [note: 'CHECK: menos_2h | 2_4h | 4_8h | mas_8h']
+  tiempo_actividad varchar [note: 'CHECK: menos_30m | 30_60m | mas_60m']
+  ambiente_hogar varchar [note: 'CHECK: tranquilo | moderado | movido']
+  ninos_hogar varchar [note: 'CHECK: no | mayores | pequenos']
   tiene_perros boolean [not null, default: false]
   tiene_gatos boolean [not null, default: false]
-  alergias varchar
-  acepta_cuidados varchar
-  sexo_preferido varchar
+  alergias varchar [note: 'CHECK: ninguna | perros | gatos | ambos']
+  acepta_cuidados varchar [note: 'CHECK: no | leves | complejos']
+  sexo_preferido varchar [note: 'CHECK: macho | hembra']
 }
 
-Table perfil_tamano_preferido {
+Table perfil_tamano_preferido [headercolor: #28B463] {
   perfil_id int [not null]
   tamano varchar(20) [not null]
 
@@ -100,7 +91,7 @@ Table perfil_tamano_preferido {
   }
 }
 
-Table perfil_etapa_preferida {
+Table perfil_etapa_preferida [headercolor: #28B463] {
   perfil_id int [not null]
   etapa varchar(20) [not null]
 
@@ -109,64 +100,28 @@ Table perfil_etapa_preferida {
   }
 }
 
-Table restricciones_vivienda {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table tiempos_actividad {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table experiencias_previas {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table ambientes_hogar {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table situaciones_ninos {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table tipos_alergia {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table aceptaciones_cuidado {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table mascotas {
+Table mascotas [headercolor: #CA6F1E] {
   id int [pk, increment]
   refugio_id int [not null]
   nombre varchar [not null]
   especie varchar [not null]
   raza varchar
   edad int [not null]
-  nivel_energia varchar [not null]
-  nivel_experiencia_requerida varchar [not null]
-  espacio_minimo_requerido varchar [not null]
-  estado varchar [not null, default: 'disponible']
+  nivel_energia varchar [not null, note: 'CHECK: bajo | medio | alto']
+  nivel_experiencia_requerida varchar [not null, note: 'CHECK: bajo | medio | alto']
+  espacio_minimo_requerido varchar [not null, note: 'CHECK: departamento | casa_patio | casa_grande']
+  estado varchar [not null, default: 'disponible', note: 'CHECK: disponible | en_proceso | adoptada']
   fecha_publicacion timestamp [not null, default: `now()`]
   cuidados_especiales text
-  origen varchar [not null, default: 'manual']
   clave_seed varchar [unique]
-  sexo varchar [not null]
+  sexo varchar [not null, note: 'CHECK: macho | hembra']
   tamano varchar
-  tolerancia_soledad varchar [not null]
-  temperamento varchar [not null]
-  convivencia_ninos varchar
+  tolerancia_soledad varchar [not null, note: 'CHECK: menos_2h | 2_4h | 4_8h | mas_8h']
+  temperamento varchar [not null, note: 'CHECK: sociable | reservado | timido']
+  convivencia_ninos varchar [note: 'CHECK: todos | mayores | no']
   convive_perros boolean
   convive_gatos boolean
-  nivel_cuidados varchar [not null]
+  nivel_cuidados varchar [not null, note: 'CHECK: ninguno | leves | complejos']
   esterilizado boolean
   vacunas_al_dia boolean
   desparasitado boolean
@@ -174,7 +129,7 @@ Table mascotas {
   notas_salud text
 }
 
-Table fotos_mascota {
+Table fotos_mascota [headercolor: #CA6F1E] {
   id int [pk, increment]
   mascota_id int [not null]
   url varchar [not null]
@@ -186,12 +141,12 @@ Table fotos_mascota {
   }
 }
 
-Table especies {
+Table especies [headercolor: #CA6F1E] {
   codigo varchar(20) [pk]
   nombre varchar(50) [not null]
 }
 
-Table razas {
+Table razas [headercolor: #CA6F1E] {
   especie varchar(20) [not null]
   nombre varchar [not null]
 
@@ -200,57 +155,17 @@ Table razas {
   }
 }
 
-Table estados_mascota {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table niveles {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table temperamentos {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table convivencias_ninos {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table niveles_cuidado {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table sexos {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table tamanos {
+Table tamanos [headercolor: #CA6F1E] {
   codigo varchar(20) [pk]
   nombre varchar(50) [not null]
 }
 
-Table etapas_vida {
+Table etapas_vida [headercolor: #CA6F1E] {
   codigo varchar(20) [pk]
   nombre varchar(50) [not null]
 }
 
-Table tipos_espacio {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table rangos_horas_sola {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table matches {
+Table matches [headercolor: #8E44AD] {
   id int [pk, increment]
   adoptante_id int [not null]
   mascota_id int [not null]
@@ -263,37 +178,39 @@ Table matches {
   }
 }
 
-Table postulaciones {
+Table postulaciones [headercolor: #8E44AD] {
   id int [pk, increment]
   adoptante_id int [not null]
   mascota_id int [not null]
-  estado varchar [not null, default: 'pendiente']
+  estado varchar [not null, default: 'pendiente', note: 'CHECK: pendiente | aprobada | rechazada']
   fecha_postulacion timestamp [not null, default: `now()`]
   fecha_adopcion timestamp
+  score_al_postular numeric(4,3)
+  desglose_al_postular jsonb
 
   indexes {
     (adoptante_id, mascota_id) [unique, name: 'uq_postulacion_pendiente_por_par', note: 'Indice parcial: solo cuando estado = pendiente (RN01)']
   }
 }
 
-Table seguimientos_post_adopcion {
+Table seguimientos_post_adopcion [headercolor: #8E44AD] {
   id int [pk, increment]
   postulacion_id int [not null]
-  dias_transcurridos int [not null]
-  resultado varchar
+  dias_transcurridos int [not null, note: 'CHECK: 30 | 90']
+  resultado varchar [not null, note: 'CHECK: exitosa | en_proceso | devuelta']
   motivo_devolucion text
-  fecha_respuesta timestamp
+  fecha_respuesta timestamp [not null]
 
   indexes {
     (postulacion_id, dias_transcurridos) [unique]
   }
 }
 
-Table mensajes_seguimiento {
+Table mensajes_seguimiento [headercolor: #8E44AD] {
   id int [pk, increment]
   postulacion_id int [not null]
   autor_usuario_id int [not null]
-  tipo varchar [not null]
+  tipo varchar [not null, note: 'CHECK: texto | imagen | audio | video | encuesta']
   texto text
   media_public_id varchar
   duracion_seg numeric(6,1)
@@ -301,137 +218,59 @@ Table mensajes_seguimiento {
   leido_en timestamp
 }
 
-Table estados_postulacion {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table resultados_seguimiento {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
-Table hitos_seguimiento {
-  dias int [pk]
-  nombre varchar(60) [not null]
-}
-
-Table tipos_mensaje {
-  codigo varchar(20) [pk]
-  nombre varchar(60) [not null]
-}
-
 // Relaciones (> = muchos a uno, - = uno a uno)
-Ref: usuarios.estado > estados_usuario.codigo
-Ref: usuarios.rol > roles.codigo
 Ref: codigos_verificacion.usuario_id > usuarios.id [delete: cascade]
 Ref: refugios.organizacion_id - organizaciones_validadas.id [delete: restrict]
 Ref: refugios.usuario_id - usuarios.id [delete: cascade]
 Ref: organizaciones_validadas.comuna_id > comunas.id
 Ref: comunas.region_id > regiones.id
-Ref: perfiles_adoptante.acepta_cuidados > aceptaciones_cuidado.codigo
-Ref: perfiles_adoptante.ambiente_hogar > ambientes_hogar.codigo
 Ref: perfiles_adoptante.especie_preferida > especies.codigo
-Ref: perfiles_adoptante.experiencia_previa > experiencias_previas.codigo
-Ref: perfiles_adoptante.horas_sola > rangos_horas_sola.codigo
-Ref: perfiles_adoptante.restriccion_vivienda > restricciones_vivienda.codigo
-Ref: perfiles_adoptante.sexo_preferido > sexos.codigo
-Ref: perfiles_adoptante.ninos_hogar > situaciones_ninos.codigo
-Ref: perfiles_adoptante.tiempo_actividad > tiempos_actividad.codigo
-Ref: perfiles_adoptante.alergias > tipos_alergia.codigo
-Ref: perfiles_adoptante.espacio_disponible > tipos_espacio.codigo
 Ref: perfiles_adoptante.usuario_id - usuarios.id [delete: cascade]
 Ref: perfil_tamano_preferido.perfil_id > perfiles_adoptante.id [delete: cascade]
 Ref: perfil_tamano_preferido.tamano > tamanos.codigo
 Ref: perfil_etapa_preferida.etapa > etapas_vida.codigo
 Ref: perfil_etapa_preferida.perfil_id > perfiles_adoptante.id [delete: cascade]
-Ref: mascotas.convivencia_ninos > convivencias_ninos.codigo
 Ref: mascotas.especie > especies.codigo
-Ref: mascotas.estado > estados_mascota.codigo
-Ref: mascotas.nivel_energia > niveles.codigo
-Ref: mascotas.nivel_experiencia_requerida > niveles.codigo
-Ref: mascotas.nivel_cuidados > niveles_cuidado.codigo
-Ref: mascotas.tolerancia_soledad > rangos_horas_sola.codigo
 Ref: mascotas.(especie, raza) > razas.(especie, nombre) [update: cascade]
 Ref: mascotas.refugio_id > refugios.id [delete: restrict]
-Ref: mascotas.sexo > sexos.codigo
 Ref: mascotas.tamano > tamanos.codigo
-Ref: mascotas.temperamento > temperamentos.codigo
-Ref: mascotas.espacio_minimo_requerido > tipos_espacio.codigo
 Ref: fotos_mascota.mascota_id > mascotas.id [delete: cascade]
 Ref: razas.especie > especies.codigo
 Ref: matches.mascota_id > mascotas.id [delete: restrict]
 Ref: matches.adoptante_id > perfiles_adoptante.id [delete: restrict]
-Ref: postulaciones.estado > estados_postulacion.codigo
 Ref: postulaciones.mascota_id > mascotas.id [delete: restrict]
 Ref: postulaciones.adoptante_id > perfiles_adoptante.id [delete: restrict]
-Ref: seguimientos_post_adopcion.dias_transcurridos > hitos_seguimiento.dias
 Ref: seguimientos_post_adopcion.postulacion_id > postulaciones.id [delete: restrict]
-Ref: seguimientos_post_adopcion.resultado > resultados_seguimiento.codigo
 Ref: mensajes_seguimiento.postulacion_id > postulaciones.id [delete: restrict]
-Ref: mensajes_seguimiento.tipo > tipos_mensaje.codigo
 Ref: mensajes_seguimiento.autor_usuario_id > usuarios.id [delete: restrict]
 
-TableGroup cuentas_y_acceso {
+TableGroup cuentas_y_refugios {
   usuarios
   codigos_verificacion
   refugios
   organizaciones_validadas
   comunas
   regiones
-  roles
-  estados_usuario
 }
 
-TableGroup adoptante_y_preferencias {
+TableGroup adoptante {
   perfiles_adoptante
   perfil_tamano_preferido
   perfil_etapa_preferida
 }
 
-TableGroup catalogos_cuestionario_adoptante {
-  restricciones_vivienda
-  tiempos_actividad
-  experiencias_previas
-  ambientes_hogar
-  situaciones_ninos
-  tipos_alergia
-  aceptaciones_cuidado
-}
-
-TableGroup mascotas_y_fotos {
+TableGroup ficha_de_mascotas {
   mascotas
   fotos_mascota
-}
-
-TableGroup catalogos_mascota {
   especies
   razas
-  estados_mascota
-  niveles
-  temperamentos
-  convivencias_ninos
-  niveles_cuidado
-}
-
-TableGroup catalogos_compartidos {
-  sexos
   tamanos
   etapas_vida
-  tipos_espacio
-  rangos_horas_sola
 }
 
-TableGroup matching_y_adopcion {
+TableGroup compatibilidad_y_adopcion {
   matches
   postulaciones
   seguimientos_post_adopcion
   mensajes_seguimiento
-}
-
-TableGroup catalogos_adopcion {
-  estados_postulacion
-  resultados_seguimiento
-  hitos_seguimiento
-  tipos_mensaje
 }
