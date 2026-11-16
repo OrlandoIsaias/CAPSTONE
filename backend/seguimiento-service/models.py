@@ -6,7 +6,8 @@ fotos_mascota y postulaciones (misma justificación de BD compartida usada en
 Matching y Postulaciones Service). Es DUEÑO de seguimientos_post_adopcion y
 de mensajes_seguimiento (el chat adoptante-refugio, migración 007).
 """
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text, select
+from sqlalchemy.orm import column_property
 from sqlalchemy.sql import func
 
 from database import Base
@@ -17,6 +18,7 @@ class Usuario(Base):
 
     id = Column(Integer, primary_key=True)
     nombre = Column(String, nullable=False)
+    rol = Column(String, nullable=False)
 
 
 class PerfilAdoptante(Base):
@@ -80,11 +82,16 @@ class MensajeSeguimiento(Base):
 
     id = Column(Integer, primary_key=True)
     postulacion_id = Column(Integer, ForeignKey("postulaciones.id"), nullable=False)
-    autor_usuario_id = Column(Integer, nullable=False)
-    autor_rol = Column(String, nullable=False)
+    autor_usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     tipo = Column(String, nullable=False)
     texto = Column(Text)
     media_public_id = Column(String)
     duracion_seg = Column(Numeric(6, 1))
     creado_en = Column(DateTime, nullable=False, server_default=func.now())
     leido_en = Column(DateTime)
+
+    # 3FN: el rol del autor no se guarda (dependería de autor_usuario_id);
+    # se lee de usuarios.rol. Sirve también en filtros de consultas.
+    autor_rol = column_property(
+        select(Usuario.rol).where(Usuario.id == autor_usuario_id).correlate_except(Usuario).scalar_subquery()
+    )

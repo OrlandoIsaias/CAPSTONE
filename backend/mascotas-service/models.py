@@ -12,6 +12,16 @@ from sqlalchemy.sql import func
 from database import Base
 
 
+class Raza(Base):
+    """Catálogo de razas (3FN, migración 009). Se identifica por
+    (especie, nombre): "Quiltro (mestizo)" y "Otra" existen en ambas
+    especies, así que el nombre por sí solo no determina la especie."""
+    __tablename__ = "razas"
+
+    especie = Column(String, primary_key=True)
+    nombre = Column(String, primary_key=True)
+
+
 class Mascota(Base):
     __tablename__ = "mascotas"
 

@@ -111,6 +111,21 @@ class PerfilEtapaPreferida(Base):
     etapa = Column(String, primary_key=True)  # FK a etapas_vida(codigo) en la BD
 
 
+class Region(Base):
+    __tablename__ = "regiones"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, unique=True, nullable=False)
+
+
+class Comuna(Base):
+    __tablename__ = "comunas"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, nullable=False)
+    region_id = Column(Integer, ForeignKey("regiones.id"), nullable=False)
+
+
 class OrganizacionValidada(Base):
     __tablename__ = "organizaciones_validadas"
 
@@ -119,10 +134,9 @@ class OrganizacionValidada(Base):
     dv = Column(String(1), nullable=False)
     razon_social = Column(String, nullable=False)
     actividad = Column(Text)
-    unidad_sii = Column(String)
     direccion = Column(String)
-    comuna = Column(String)
-    region = Column(String)
+    # 3FN: la región se obtiene por la comuna (comuna -> region).
+    comuna_id = Column(Integer, ForeignKey("comunas.id"))
     fecha_inscripcion = Column(Date)
     correo = Column(String)
     es_prueba = Column(Boolean, nullable=False, default=False)

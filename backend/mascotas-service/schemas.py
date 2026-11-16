@@ -80,7 +80,7 @@ class MascotaIn(BaseModel):
             raise ValueError("edad no puede ser negativa")
         return v
 
-    @field_validator("cuidados_especiales", "notas_salud")
+    @field_validator("raza", "cuidados_especiales", "notas_salud")
     @classmethod
     def texto_vacio_a_none(cls, v: Optional[str]) -> Optional[str]:
         if v is None:

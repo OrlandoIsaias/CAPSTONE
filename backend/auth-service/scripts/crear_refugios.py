@@ -60,8 +60,9 @@ def vincular(conexion, refugio_id: int, rut: int) -> str:
 
 def crear_pendientes(conexion) -> int:
     organizaciones = conexion.execute(text("""
-        SELECT o.id, o.razon_social, o.direccion, o.comuna
+        SELECT o.id, o.razon_social, o.direccion, c.nombre AS comuna
         FROM organizaciones_validadas o
+        LEFT JOIN comunas c ON c.id = o.comuna_id
         WHERE NOT EXISTS (SELECT 1 FROM refugios r WHERE r.organizacion_id = o.id)
         ORDER BY o.id
     """)).all()
