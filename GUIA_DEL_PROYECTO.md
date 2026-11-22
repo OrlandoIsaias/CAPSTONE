@@ -1,6 +1,6 @@
 # Guía del proyecto HouseFound
 
-**Estado al 1 de octubre de 2026** · CAPSTONE APT122, sección 004D · Docente: Marco Antonio Valenzuela Contreras
+**Última revisión: 22 de noviembre de 2026** (los datos de la sección 2 se midieron el 1 de octubre) · CAPSTONE APT122, sección 004D · Docente: Marco Antonio Valenzuela Contreras
 **Equipo:** Orlando Espinoza (Product Owner), Patricio Cárcamo (Scrum Master), Martín Guzmán y Benjamín Ormazábal
 
 Esta guía explica el proyecto tal como está hoy en el código: qué hace, cómo está construido, cómo viajan los datos, por qué se decidió cada cosa y qué falta. Cierra con las preguntas que puede hacer el docente guía en la revisión de avance. El detalle técnico completo está en [SPEC.md](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/SPEC.md>), el [README de la base de datos](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Base de datos/README_BaseDeDatos.md>) y el [README de los datos de ejemplo](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/seed/README.md>).
@@ -40,7 +40,7 @@ Esta guía explica el proyecto tal como está hoy en el código: qué hace, cóm
 
 ## 2. Estado del avance
 
-El núcleo del MVP funciona de punta a punta: registro, cuestionario, catálogo con fotos, matching, postulación, aprobación y confirmación de la adopción. Falta la parte visible del seguimiento post-adopción. El Sprint 1 formal parte el 5 de octubre de 2026; lo construido hasta hoy es el incremento base.
+El MVP funciona de punta a punta: registro, cuestionario, catálogo con fotos, matching, postulación, aprobación, confirmación de la adopción y seguimiento post-adopción con chat y encuestas. Lo único que falta de las funciones planificadas es la pantalla del panel de métricas del refugio. El Sprint 1 formal partió el 5 de octubre de 2026; lo construido antes de esa fecha es el incremento base. En noviembre el modelo de datos se normalizó a 3FN (migraciones 008 a 012).
 
 | Funcionalidad | Backend | Frontend | Comentario |
 |---|---|---|---|
@@ -60,7 +60,7 @@ El núcleo del MVP funciona de punta a punta: registro, cuestionario, catálogo 
 | Guardados (favoritos) | No existe | Listo | Se guardan solo en el navegador (`localStorage`) |
 | Pruebas automatizadas | Parcial | No | 24 pruebas del motor de matching y 19 del chat de seguimiento |
 
-**Datos en la base de datos compartida (Neon), al 1 de octubre de 2026:**
+**Datos en la base de datos compartida (Neon), al 1 de octubre de 2026** (no se han vuelto a medir; hay que actualizarlos antes de la defensa):
 
 | Dato | Cantidad |
 |---|---|
@@ -91,7 +91,7 @@ flowchart LR
     MAS -->|"HTTP: ¿cuál es mi refugio?"| AUTH
     MAS --> CLD[("Cloudinary<br/>fotos")]
     AUTH --> SMTP[["Correo SMTP<br/>código de acceso"]]
-    AUTH --> DB[("PostgreSQL en Neon<br/>10 tablas compartidas")]
+    AUTH --> DB[("PostgreSQL en Neon<br/>19 tablas compartidas")]
     MAS --> DB
     MAT --> DB
     POS --> DB
@@ -160,7 +160,7 @@ El token se guarda en `sessionStorage`, así que la sesión termina al cerrar la
 | 7 | Refugio | Revisa las respuestas del postulante, el % y su desglose. Al aprobar, la mascota queda "en proceso" y las demás postulaciones pendientes a ella se rechazan solas | `postulaciones.estado`, `mascotas.estado` |
 | 8 | Ambos | Con la postulación aprobada, cada uno ve el WhatsApp del otro para coordinar la entrega | — |
 | 9 | Refugio | Confirma que entregó la mascota: pasa a "adoptada" | `mascotas.estado` |
-| 10 | Adoptante | Responde la encuesta a los 30 y 90 días. Si la mascota fue devuelta, vuelve a estar disponible | `seguimientos_post_adopcion` (pantalla pendiente) |
+| 10 | Ambos | Conversan en el chat de seguimiento (texto, fotos, audios, videos). El adoptante responde la encuesta a los 30 y 90 días; si la mascota fue devuelta (con su motivo), vuelve a estar disponible | `mensajes_seguimiento`, `seguimientos_post_adopcion` |
 | 11 | Refugio | Consulta su tasa de devolución: devueltas ÷ (exitosas + devueltas) | — (pantalla pendiente) |
 
 El % se recalcula cada vez que el adoptante abre Recomendaciones o una ficha, así que siempre refleja su último cuestionario. Postulaciones no calcula nada: lee el % que matching dejó en `matches`.
@@ -183,22 +183,42 @@ stateDiagram-v2
 
 ## 5. Modelo de datos
 
-10 tablas en PostgreSQL. El script completo es [BD_HouseFound_v2.sql](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Base de datos/BD_HouseFound_v2.sql>) y ya incluye las 6 migraciones.
+19 tablas en PostgreSQL, normalizadas a 3FN. El script completo es [BD_HouseFound_v2.sql](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Base de datos/BD_HouseFound_v2.sql>) y ya incluye las 12 migraciones. Las columnas de cada tabla están en el [modelo relacional](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Base de datos/modelo_relacional.mmd>) y en el [README de la base de datos](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Base de datos/README_BaseDeDatos.md>); aquí solo se muestran las relaciones.
 
 ```mermaid
 erDiagram
-    organizaciones_validadas ||--o| refugios : "habilita"
+    usuarios ||--o{ codigos_verificacion : "verifica"
+    especies |o--o{ perfiles_adoptante : "especie preferida"
+    usuarios ||--o| perfiles_adoptante : "perfil de"
+    perfiles_adoptante ||--o{ perfil_tamano_preferido : "prefiere"
+    tamanos ||--o{ perfil_tamano_preferido : "tamano"
+    etapas_vida ||--o{ perfil_etapa_preferida : "etapa"
+    perfiles_adoptante ||--o{ perfil_etapa_preferida : "prefiere"
+    organizaciones_validadas ||--o| refugios : "valida"
     usuarios ||--o| refugios : "cuenta de"
-    usuarios ||--o| perfiles_adoptante : "cuenta de"
-    usuarios ||--o{ codigos_verificacion : "recibe"
+    comunas |o--o{ organizaciones_validadas : "ubicada en"
+    regiones ||--o{ comunas : "pertenece a"
+    especies ||--o{ mascotas : "es de"
+    razas |o--o{ mascotas : "es de raza"
     refugios ||--o{ mascotas : "publica"
-    mascotas ||--o{ fotos_mascota : "tiene"
-    perfiles_adoptante ||--o{ matches : "se compara en"
-    mascotas ||--o{ matches : "se compara en"
-    perfiles_adoptante ||--o{ postulaciones : "envía"
-    mascotas ||--o{ postulaciones : "recibe"
-    postulaciones ||--o{ seguimientos_post_adopcion : "30 y 90 días"
+    tamanos |o--o{ mascotas : "tamano"
+    mascotas ||--o{ fotos_mascota : "foto de"
+    especies ||--o{ razas : "de la especie"
+    mascotas ||--o{ matches : "compara con"
+    perfiles_adoptante ||--o{ matches : "calcula para"
+    mascotas ||--o{ postulaciones : "a la mascota"
+    perfiles_adoptante ||--o{ postulaciones : "postula"
+    postulaciones ||--o{ seguimientos_post_adopcion : "sigue"
+    postulaciones ||--o{ mensajes_seguimiento : "chat de"
+    usuarios ||--o{ mensajes_seguimiento : "escrito por"
 ```
+
+**Normalización (migraciones 008, 009 y 011):**
+
+- **1FN:** las preferencias de tamaño y etapa de vida del adoptante dejaron de ser arreglos y son tablas puente.
+- **3FN:** la cadena región → comuna → organización se separó en tablas, y el rol del autor de un mensaje se obtiene de `usuarios`.
+- **Catálogos:** `especies`, `razas` (clave `(especie, nombre)`), `tamanos`, `etapas_vida`, `regiones` y `comunas` son tablas. El resto de las listas cerradas (estados, niveles, roles) se declara con `CHECK`: la migración 010 las había convertido en tablas y la 012 lo revirtió, porque agregaban joins sin aportar integridad.
+- **Dato histórico:** `postulaciones` guarda el puntaje con el que se postuló (`score_al_postular`). No es redundancia: `matches` se recalcula, y sin esta copia se perdería el valor con el que el refugio decidió.
 
 **Reglas que la propia base de datos hace cumplir:**
 
@@ -217,9 +237,15 @@ erDiagram
 | 001 | Tabla con la nómina SII de organizaciones de rescate animal |
 | 002 | Login de refugios con RUT + código; tabla `codigos_verificacion` |
 | 003 | Todo refugio debe pertenecer a una organización de la nómina |
-| 004 | Marca de datos de ejemplo (`origen = 'seed'`, `clave_seed`) |
+| 004 | Marca de datos de ejemplo (`clave_seed`) |
 | 005 | Paso intermedio: especie preferida y especie de catálogo cerrado |
 | 006 | Cuestionarios v2, ficha de salud y desglose del % en `matches` |
+| 007 | Chat de seguimiento (`mensajes_seguimiento`) y fecha de confirmación de la adopción |
+| 008 | 1FN: preferencias de tamaño y etapa en tablas puente |
+| 009 | 3FN: `regiones`, `comunas`, `especies`, `razas`; sin `autor_rol` ni `unidad_sii` |
+| 010 | Listas cerradas como tablas catálogo (revertida por la 012) |
+| 011 | Score congelado en `postulaciones`; reglas del seguimiento y de la fecha de adopción; sin `mascotas.origen` |
+| 012 | Las listas cerradas vuelven a `CHECK`; quedan como tabla solo los catálogos que la normalización necesita |
 
 ---
 
@@ -337,7 +363,7 @@ Está en [scoring.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicaci
   - los selectores de raza y edad se probaron en celular y en escritorio;
   - las 463 fotos se verificaron en la BD y en Cloudinary.
 - **Base de datos:** el esquema se probó intentando violar cada regla de negocio (ver el README de la base de datos).
-- **Brecha:** la Definition of Done pide pruebas pytest, y hoy solo el matching las tiene. Faltan pruebas de auth, postulaciones, seguimiento y gateway, y del frontend.
+- **Brecha:** hoy solo el matching y el chat de seguimiento tienen pruebas automatizadas. Faltan pruebas de auth, postulaciones y gateway, y del frontend.
 
 ---
 
@@ -449,7 +475,7 @@ El backend ya calcula la tasa de devolución; falta la pantalla.
 Fuera del alcance del MVP. Primero se necesitan datos de resultados reales, que es lo que genera el seguimiento a 30 y 90 días. El desglose guardado en `matches` sirve como variables de entrada para ese modelo futuro.
 
 **¿Qué falta para terminar el MVP?**
-Las pantallas de seguimiento y métricas, más pruebas automatizadas. Ver la [sección 13](#13-limitaciones-y-próximos-pasos).
+La pantalla del panel de métricas del refugio, más pruebas automatizadas de auth, postulaciones y gateway. Ver la [sección 13](#13-limitaciones-y-próximos-pasos).
 
 **¿Cómo trabajan en equipo y con Git?**
 Scrum con sprints de 2 semanas desde el 5 de octubre de 2026, con el backlog en GitHub Projects. Hay que ser honestos: la integración reciente se hizo directo a `main`. Desde el Sprint 1, todo cambio entra por rama `feature/*` y Pull Request revisado, como dice el acuerdo del Squad.
@@ -473,15 +499,15 @@ Los servicios no guardan estado (salvo el contador de intentos de login), así q
 | Funcionalidad | El chat de seguimiento busca mensajes nuevos cada 4 s y los límites de tamaño de los archivos solo los revisa el navegador | WebSockets si crece el uso; límites en un *upload preset* de Cloudinary |
 | Funcionalidad | "Guardados" vive solo en el navegador | Endpoint en el backend |
 | Funcionalidad | Solo la organización de prueba tiene correo, y el `.env` no configura SMTP: los refugios reales aún no pueden ingresar | Cargar correos verificados de la nómina y configurar SMTP |
-| Calidad | Pruebas automatizadas solo en el matching | Pruebas pytest de auth, postulaciones (flujo de aprobación), seguimiento y gateway, como pide la Definition of Done |
-| Seguridad | RN06 se cumple solo en la interfaz: la API entrega los teléfonos en cualquier estado de la postulación | Enviar los teléfonos solo con la postulación aprobada (`_a_postulacion_out` en postulaciones-service) |
-| Seguridad | Mínimo de 6 caracteres en la contraseña solo en el frontend | Validarlo también en `UsuarioRegistro` (auth-service) |
-| Seguridad | Si falta `JWT_SECRET`, los servicios usan una clave por defecto | Que el servicio no arranque sin ella |
-| Seguridad | `MODO_DEV` y `CODIGO_PRUEBA` habilitados para desarrollo | Desactivarlos en producción |
+| Calidad | Pruebas automatizadas solo en matching (24) y en el chat de seguimiento (19) | Pruebas pytest de auth, postulaciones (flujo de aprobación) y gateway |
+| Seguridad | ~~RN06 solo en la interfaz~~ **Resuelto el 7-10-2026:** `postulaciones-service` entrega los teléfonos solo con la postulación aprobada | Agregar una prueba automatizada que lo verifique |
+| Seguridad | ~~Mínimo de contraseña solo en el frontend~~ **Resuelto el 7-10-2026:** `UsuarioRegistro` exige `min_length=6` | Agregar una prueba automatizada |
+| Seguridad | ~~Clave JWT por defecto~~ **Resuelto el 7-10-2026:** los servicios y el gateway no arrancan sin `JWT_SECRET` ni con el valor de ejemplo | — |
+| Seguridad | `MODO_DEV` y `CODIGO_PRUEBA` existen para desarrollo (el `.env.example` los deja desactivados) | Confirmar que no estén definidos en las variables de Render antes de la defensa |
 | Seguridad | El contador de intentos de login vive en memoria: se reinicia con el contenedor | Redis o tabla si hay más de una réplica |
 | Técnica | La lista de preguntas obligatorias del cuestionario se repite en matching, postulaciones y frontend | Unificarla en un solo lugar |
 | Técnica | Publicada en Render con el plan gratis: los servicios se duermen tras 15 minutos sin uso | Despertarlos antes de cada demo y convertir la app en PWA (ver la [Guía de despliegue](GUIA_DE_DESPLIEGUE.md)) |
 | Documentación | El Análisis del Caso describe el matching v1 | Actualizar sus secciones 4.2 y 4.3 |
-| Documentación | SPEC RF-01 a RF-04 desactualizados (ej. "registro de refugios", "6 criterios") | Actualizar |
-| Documentación | Diagrama ER en PNG anterior a las migraciones | Regenerar desde `BD_HouseFound_v2.sql` |
+| Documentación | ~~SPEC desactualizado~~ **Actualizado el 22-11-2026** (login de refugios, 3 capas, chat, modelo de 19 tablas) | — |
+| Documentación | `BD_HouseFoundimg.png` es el diagrama de la versión 1; el vigente está en `modelo_relacional.mmd` y `.dbml` | Exportar el diagrama vigente como imagen para el informe final |
 | Proceso | Commits directos a `main` | Ramas `feature/*` + Pull Request desde el Sprint 1 |

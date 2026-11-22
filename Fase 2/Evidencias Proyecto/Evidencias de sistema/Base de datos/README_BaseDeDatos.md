@@ -6,30 +6,63 @@ Esta carpeta contiene el esquema completo de la base de datos del proyecto, su h
 
 | Archivo | Descripción |
 |---|---|
-| `BD_HouseFound_v2.sql` | Script SQL completo: crea las 10 tablas, sus relaciones, restricciones de negocio (`CHECK`), índices, y políticas de borrado. Ya incluye todos los cambios de las migraciones 001 a 006: para una BD nueva basta con este archivo. |
-| `migraciones/` | Historial de cambios de esquema numerados (`001_...sql`), todos **ya aplicados en Neon**. Documentan cómo y por qué evolucionó el esquema; no se vuelven a ejecutar (la 005 fallaría después de la 006, que elimina columnas que ella comenta). Ver [Historial de migraciones](#historial-de-migraciones). |
+| `BD_HouseFound_v2.sql` | Script SQL completo: crea las 19 tablas, sus relaciones, restricciones de negocio (`CHECK`), índices, y políticas de borrado. Ya incluye todos los cambios de las migraciones 001 a 012 (esquema normalizado a 3FN): para una BD nueva basta con este archivo. El nombre se conserva por las referencias de otros documentos; el contenido corresponde al estado del 16-11-2026. |
+| `migraciones/` | Historial de cambios de esquema numerados (`001_...sql`), todos **ya aplicados en Neon**. Documentan cómo y por qué evolucionó el esquema; no se vuelven a ejecutar (la 005 fallaría después de la 006, que elimina columnas que ella comenta, y la 010 la revierte la 012). Ver [Historial de migraciones](#historial-de-migraciones). |
+| `modelo_relacional.mmd` / `.dbml` | Modelo relacional actual (19 tablas) en Mermaid y en DBML. Ver [Diagrama entidad-relación](#diagrama-entidad-relación). |
 | `datos/organizacion_prueba.sql` | Organización ficticia del equipo (RUT 11.111.111-1) para pruebas y demo del login de refugios. |
 | `NOMINA_FINAL_FILTRADA_CON_REGION.xlsx` | Nómina SII de organizaciones de rescate animal. Es la fuente de la carga inicial de `organizaciones_validadas`; después de importada, la tabla es la fuente de verdad. |
-| `BD_HouseFoundimg.png` | Diagrama entidad-relación (ER), generado con dbdiagram.io. **Desactualizado**: es anterior a las migraciones (muestra 8 tablas y las columnas del cuestionario antiguo); hay que regenerarlo desde `BD_HouseFound_v2.sql`. |
+| `BD_HouseFoundimg.png` | Diagrama ER de la versión 1 (8 tablas), generado con dbdiagram.io. **Histórico, no vigente**: es anterior a las migraciones. El diagrama vigente está en la sección [Diagrama entidad-relación](#diagrama-entidad-relación). |
 
 ## Motor de base de datos
 
 **PostgreSQL**, alojado en **Neon** (plan gratuito). Se eligió una única base de datos **compartida** entre los 5 microservicios del backend (no una por servicio), porque el algoritmo de matching y el futuro modelo de Machine Learning necesitan cruzar datos de varias tablas (perfil del adoptante, mascota, seguimiento) sin requerir procesos de integración adicionales.
 
-## Las 10 tablas y su propósito
+## Diagrama entidad-relación
+
+El modelo vigente (19 tablas) está en [`modelo_relacional.mmd`](modelo_relacional.mmd) (Mermaid) y [`modelo_relacional.dbml`](modelo_relacional.dbml) (se puede pegar en dbdiagram.io para exportarlo como imagen). Mermaid se visualiza directo en GitHub y en VS Code.
+
+> Pendiente: exportar el diagrama como imagen (PNG o SVG) a esta carpeta, para incluirlo en el informe final.
+
+## Las 19 tablas y su propósito
+
+**Cuentas y acceso**
 
 | Tabla | Qué guarda |
 |---|---|
 | `usuarios` | La cuenta base de cada persona (nombre, rol `adoptante` o `refugio`, estado `pendiente`/`activo`). Los adoptantes tienen email y contraseña hasheada; los refugios no, porque entran con RUT + código. |
 | `refugios` | Datos del refugio (extensión 1-a-1 de un usuario con rol `refugio`), ligado obligatoriamente a una organización de la nómina SII. |
 | `perfiles_adoptante` | El cuestionario de estilo de vida del adoptante (extensión 1-a-1 de un usuario con rol `adoptante`). |
-| `mascotas` | Cada mascota publicada por un refugio, con su temperamento y necesidades estructuradas. |
-| `fotos_mascota` | Las fotos de cada mascota (URLs de Cloudinary), con una marcada como principal. |
-| `matches` | El score de compatibilidad calculado entre un adoptante y una mascota. |
-| `postulaciones` | Las solicitudes de adopción y su estado (`pendiente`, `aprobada`, `rechazada`). |
-| `seguimientos_post_adopcion` | Las encuestas de seguimiento a 30 y 90 días después de una adopción aprobada. |
-| `organizaciones_validadas` | Nómina SII de organizaciones habilitadas como refugio (RUT, razón social, dirección, región y el correo al que se envía el código de verificación del login institucional). |
+| `perfil_tamano_preferido` | Tamaños de perro que prefiere el adoptante (tabla puente, un valor por fila). Sin filas = "me da igual". |
+| `perfil_etapa_preferida` | Etapas de vida que prefiere el adoptante (tabla puente). Sin filas = "me da igual". |
+| `organizaciones_validadas` | Nómina SII de organizaciones habilitadas como refugio (RUT, razón social, dirección, comuna y el correo al que se envía el código de verificación del login institucional). |
 | `codigos_verificacion` | Códigos de 6 dígitos del login institucional, guardados hasheados, con vencimiento, contador de intentos y marca de uso único. |
+
+**Mascotas y compatibilidad**
+
+| Tabla | Qué guarda |
+|---|---|
+| `mascotas` | Cada mascota publicada por un refugio, con su temperamento y necesidades estructuradas. La especie y la raza son llaves foráneas a los catálogos. |
+| `fotos_mascota` | Las fotos de cada mascota (URLs de Cloudinary), con una marcada como principal. |
+| `matches` | El score de compatibilidad vigente entre un adoptante y una mascota. Se recalcula cada vez que el adoptante abre Recomendaciones. |
+
+**Adopción y seguimiento**
+
+| Tabla | Qué guarda |
+|---|---|
+| `postulaciones` | Las solicitudes de adopción y su estado (`pendiente`, `aprobada`, `rechazada`). Guarda además la compatibilidad **con la que se postuló** (`score_al_postular`, `desglose_al_postular`), porque `matches` cambia. |
+| `seguimientos_post_adopcion` | Las encuestas de seguimiento a 30 y 90 días después de una adopción aprobada. Una devolución exige su motivo. |
+| `mensajes_seguimiento` | El chat adoptante–refugio de una postulación aprobada (texto, fotos, audios, videos y encuestas). Los archivos viven en Cloudinary; aquí solo se guarda su `public_id`. |
+
+**Catálogos** (tablas con datos o relaciones propias; el resto de las listas cerradas se declara con `CHECK`)
+
+| Tabla | Qué guarda |
+|---|---|
+| `especies` | Perro y Gato. |
+| `razas` | Razas del formulario de publicación. Clave `(especie, nombre)`: "Quiltro (mestizo)" existe para perros y para gatos. |
+| `tamanos` | Pequeño, mediano y grande (usada por `mascotas` y por la preferencia del adoptante). |
+| `etapas_vida` | Cachorro, joven, adulto y senior. |
+| `regiones` | Regiones de la nómina SII. |
+| `comunas` | Comunas, cada una con su región. Evita repetir la región en cada organización (3FN). |
 
 ## Historial de migraciones
 
@@ -41,6 +74,14 @@ Esta carpeta contiene el esquema completo de la base de datos del proyecto, su h
 | `004_mascotas_origen_seed` | Marca las mascotas de ejemplo (`origen = 'seed'`, `clave_seed`) para recargarlas sin duplicar y borrarlas en bloque. |
 | `005_cuestionarios_matching` | Paso intermedio: especie preferida del adoptante y especie de la mascota de catálogo cerrado. |
 | `006_cuestionarios_v2` | Cuestionarios nuevos del adoptante y la mascota para el matching en 3 capas, ficha de salud y desglose del score en `matches`. |
+| `007_chat_seguimiento` | Tabla `mensajes_seguimiento` (chat con texto, fotos, audios y videos) y `postulaciones.fecha_adopcion`, desde donde se cuentan los 30 y 90 días. |
+| `008_normalizacion_1fn` | 1FN: los arreglos `tamanos_preferidos` y `etapas_preferidas` pasan a tablas puente; se elimina un respaldo temporal sin clave primaria. |
+| `009_normalizacion_3fn` | 3FN: nuevas tablas `regiones` y `comunas` (la organización guarda solo `comuna_id`); se elimina `unidad_sii` y `mensajes_seguimiento.autor_rol` (el rol sale de `usuarios`); catálogos `especies` y `razas` con FK compuesta desde `mascotas`. |
+| `010_catalogos` | Convierte cada lista cerrada de valores en una tabla catálogo con FK. **Revertida por la 012.** |
+| `011_reglas_de_negocio` | `postulaciones` guarda el score con que se postuló; el seguimiento exige resultado, fecha y motivo si fue devuelta; la fecha de adopción solo existe en postulaciones aprobadas (RN02); se elimina `mascotas.origen` (redundante con `clave_seed`). |
+| `012_catalogos_a_check` | Revierte la 010 salvo los catálogos que la normalización necesita (`tamanos`, `etapas_vida`, `especies`, `razas`, `regiones`, `comunas`): el resto de las listas vuelve a `CHECK`. Decisión: una tabla por cada lista cerrada sin datos ni relaciones propias agregaba joins sin aportar integridad. |
+
+Las migraciones 008, 009, 011 y 012 se aplicaron en Neon el 16-11-2026. Las que eliminan columnas (008, 009 y 011) se ejecutaron en dos fases: primero la parte aditiva, compatible con el backend anterior, y la eliminación solo cuando el backend nuevo ya estaba desplegado.
 
 ## Carga de la nómina SII y creación de refugios
 
@@ -74,11 +115,19 @@ Ya aplicada en Neon el 2026-10-01, con respaldo previo de las filas eliminadas. 
 python scripts/aplicar_migracion.py "../../../Base de datos/migraciones/006_cuestionarios_v2.sql"
 ```
 
+## Normalización
+
+El esquema cumple 3FN (migraciones 008, 009 y 011):
+
+- **1FN:** cada celda guarda un solo valor. Las preferencias de tamaño y etapa de vida dejaron de ser arreglos y son tablas puente.
+- **3FN:** ningún atributo depende de otro que no sea clave. La cadena región → comuna → organización se separó en tablas, y el rol del autor de un mensaje se obtiene de `usuarios` en vez de copiarse.
+- **Excepción deliberada:** `postulaciones.score_al_postular` repite un valor que existe en `matches`. No es redundancia: `matches` se recalcula, y esta columna conserva el valor con el que el refugio decidió (ver migración 011).
+
 ## Reglas de negocio reforzadas a nivel de base de datos
 
 No solo se validan en el backend — están reforzadas directamente en el esquema, como última línea de defensa:
 
-- **Valores permitidos por `CHECK`**: campos como `rol`, `estado`, `espacio_disponible`, `nivel_energia`, etc. solo aceptan los valores exactos definidos (ej. `rol` solo puede ser `'adoptante'` o `'refugio'`), nunca texto libre.
+- **Valores permitidos por `CHECK` o llave foránea**: campos como `rol`, `estado`, `espacio_disponible`, `nivel_energia`, etc. solo aceptan los valores exactos definidos (ej. `rol` solo puede ser `'adoptante'` o `'refugio'`), nunca texto libre. Especie, raza, tamaño y etapa de vida se validan contra sus tablas catálogo.
 - **Rangos y coherencia**: `edad` de mascota nunca negativa, `score_compatibilidad` entre 0 y 1, el tamaño adulto se exige solo en perros y una mascota con cuidados especiales debe tenerlos descritos.
 - **Sin duplicados donde no deben existir**: una mascota no puede tener dos fotos marcadas como principal a la vez; un match no se calcula dos veces para el mismo par adoptante-mascota (se actualiza); un adoptante no puede tener dos postulaciones *pendientes* a la misma mascota al mismo tiempo (pero sí puede volver a postular después de un rechazo).
 - **Políticas de borrado explícitas (`ON DELETE`)**: los datos que representan historial de negocio (`matches`, `postulaciones`, `seguimientos_post_adopcion`) están protegidos con `RESTRICT`, para que nunca desaparezcan como efecto secundario de borrar otra fila. Los datos que son extensión directa de una cuenta (perfil de refugio, perfil de adoptante, fotos) sí se eliminan en cascada (`CASCADE`) si se borra su dueño.
@@ -89,12 +138,12 @@ No solo se validan en el backend — están reforzadas directamente en el esquem
 2. Copia el connection string de tu base de datos.
 3. Abre el **SQL Editor** de Neon (o conéctate con `psql`).
 4. Pega el contenido completo de `BD_HouseFound_v2.sql` y ejecútalo.
-5. Verifica que se crearon las 10 tablas: `SELECT table_name FROM information_schema.tables WHERE table_schema='public';`
+5. Verifica que se crearon las 19 tablas: `SELECT table_name FROM information_schema.tables WHERE table_schema='public';`
 6. Carga la nómina SII con `importar_nomina.py` (ver arriba) y, si quieres datos de ejemplo, las mascotas con `Aplicación/seed/` (ver su README).
 
 No hace falta aplicar las migraciones: el esquema ya las incluye.
 
-Este script fue probado ejecutándolo contra una instancia real de PostgreSQL, incluyendo pruebas deliberadas de violación de cada regla de negocio (valores inválidos, duplicados, borrados restringidos), confirmando que la base de datos las rechaza correctamente.
+La versión 2 de este script (hasta la migración 006) fue probada contra una instancia real de PostgreSQL, incluyendo pruebas deliberadas de violación de cada regla de negocio (valores inválidos, duplicados, borrados restringidos). **La versión actual, que consolida las migraciones 007 a 012, todavía no se ha ejecutado desde cero en una BD vacía**: antes de entregarla hay que hacerlo y comparar el resultado con el esquema de Neon.
 
 ## Variables de entorno relacionadas
 
