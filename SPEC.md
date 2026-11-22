@@ -38,28 +38,30 @@ A diferencia de las galerías o listados tradicionales, la plataforma incorpora 
 ## 2. Requisitos Funcionales
 
 ### RF-01 · Registro y autenticación con roles
-- Registro con nombre, email, contraseña y rol (`adoptante` / `refugio`).
+- **Adoptantes:** registro con nombre, email, contraseña (mínimo 6 caracteres, validado en el backend) y teléfono; login con email y contraseña.
+- **Refugios:** no se registran. Solo operan las organizaciones de la nómina SII (`organizaciones_validadas`). Ingresan con su RUT (dígito verificador validado, módulo 11) y un código de 6 dígitos enviado al correo de la nómina: un solo uso, 10 min de vigencia, 5 intentos, reenvío cada 60 s y máximo 5 por hora. El código se guarda como HMAC-SHA256. `POST /auth/registro` con `rol = refugio` responde 403.
 - Login devuelve JWT (HS256, 24h de expiración).
 - Validación de email con formato `EmailStr` de Pydantic.
 - Rate limiting: bloqueo por email tras 5 intentos fallidos (ventana de 15 min).
 - Protección de timing-attack con hash señuelo en login.
 
 ### RF-02 · Perfiles de usuario
-- **Adoptante**: cuestionario de estilo de vida (espacio disponible, tiempo/día, experiencia previa, niños, otras mascotas, nivel de actividad, teléfono, foto de perfil).
+- **Adoptante**: cuestionario de estilo de vida en 5 pasos (vivienda y restricciones, horas sola, tiempo de actividad, experiencia previa, ambiente del hogar, niños, perros y gatos en casa, alergias, cuidados que acepta, preferencias de especie, tamaño, etapa y sexo, teléfono, foto de perfil). Es obligatorio: sin él la app solo muestra el cuestionario.
 - **Refugio**: nombre del refugio, dirección, teléfono de contacto.
 - Validación de teléfono chileno (`+56 9 XXXX XXXX`).
 - Separación In/Out en schemas: la validación de formato solo aplica al guardar, nunca al leer (prevención de errores con datos legacy).
 
 ### RF-03 · Publicación y gestión de mascotas
 - CRUD completo restringido a refugios (crear, editar, cambiar estado).
-- Campos de perfil animal: nombre, especie, raza, edad, nivel de energía, socialización, compatibilidad con niños/otras mascotas, experiencia requerida, espacio mínimo, cuidados especiales.
+- Campos de perfil animal: nombre, especie, raza (del catálogo de su especie), edad, sexo, tamaño (solo perros), nivel de energía, tolerancia a la soledad, temperamento, convivencia con niños/perros/gatos, experiencia requerida, espacio mínimo, nivel de cuidados y su descripción, y ficha de salud (esterilización, vacunas, desparasitación, microchip, notas).
 - Estados posibles: `disponible` → `en_proceso` → `adoptada` (o vuelta a `disponible` por devolución).
 - Gestión de fotos con subida a Cloudinary (carpeta `hogarmatch/mascotas`).
 - Foto principal controlable; eliminación individual.
 
 ### RF-04 · Motor de matching (compatibilidad)
-- Score entre 0.0 y 1.0 calculado por **reglas ponderadas** (6 criterios).
-- Resultado persistido en tabla `matches` con UPSERT (recálculo idempotente).
+- Score entre 0.0 y 1.0 calculado en **3 capas** (exclusión, compatibilidad ponderada de 5 criterios y preferencias; ver sección 6).
+- Resultado persistido en tabla `matches` con UPSERT (recálculo idempotente), junto con su desglose.
+- Al postular, el score y su desglose se copian a la postulación (`score_al_postular`), porque `matches` se recalcula.
 - Endpoint de recomendaciones (lista completa ordenada) y score individual por mascota.
 
 ### RF-05 · Postulaciones
@@ -71,10 +73,11 @@ A diferencia de las galerías o listados tradicionales, la plataforma incorpora 
 - **Confirmar adopción**: acción explícita del refugio que cambia la mascota a `adoptada` (RN02).
 
 ### RF-06 · Seguimiento post-adopción
-- Encuestas a 30 y 90 días con resultado: `exitosa`, `en_proceso`, `devuelta`.
-- Si `devuelta`: la mascota vuelve automáticamente a `disponible` (motivo registrado).
+- **Chat de seguimiento:** cada postulación aprobada abre un chat adoptante–refugio con texto, fotos, audios y videos. Los archivos se suben directo a Cloudinary con una firma que entrega el servicio; el chat consulta mensajes nuevos cada 4 s y lleva el conteo de no leídos.
+- Encuestas a 30 y 90 días, contados desde que el refugio confirma la adopción (`postulaciones.fecha_adopcion`), con resultado: `exitosa`, `en_proceso`, `devuelta`. Cada encuesta deja un mensaje de tipo `encuesta` en el chat.
+- Si `devuelta`: el motivo es obligatorio y la mascota vuelve automáticamente a `disponible`.
 - Si `exitosa`: solo queda como dato histórico (el estado `adoptada` ya fue puesto por el refugio).
-- Dashboard de métricas para el refugio: total seguimientos, exitosas, devueltas, en proceso, tasa de devolución.
+- Métricas para el refugio: total seguimientos, exitosas, devueltas, en proceso, tasa de devolución. **Estado:** el endpoint existe; la pantalla del frontend está pendiente.
 
 ---
 
@@ -144,118 +147,34 @@ A diferencia de las galerías o listados tradicionales, la plataforma incorpora 
 
 ### 5.1 Diagrama Entidad-Relación
 
+El modelo tiene **19 tablas** y está normalizado a 3FN (migraciones 008 a 012). Este diagrama muestra solo las relaciones; las columnas de cada tabla están en [`modelo_relacional.mmd`](../Base%20de%20datos/modelo_relacional.mmd) y en el [README de la base de datos](../Base%20de%20datos/README_BaseDeDatos.md). El script de creación es `BD_HouseFound_v2.sql`.
+
 ```mermaid
 erDiagram
-    usuarios ||--o| refugios : "1:1"
-    usuarios ||--o| perfiles_adoptante : "1:1"
-    refugios ||--o{ mascotas : "tiene"
-    mascotas ||--o{ fotos_mascota : "tiene"
-    perfiles_adoptante ||--o{ matches : "calcula"
-    mascotas ||--o{ matches : "evaluada en"
-    perfiles_adoptante ||--o{ postulaciones : "crea"
-    mascotas ||--o{ postulaciones : "recibe"
-    postulaciones ||--o{ seguimientos_post_adopcion : "seguimiento"
-
-    usuarios {
-        int id PK
-        string nombre
-        string email UK
-        string password_hash
-        string rol
-        datetime fecha_registro
-    }
-
-    refugios {
-        int id PK
-        int usuario_id FK_UK
-        string nombre_refugio
-        string direccion
-        string telefono_contacto
-    }
-
-    perfiles_adoptante {
-        int id PK
-        int usuario_id FK_UK
-        string espacio_disponible
-        string restriccion_vivienda
-        string horas_sola
-        string tiempo_actividad
-        string experiencia_previa
-        string ambiente_hogar
-        string ninos_hogar
-        bool tiene_perros
-        bool tiene_gatos
-        string alergias
-        string acepta_cuidados
-        string especie_preferida
-        string[] tamanos_preferidos
-        string[] etapas_preferidas
-        string sexo_preferido
-        string telefono
-        string foto_perfil
-    }
-
-    mascotas {
-        int id PK
-        int refugio_id FK
-        string nombre
-        string especie
-        string raza
-        int edad
-        string sexo
-        string tamano
-        string espacio_minimo_requerido
-        string tolerancia_soledad
-        string nivel_energia
-        string nivel_experiencia_requerida
-        string temperamento
-        string convivencia_ninos
-        bool convive_perros
-        bool convive_gatos
-        string nivel_cuidados
-        text cuidados_especiales
-        bool esterilizado
-        bool vacunas_al_dia
-        bool desparasitado
-        bool microchip
-        text notas_salud
-        string estado
-        datetime fecha_publicacion
-    }
-
-    fotos_mascota {
-        int id PK
-        int mascota_id FK
-        string url
-        bool es_principal
-        int orden
-    }
-
-    matches {
-        int id PK
-        int adoptante_id FK
-        int mascota_id FK
-        numeric score_compatibilidad
-        jsonb desglose
-        datetime fecha_calculo
-    }
-
-    postulaciones {
-        int id PK
-        int adoptante_id FK
-        int mascota_id FK
-        string estado
-        datetime fecha_postulacion
-    }
-
-    seguimientos_post_adopcion {
-        int id PK
-        int postulacion_id FK
-        int dias_transcurridos
-        string resultado
-        text motivo_devolucion
-        datetime fecha_respuesta
-    }
+    usuarios ||--o{ codigos_verificacion : "verifica"
+    especies |o--o{ perfiles_adoptante : "especie preferida"
+    usuarios ||--o| perfiles_adoptante : "perfil de"
+    perfiles_adoptante ||--o{ perfil_tamano_preferido : "prefiere"
+    tamanos ||--o{ perfil_tamano_preferido : "tamano"
+    etapas_vida ||--o{ perfil_etapa_preferida : "etapa"
+    perfiles_adoptante ||--o{ perfil_etapa_preferida : "prefiere"
+    organizaciones_validadas ||--o| refugios : "valida"
+    usuarios ||--o| refugios : "cuenta de"
+    comunas |o--o{ organizaciones_validadas : "ubicada en"
+    regiones ||--o{ comunas : "pertenece a"
+    especies ||--o{ mascotas : "es de"
+    razas |o--o{ mascotas : "es de raza"
+    refugios ||--o{ mascotas : "publica"
+    tamanos |o--o{ mascotas : "tamano"
+    mascotas ||--o{ fotos_mascota : "foto de"
+    especies ||--o{ razas : "de la especie"
+    mascotas ||--o{ matches : "compara con"
+    perfiles_adoptante ||--o{ matches : "calcula para"
+    mascotas ||--o{ postulaciones : "a la mascota"
+    perfiles_adoptante ||--o{ postulaciones : "postula"
+    postulaciones ||--o{ seguimientos_post_adopcion : "sigue"
+    postulaciones ||--o{ mensajes_seguimiento : "chat de"
+    usuarios ||--o{ mensajes_seguimiento : "escrito por"
 ```
 
 ### 5.2 Enumeraciones (valores válidos)
@@ -272,9 +191,10 @@ erDiagram
 | `perfiles_adoptante.ninos_hogar` | `no`, `mayores` (6+), `pequenos` (menores de 6) |
 | `perfiles_adoptante.alergias` | `ninguna`, `perros`, `gatos`, `ambos` |
 | `perfiles_adoptante.acepta_cuidados` | `no`, `leves`, `complejos` |
-| `perfiles_adoptante.especie_preferida` | `Perro`, `Gato`, `NULL` (me da igual) |
-| `perfiles_adoptante.tamanos_preferidos` | lista de `pequeno`, `mediano`, `grande`; `NULL` = me da igual |
-| `perfiles_adoptante.etapas_preferidas` | lista de `cachorro`, `joven`, `adulto`, `senior`; `NULL` = me da igual |
+| `perfiles_adoptante.especie_preferida` | FK a `especies`: `Perro`, `Gato`, `NULL` (me da igual) |
+| `perfil_tamano_preferido.tamano` | FK a `tamanos`: `pequeno`, `mediano`, `grande`; una fila por tamaño elegido, sin filas = me da igual |
+| `perfil_etapa_preferida.etapa` | FK a `etapas_vida`: `cachorro`, `joven`, `adulto`, `senior`; una fila por etapa elegida, sin filas = me da igual |
+| `mascotas.especie` / `mascotas.raza` | FK a `especies` y FK compuesta `(especie, raza)` a `razas` |
 | `perfiles_adoptante.sexo_preferido` | `macho`, `hembra`, `NULL` (me da igual) |
 | `mascotas.estado` | `disponible`, `en_proceso`, `adoptada` |
 | `mascotas.sexo` | `macho`, `hembra` |
@@ -330,7 +250,7 @@ Todos los criterios comparan un **recurso del hogar** con una **necesidad de la 
 ### 6.3 Capa 3 — Preferencias
 
 - `especie_preferida` filtra Recomendaciones.
-- `tamanos_preferidos` (solo perros), `etapas_preferidas` y `sexo_preferido` solo ordenan: primero las mascotas que cumplen más preferencias y, a igualdad, las de mayor %.
+- Los tamaños preferidos (solo perros), las etapas preferidas y `sexo_preferido` solo ordenan: primero las mascotas que cumplen más preferencias y, a igualdad, las de mayor %.
 - Etapa de vida según `edad`: cachorro (< 1 año), joven (1–2), adulto (3–7), senior (8+).
 
 ### 6.4 Detalle del score
@@ -346,8 +266,10 @@ Cada match guarda en `matches.desglose` el puntaje por criterio, las exclusiones
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
 | `GET` | `/` | público | Health check |
-| `POST` | `/auth/registro` | público | Registro (devuelve JWT + usuario) |
-| `POST` | `/auth/login` | público | Login (devuelve JWT + usuario) |
+| `POST` | `/auth/registro` | público | Registro de adoptantes (devuelve JWT + usuario). Con `rol = refugio` responde 403 |
+| `POST` | `/auth/login` | público | Login de adoptantes (devuelve JWT + usuario) |
+| `POST` | `/auth/refugio/solicitar-codigo` | público | Recibe el RUT de una organización de la nómina SII y envía un código de 6 dígitos a su correo |
+| `POST` | `/auth/refugio/verificar-codigo` | público | Verifica RUT + código; activa la cuenta del refugio y devuelve JWT + usuario |
 | `POST` | `/auth/perfil-adoptante` | adoptante | Guardar/actualizar perfil estilo de vida |
 | `GET` | `/auth/perfil-adoptante` | adoptante | Obtener perfil propio |
 | `POST` | `/auth/perfil-refugio` | refugio | Guardar/actualizar perfil refugio |
@@ -395,7 +317,14 @@ Cada match guarda en `matches.desglose` el puntaje por criterio, las exclusiones
 | `POST` | `/seguimientos` | adoptante | Crear encuesta de seguimiento |
 | `GET` | `/seguimientos/mios` | adoptante | Mis seguimientos |
 | `GET` | `/seguimientos/recibidos` | refugio | Seguimientos de mis mascotas (filtro por resultado) |
-| `GET` | `/seguimientos/metricas` | refugio | Dashboard de métricas |
+| `GET` | `/seguimientos/metricas` | refugio | Métricas: seguimientos por resultado y tasa de devolución |
+| `GET` | `/seguimientos/chats` | adoptante, refugio | Lista de chats propios (uno por postulación aprobada) |
+| `GET` | `/seguimientos/chats/no-leidos` | adoptante, refugio | Total de mensajes sin leer |
+| `GET` | `/seguimientos/chats/{postulacion_id}` | adoptante, refugio | Detalle del chat, con el estado de las encuestas de 30 y 90 días |
+| `GET` | `/seguimientos/chats/{postulacion_id}/mensajes` | adoptante, refugio | Mensajes del chat (permite pedir solo los nuevos) |
+| `POST` | `/seguimientos/chats/{postulacion_id}/mensajes` | adoptante, refugio | Enviar texto, foto, audio o video |
+| `POST` | `/seguimientos/chats/{postulacion_id}/firma-subida` | adoptante, refugio | Firma para subir un archivo directo a Cloudinary |
+| `PATCH` | `/seguimientos/chats/{postulacion_id}/leidos` | adoptante, refugio | Marcar los mensajes del otro participante como leídos |
 
 ---
 
@@ -499,8 +428,11 @@ CAPSTONE/
 │           │   │   │   └── .env / .env.example
 │           │   │   │
 │           │   │   └── seguimiento-service/   # Encuestas post-adopción
-│           │   │       ├── main.py            # Encuestas + métricas
-│           │   │       ├── models.py          # ORM: seguimientos_post_adopcion
+│           │   │       ├── main.py            # Encuestas, métricas y chat
+│           │   │       ├── encuestas.py       # Reglas de las encuestas de 30 y 90 días
+│           │   │       ├── medios.py          # Archivos del chat en Cloudinary
+│           │   │       ├── test_chat.py       # Pruebas unitarias del chat
+│           │   │       ├── models.py          # ORM: seguimientos_post_adopcion, mensajes_seguimiento
 │           │   │       ├── schemas.py
 │           │   │       ├── security.py
 │           │   │       ├── database.py
@@ -514,7 +446,8 @@ CAPSTONE/
 │           │       │   │   ├── auth.ts
 │           │       │   │   ├── mascotas.ts
 │           │       │   │   ├── matching.ts
-│           │       │   │   └── postulaciones.ts
+│           │       │   │   ├── postulaciones.ts
+│           │       │   │   └── seguimiento.ts
 │           │       │   │
 │           │       │   ├── context/           # Estado global
 │           │       │   │   ├── AuthContext.tsx
@@ -550,6 +483,8 @@ CAPSTONE/
 │           │       │   │   ├── PerfilRefugio.tsx
 │           │       │   │   ├── EditarPerfilRefugio.tsx
 │           │       │   │   ├── MisSolicitudes.tsx
+│           │       │   │   ├── Chats.tsx             # Lista de chats de seguimiento
+│           │       │   │   ├── ChatSeguimiento.tsx   # Chat adoptante-refugio y encuestas
 │           │       │   │   ├── Guardados.tsx
 │           │       │   │   ├── InicioRefugio.tsx
 │           │       │   │   ├── MisMascotas.tsx
@@ -591,6 +526,32 @@ JWT_SECRET=clave-secreta-compartida
 ```
 
 > ⚠️ **`JWT_SECRET` debe ser exactamente el mismo valor en los 6 servicios backend** (5 microservicios + gateway).
+
+### Backend — Auth Service (adicional)
+
+```env
+# Envío del código de acceso de los refugios
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=cuenta@gmail.com
+SMTP_PASSWORD=contraseña-de-aplicacion
+SMTP_FROM=cuenta@gmail.com
+# Solo desarrollo: MODO_DEV=true escribe el código en los logs y CODIGO_PRUEBA fija un código
+# para la organización de prueba. En producción: MODO_DEV=false y sin CODIGO_PRUEBA.
+MODO_DEV=false
+```
+
+### Backend — Seguimiento Service (adicional)
+
+```env
+# Cloudinary (las mismas de mascotas-service): fotos, audios y videos del chat.
+# Sin ellas el chat funciona solo con texto.
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+# Solo pruebas: permite responder las encuestas apenas se confirma la adopción.
+SEGUIMIENTO_SIN_ESPERA=false
+```
 
 ### Backend — Mascotas Service (adicional)
 
@@ -753,8 +714,8 @@ sequenceDiagram
 | **RN03** | Al aprobar una postulación, las demás pendientes a la misma mascota se rechazan automáticamente. | `SELECT ... FOR UPDATE` + update masivo en `evaluar_postulacion`. |
 | **RN04** | El score se muestra al refugio junto al perfil del postulante al evaluar. | Join con tabla `matches` en `detalle_postulacion`. |
 | **RN05** | Una devolución detectada en seguimiento reabre la ficha de la mascota automáticamente. | `mascota.estado = "disponible"` en `crear_seguimiento`. |
-| **RN06** | El teléfono solo se comparte entre adoptante y refugio cuando la postulación es aprobada. | Incluido en `PostulacionOut` solo con estado `aprobada`. |
+| **RN06** | El teléfono solo se comparte entre adoptante y refugio cuando la postulación es aprobada. | `postulaciones-service` solo rellena `adoptante_telefono` y `refugio_telefono` si la postulación está `aprobada` (corregido el 7-10-2026; antes la API los entregaba siempre). |
 
 ---
 
-> Documento generado a partir del código fuente del proyecto. Última actualización: septiembre 2026.
+> Documento generado a partir del código fuente del proyecto. Última actualización: 22 de noviembre de 2026 (modelo de datos normalizado, login de refugios, chat de seguimiento).
