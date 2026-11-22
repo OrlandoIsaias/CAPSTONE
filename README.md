@@ -193,7 +193,7 @@ Cómo está armado, sus variables, cómo recrearlo desde cero y qué revisar ant
 | [README de los datos de ejemplo](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/seed/README.md>) | Generación y carga de las mascotas de ejemplo |
 | [README del frontend](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/frontend/README.md>) | Comandos y estructura del código del frontend |
 | [Análisis del Caso](<Fase 2/Evidencias Proyecto/Evidencias de documentación/01_Analisis_del_Caso.docx>) | Problema, contexto, propuesta de solución y marco metodológico. Su sección de matching describe la versión 1 |
-| [Squad y responsabilidades](<Fase 2/Evidencias Proyecto/Evidencias de documentación/02_SquadResponsabilidades_HouseFound.docx>) | Roles Scrum, matriz RACI, eventos, acuerdos de trabajo y Definition of Done |
+| [Squad y responsabilidades](<Fase 2/Evidencias Proyecto/Evidencias de documentación/02_SquadResponsabilidades_HouseFound.docx>) | Roles Scrum, matriz RACI, eventos y acuerdos de trabajo |
 | [Mapa mental](<Fase 2/Evidencias Proyecto/Evidencias de documentación/03_MapaMental_HouseFound.docx>) | Visión general del proyecto |
 
 ## Estructura del repositorio
@@ -236,7 +236,6 @@ En Scrum no hay jerarquías dentro del equipo: el Product Owner y el Scrum Maste
 
 - **Artefactos:** el Product Backlog (historias de usuario y tareas técnicas registradas como issues), el Sprint Backlog, el Scrumboard y el Burndown están en GitHub Projects.
 - **Eventos:** Sprint Planning, Daily de lunes a viernes, refinamiento del backlog, Sprint Review y Sprint Retrospective.
-- **Definition of Done:** una historia está terminada cuando cumple sus criterios de aceptación, entra a `main` por un Pull Request aprobado por otro integrante, tiene pruebas que pasan, funciona con Docker Compose, su documentación está actualizada y el Product Owner la acepta en la Sprint Review.
 
 **Flujo con Git:** cada historia se desarrolla en una rama `feature/<nombre-tarea>` y entra a `main` por un Pull Request que referencia su issue (`Closes #n`) y que aprueba al menos otro integrante. Los primeros módulos se integraron así (PR #26 a #30), pero los ajustes posteriores se hicieron directo a `main`. Desde el Sprint 1, el equipo está retomando este flujo para todo cambio.
 
