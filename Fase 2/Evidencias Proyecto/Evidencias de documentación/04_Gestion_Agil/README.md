@@ -48,6 +48,8 @@ El equipo estima con tallas en vez de números. Así se usa a lo largo del sprin
 | L | 5 | Grande: varias pantallas o servicios, con algo de incertidumbre |
 | XL | 8 | Muy grande: se divide antes de entrar a un sprint |
 
+Los story points de cada historia de usuario, la capacidad y la velocidad de los 4 sprints están en [05_Estimacion_Capacidad_Velocidad](05_Estimacion_Capacidad_Velocidad/).
+
 Versiones sugeridas para el Release: Sprint 1 = `v0.1.0`, Sprint 2 = `v0.2.0`, Sprint 3 = `v0.3.0` y Sprint 4 = `v1.0.0` (entrega final).
 
 > Si un documento se escribe después del sprint, se arma con datos reales (issues, commits y el chat) y lo dice al inicio: "Reconstruido el dd-mm a partir de …".
