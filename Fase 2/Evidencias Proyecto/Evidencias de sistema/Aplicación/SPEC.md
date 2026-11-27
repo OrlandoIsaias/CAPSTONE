@@ -382,6 +382,7 @@ CAPSTONE/
 │           │   ├── backend/
 │           │   │   ├── api-gateway/          # Enrutamiento + JWT + CORS
 │           │   │   │   ├── main.py
+│           │   │   │   ├── test_gateway.py       # Pruebas unitarias y de integración
 │           │   │   │   ├── Dockerfile
 │           │   │   │   ├── requirements.txt
 │           │   │   │   ├── .env / .env.example
@@ -404,6 +405,7 @@ CAPSTONE/
 │           │   │   │   ├── schemas.py
 │           │   │   │   ├── security.py        # Validación JWT local
 │           │   │   │   ├── clients.py         # HTTP → Auth Service (refugio_id)
+│           │   │   │   ├── test_mascotas.py   # Pruebas unitarias y de integración
 │           │   │   │   ├── database.py
 │           │   │   │   ├── Dockerfile
 │           │   │   │   └── .env / .env.example
@@ -411,6 +413,8 @@ CAPSTONE/
 │           │   │   ├── matching-service/      # Motor de compatibilidad
 │           │   │   │   ├── main.py
 │           │   │   │   ├── scoring.py         # Algoritmo de reglas ponderadas
+│           │   │   │   ├── test_scoring.py    # Pruebas unitarias del motor
+│           │   │   │   ├── test_matching_integracion.py # Pruebas de integración
 │           │   │   │   ├── models.py          # ORM: perfiles, mascotas, matches
 │           │   │   │   ├── schemas.py
 │           │   │   │   ├── security.py
@@ -420,6 +424,7 @@ CAPSTONE/
 │           │   │   │
 │           │   │   ├── postulaciones-service/ # Solicitudes de adopción
 │           │   │   │   ├── main.py            # CRUD + aprobar/rechazar + confirmar
+│           │   │   │   ├── test_postulaciones.py # Pruebas unitarias y de integración
 │           │   │   │   ├── models.py          # ORM: postulaciones + lectura cruzada
 │           │   │   │   ├── schemas.py
 │           │   │   │   ├── security.py
@@ -432,6 +437,7 @@ CAPSTONE/
 │           │   │       ├── encuestas.py       # Reglas de las encuestas de 30 y 90 días
 │           │   │       ├── medios.py          # Archivos del chat en Cloudinary
 │           │   │       ├── test_chat.py       # Pruebas unitarias del chat
+│           │   │       ├── test_chat_integracion.py # Pruebas de integración
 │           │   │       ├── models.py          # ORM: seguimientos_post_adopcion, mensajes_seguimiento
 │           │   │       ├── schemas.py
 │           │   │       ├── security.py
@@ -715,6 +721,8 @@ sequenceDiagram
 | **RN04** | El score se muestra al refugio junto al perfil del postulante al evaluar. | Join con tabla `matches` en `detalle_postulacion`. |
 | **RN05** | Una devolución detectada en seguimiento reabre la ficha de la mascota automáticamente. | `mascota.estado = "disponible"` en `crear_seguimiento`. |
 | **RN06** | El teléfono solo se comparte entre adoptante y refugio cuando la postulación es aprobada. | `postulaciones-service` solo rellena `adoptante_telefono` y `refugio_telefono` si la postulación está `aprobada` (corregido el 7-10-2026; antes la API los entregaba siempre). |
+
+Las seis reglas tienen pruebas automatizadas de su comportamiento principal en la API. No cubren las restricciones de PostgreSQL ni la concurrencia; el detalle está en la [Guía del proyecto, sección 9](<../../../../GUIA_DEL_PROYECTO.md#9-calidad-y-pruebas>).
 
 ---
 

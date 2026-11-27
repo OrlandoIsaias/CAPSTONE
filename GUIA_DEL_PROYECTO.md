@@ -58,7 +58,7 @@ El MVP funciona de punta a punta: registro, cuestionario, catálogo con fotos, m
 | Encuestas de seguimiento a 30 y 90 días | Listo | Listo | Dentro del chat, cuando se cumplen 30 y 90 días desde que el refugio confirma la adopción |
 | Panel de métricas del refugio | Listo | **Pendiente** | `GET /seguimientos/metricas` ya calcula la tasa de devolución |
 | Guardados (favoritos) | No existe | Listo | Se guardan solo en el navegador (`localStorage`) |
-| Pruebas automatizadas | Parcial | No | 24 pruebas del motor de matching y 19 del chat de seguimiento |
+| Pruebas automatizadas | Parcial | No | 74 pruebas: 51 unitarias y 23 de integración. Faltan auth-service y el frontend ([sección 9](#9-calidad-y-pruebas)) |
 
 **Datos en la base de datos compartida (Neon), al 1 de octubre de 2026** (no se han vuelto a medir; hay que actualizarlos antes de la defensa):
 
@@ -347,23 +347,78 @@ Está en [scoring.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicaci
 
 ## 9. Calidad y pruebas
 
-- **24 pruebas unitarias del motor de matching** en [test_scoring.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/matching-service/test_scoring.py>). El 1 de octubre de 2026 pasaron las 24.
+El backend tiene **74 pruebas automatizadas** con `unittest`: 51 unitarias y 23 de integración. Los comandos para ejecutarlas están en el [README](README.md#pruebas).
 
-  | Grupo | Pruebas | Qué verifican |
-  |---|---|---|
-  | Compatibilidad | 8 | Pesos suman 1; un hogar que cubre todo da 100 %; un nivel de brecha resta la mitad del peso; tener de más no resta; tope del 50 %; mascota tímida y hogar tranquilo; desglose completo |
-  | Exclusiones | 8 | Niños pequeños y mayores, perros y gatos por separado, alergias, vivienda, cuidados; la exclusión no cambia el % |
-  | Alertas | 2 | Un dato sin evaluar nunca excluye; vivienda por confirmar |
-  | Preferencias | 4 | No cambian el %; el tamaño no aplica a gatos; especie; etapas de vida |
-  | Cuestionario | 2 | Completo o incompleto; formato JSON guardado en `matches` |
+### Resumen por servicio
 
-  Se ejecutan desde `backend/matching-service`, con su entorno virtual activo: `python -m unittest test_scoring -v`
-- **Verificaciones manuales:**
+| Servicio | Unitarias | Integración | Total | Archivos |
+|---|---|---|---|---|
+| matching-service | 24 | 3 | 27 | [test_scoring.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/matching-service/test_scoring.py>), [test_matching_integracion.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/matching-service/test_matching_integracion.py>) |
+| seguimiento-service | 19 | 4 | 23 | [test_chat.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/seguimiento-service/test_chat.py>), [test_chat_integracion.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/seguimiento-service/test_chat_integracion.py>) |
+| postulaciones-service | 3 | 8 | 11 | [test_postulaciones.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/postulaciones-service/test_postulaciones.py>) |
+| mascotas-service | 3 | 3 | 6 | [test_mascotas.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/mascotas-service/test_mascotas.py>) |
+| api-gateway | 2 | 5 | 7 | [test_gateway.py](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/api-gateway/test_gateway.py>) |
+| **Total** | **51** | **23** | **74** | |
+
+### Pruebas unitarias
+
+**Motor de compatibilidad (24):**
+
+| Grupo | Pruebas | Qué verifican |
+|---|---|---|
+| Compatibilidad | 8 | Pesos suman 1; un hogar que cubre todo da 100 %; un nivel de brecha resta la mitad del peso; tener de más no resta; tope del 50 %; mascota tímida y hogar tranquilo; desglose completo |
+| Exclusiones | 8 | Niños pequeños y mayores, perros y gatos por separado, alergias, vivienda, cuidados; la exclusión no cambia el % |
+| Alertas | 2 | Un dato sin evaluar nunca excluye; vivienda por confirmar |
+| Preferencias | 4 | No cambian el %; el tamaño no aplica a gatos; especie; etapas de vida |
+| Cuestionario | 2 | Completo o incompleto; formato JSON guardado en `matches` |
+
+**Resto de los servicios (27):**
+
+| Servicio | Pruebas | Qué verifican |
+|---|---|---|
+| seguimiento-service | 19 | Plazos de las encuestas de 30 y 90 días, archivos del chat y validación de mensajes |
+| postulaciones-service | 3 | Estados de evaluación permitidos, rol incorrecto y foto principal |
+| mascotas-service | 3 | Tamaño obligatorio en perros, gato sin tamaño y descripción de los cuidados especiales |
+| api-gateway | 2 | Token inválido; token válido o ausente |
+
+### Pruebas de integración
+
+Llaman a la API de cada servicio. Matching, seguimiento, postulaciones y mascotas usan una base SQLite en memoria; el API Gateway simula los servicios de destino.
+
+| Servicio | Pruebas | Qué verifican |
+|---|---|---|
+| matching-service | 3 | Una mascota incompatible no se recomienda pero se ve al explorar; recalcular no duplica los matches; sin cuestionario completo no hay recomendaciones |
+| seguimiento-service | 4 | Mensajes y contador de no leídos; acceso ajeno al chat rechazado; encuesta exitosa sin cambio de estado; devolución que libera la mascota y avisa en el chat |
+| postulaciones-service | 8 | Postulación duplicada; permisos del refugio; rechazo de las demás al aprobar; confirmación de la adopción; compatibilidad junto al perfil; teléfonos según el estado, también en listas y detalle |
+| mascotas-service | 3 | Publicar y listar; un adoptante no puede publicar; otro refugio no puede cambiar el estado |
+| api-gateway | 5 | Reenvío de la petición; ruta desconocida; token inválido que no llega al servicio; servicio caído; estado degradado |
+
+### Reglas de negocio cubiertas
+
+Las reglas están definidas en el [SPEC](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/SPEC.md#13-reglas-de-negocio>).
+
+| Regla | Qué se prueba | Qué no cubre |
+|---|---|---|
+| RN01 | La API rechaza una segunda postulación pendiente | La restricción de PostgreSQL |
+| RN02 | Aprobar deja la mascota "en proceso"; confirmar exige una aprobación; la encuesta exitosa no la marca como adoptada (con un estado forzado en la prueba) | La restricción de PostgreSQL |
+| RN03 | Aprobar una postulación rechaza las demás pendientes | Aprobaciones simultáneas |
+| RN04 | El refugio ve la compatibilidad junto al perfil del postulante | — |
+| RN05 | Una devolución deja la mascota disponible | — |
+| RN06 | Los teléfonos se ocultan si está pendiente o rechazada y se muestran si está aprobada | — |
+
+### Otras verificaciones
+
+- **Manuales:**
   - la API responde 400 al postular sin cuestionario y no escribe nada;
   - los selectores de raza y edad se probaron en celular y en escritorio;
   - las 463 fotos se verificaron en la BD y en Cloudinary.
-- **Base de datos:** el esquema se probó intentando violar cada regla de negocio (ver el README de la base de datos).
-- **Brecha:** hoy solo el matching y el chat de seguimiento tienen pruebas automatizadas. Faltan pruebas de auth, postulaciones y gateway, y del frontend.
+- **Base de datos:** una versión anterior del esquema (hasta la migración 006) se probó intentando violar las reglas; la versión actual no se ha ejecutado desde cero (ver el [README de la base de datos](<Fase 2/Evidencias Proyecto/Evidencias de sistema/Base de datos/README_BaseDeDatos.md>)).
+
+### Brechas
+
+- auth-service y el frontend no tienen pruebas automatizadas.
+- Las pruebas de integración no usan PostgreSQL ni comprueban la comunicación entre microservicios reales. En matching, el UPSERT de PostgreSQL se reemplaza por el de SQLite.
+- No hay pruebas de concurrencia ni de rendimiento.
 
 ---
 
@@ -462,7 +517,7 @@ Sin respuestas no hay % ni información para el refugio. Por eso se exige en dos
 Los refugios sí: nómina SII. Las mascotas son sintéticas pero coherentes, y sus fotos son de stock con licencia libre. Están marcadas como `seed` para borrarlas en bloque.
 
 **¿Qué pruebas tienen?**
-24 pruebas unitarias del motor, todas en verde, más verificaciones manuales de los flujos. La brecha es que faltan pruebas automatizadas de los demás servicios y del frontend (ver la [sección 9](#9-calidad-y-pruebas)).
+74 pruebas automatizadas del backend: 51 unitarias y 23 de integración, además de verificaciones manuales. Las de integración usan SQLite en memoria o servicios simulados. Faltan las de auth-service y del frontend, y no hay pruebas de concurrencia ni de rendimiento (ver la [sección 9](#9-calidad-y-pruebas)).
 
 **¿Cómo van a medir si HouseFound reduce las devoluciones?**
 Con los indicadores del Análisis del Caso:
@@ -475,7 +530,7 @@ El backend ya calcula la tasa de devolución; falta la pantalla.
 Fuera del alcance del MVP. Primero se necesitan datos de resultados reales, que es lo que genera el seguimiento a 30 y 90 días. El desglose guardado en `matches` sirve como variables de entrada para ese modelo futuro.
 
 **¿Qué falta para terminar el MVP?**
-La pantalla del panel de métricas del refugio, más pruebas automatizadas de auth, postulaciones y gateway. Ver la [sección 13](#13-limitaciones-y-próximos-pasos).
+La pantalla del panel de métricas del refugio y las pruebas automatizadas de auth-service y del frontend. Ver la [sección 13](#13-limitaciones-y-próximos-pasos).
 
 **¿Cómo trabajan en equipo y con Git?**
 Scrum con sprints de 2 semanas desde el 5 de octubre de 2026, con el backlog en GitHub Projects. Hay que ser honestos: la integración reciente se hizo directo a `main`. Desde el Sprint 1, todo cambio entra por rama `feature/*` y Pull Request revisado, como dice el acuerdo del Squad.
@@ -499,8 +554,8 @@ Los servicios no guardan estado (salvo el contador de intentos de login), así q
 | Funcionalidad | El chat de seguimiento busca mensajes nuevos cada 4 s y los límites de tamaño de los archivos solo los revisa el navegador | WebSockets si crece el uso; límites en un *upload preset* de Cloudinary |
 | Funcionalidad | "Guardados" vive solo en el navegador | Endpoint en el backend |
 | Funcionalidad | Solo la organización de prueba tiene correo, y el `.env` no configura SMTP: los refugios reales aún no pueden ingresar | Cargar correos verificados de la nómina y configurar SMTP |
-| Calidad | Pruebas automatizadas solo en matching (24) y en el chat de seguimiento (19) | Pruebas pytest de auth, postulaciones (flujo de aprobación) y gateway |
-| Seguridad | ~~RN06 solo en la interfaz~~ **Resuelto el 7-10-2026:** `postulaciones-service` entrega los teléfonos solo con la postulación aprobada | Agregar una prueba automatizada que lo verifique |
+| Calidad | Sin pruebas automatizadas en auth-service ni en el frontend; las de integración no usan PostgreSQL | Probar auth-service y el frontend; agregar pruebas con PostgreSQL y de concurrencia |
+| Seguridad | ~~RN06 solo en la interfaz~~ **Resuelto el 7-10-2026:** `postulaciones-service` entrega los teléfonos solo con la postulación aprobada | Cubierto por pruebas de integración de postulaciones-service |
 | Seguridad | ~~Mínimo de contraseña solo en el frontend~~ **Resuelto el 7-10-2026:** `UsuarioRegistro` exige `min_length=6` | Agregar una prueba automatizada |
 | Seguridad | ~~Clave JWT por defecto~~ **Resuelto el 7-10-2026:** los servicios y el gateway no arrancan sin `JWT_SECRET` ni con el valor de ejemplo | — |
 | Seguridad | `MODO_DEV` y `CODIGO_PRUEBA` existen para desarrollo (el `.env.example` los deja desactivados) | Confirmar que no estén definidos en las variables de Render antes de la defensa |

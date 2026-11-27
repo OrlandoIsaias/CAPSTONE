@@ -65,7 +65,8 @@ El núcleo del MVP funciona de punta a punta. El equipo trabaja en sprints desde
 - [ ] Envío del código por correo a los refugios reales (falta configurar el correo saliente y cargar sus direcciones)
 - [x] Chat de seguimiento adoptante–refugio con fotos, audios y videos, y encuestas a 30 y 90 días
 - [ ] Panel de métricas del refugio (el backend ya calcula la tasa de devolución)
-- [ ] Pruebas automatizadas fuera del motor de compatibilidad
+- [x] Pruebas unitarias y de integración de matching, seguimiento, postulaciones, mascotas y API Gateway
+- [ ] Pruebas automatizadas de auth-service y del frontend
 - [ ] Instalación como app en el teléfono (PWA)
 
 Detalle por funcionalidad y limitaciones conocidas: [Guía del proyecto, secciones 2 y 13](GUIA_DEL_PROYECTO.md#2-estado-del-avance).
@@ -163,16 +164,28 @@ Cada servicio también se puede levantar sin Docker, con su propio entorno virtu
 
 ## Pruebas
 
-Las 24 pruebas unitarias del motor de compatibilidad solo usan la biblioteca estándar de Python:
+El backend tiene 74 pruebas automatizadas con `unittest`: 51 unitarias y 23 de integración.
 
-```bash
-cd "Fase 2/Evidencias Proyecto/Evidencias de sistema/Aplicación/backend/matching-service"
-python -m unittest test_scoring -v
-```
+| Servicio | Unitarias | Integración | Total |
+|---|---|---|---|
+| matching-service | 24 | 3 | 27 |
+| seguimiento-service | 19 | 4 | 23 |
+| postulaciones-service | 3 | 8 | 11 |
+| mascotas-service | 3 | 3 | 6 |
+| api-gateway | 2 | 5 | 7 |
+| **Total** | **51** | **23** | **74** |
 
-Con la app levantada en Docker, también corren dentro del contenedor: `docker compose exec matching-service python -m unittest test_scoring -v`.
+Se ejecutan desde la carpeta de cada servicio (`Aplicación/backend/<servicio>`), con su entorno virtual activo. Las pruebas de integración y las del API Gateway necesitan `httpx`; si el entorno no lo tiene: `pip install httpx==0.28.1`.
 
-Los demás servicios y el frontend todavía no tienen pruebas automatizadas (ver la [Guía del proyecto, sección 9](GUIA_DEL_PROYECTO.md#9-calidad-y-pruebas)).
+| Servicio | Comando |
+|---|---|
+| matching-service | `python -m unittest test_scoring test_matching_integracion -v` |
+| seguimiento-service | `python -m unittest test_chat test_chat_integracion -v` |
+| postulaciones-service | `python -m unittest test_postulaciones -v` |
+| mascotas-service | `python -m unittest test_mascotas -v` |
+| api-gateway | `python -m unittest test_gateway -v` |
+
+Las pruebas de integración usan una base SQLite en memoria o servicios simulados: no tocan la base real. auth-service y el frontend todavía no tienen pruebas automatizadas. Qué verifica cada grupo, la cobertura de las reglas de negocio y los límites están en la [Guía del proyecto, sección 9](GUIA_DEL_PROYECTO.md#9-calidad-y-pruebas).
 
 ## Despliegue
 
